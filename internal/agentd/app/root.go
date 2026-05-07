@@ -13,6 +13,7 @@ import (
 
 type RootOptions struct {
 	Config *config.Config
+	Client ApplyClient
 	Out    io.Writer
 	Err    io.Writer
 }
@@ -56,6 +57,9 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	cmd.SetErr(errOut)
 	cmd.PersistentFlags().StringVar(&cfg.ServerURL, "server", cfg.ServerURL, "agentdserver URL")
 	cmd.PersistentFlags().StringVar(&cfg.OutputFormat, "output", cfg.OutputFormat, "output format: text or json")
+	if opts.Client != nil {
+		cmd.AddCommand(NewApplyCommand(opts.Client, NewOutput(cfg.OutputFormat, out)))
+	}
 
 	return cmd
 }
