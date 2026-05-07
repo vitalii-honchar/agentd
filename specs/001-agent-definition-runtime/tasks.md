@@ -147,7 +147,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T076 [US2] Implement execute use case in internal/agentdserver/app/runtime/execute.go
 - [X] T077 [US2] Implement stop use case in internal/agentdserver/app/runtime/stop.go
 - [X] T078 [US2] Implement daemon restart recovery use case in internal/agentdserver/app/runtime/recovery.go
-- [ ] T079 [US2] Implement OpenAI provider execution call behind provider port in internal/agentdserver/infra/llm/openai/provider.go
+- [X] T079 [US2] Implement OpenAI provider execution call behind provider port in internal/agentdserver/infra/llm/openai/provider.go
 - [ ] T080 [US2] Implement `POST /v1/agents/{name}/runs` handler in internal/agentdserver/infra/http/run_handler.go
 - [ ] T081 [US2] Implement `POST /v1/agents/{name}/runs/{run_id}/stop` handler in internal/agentdserver/infra/http/stop_handler.go
 - [ ] T082 [US2] Register run and stop handlers in internal/agentdserver/infra/http/server.go
