@@ -46,7 +46,7 @@ that MUST be complete before user stories.
 - [X] T014 [P] Define CLI configuration fields and defaults in internal/agentd/config/config.go
 - [X] T015 [P] Add CLI configuration tests in internal/agentd/config/config_test.go
 - [X] T016 Define domain errors in internal/agentdserver/domain/errors.go
-- [ ] T017 Define Agent Definition, Agent, Agent Run, Tool Permission, and Runtime Event domain types in internal/agentdserver/domain/agent.go
+- [X] T017 Define Agent Definition, Agent, Agent Run, Tool Permission, and Runtime Event domain types in internal/agentdserver/domain/agent.go
 - [ ] T018 Add domain validation and state transition tests in internal/agentdserver/domain/agent_test.go
 - [ ] T019 Create SQLite DB wrapper with embedded migration support in internal/agentdserver/infra/db/db.go
 - [ ] T020 Add SQLite DB wrapper migration tests in internal/agentdserver/infra/db/db_test.go
