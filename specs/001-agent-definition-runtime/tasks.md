@@ -138,7 +138,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 ### Implementation for User Story 2
 
 - [X] T069 [US2] Implement cron/manual scheduler adapter in internal/agentdserver/infra/scheduler/scheduler.go
-- [ ] T070 [US2] Implement schedule reconciliation use case in internal/agentdserver/app/scheduling/reconcile.go
+- [X] T070 [US2] Implement schedule reconciliation use case in internal/agentdserver/app/scheduling/reconcile.go
 - [X] T071 [US2] Implement per-Agent runtime DB Agent Run create/update/query methods in internal/agentdserver/infra/db/repository/run_repository.go
 - [X] T072 [US2] Implement runtime event repository methods in internal/agentdserver/infra/db/repository/event_repository.go
 - [X] T073 [US2] Implement per-run work directory and environment builder in internal/agentdserver/infra/runtime/isolation.go
