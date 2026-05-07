@@ -7,6 +7,8 @@ import (
 	"fmt"
 	stdhttp "net/http"
 	"time"
+
+	appagent "agentd/internal/agentdserver/app/agent"
 )
 
 type Config struct {
@@ -16,11 +18,24 @@ type Config struct {
 }
 
 type Server struct {
-	server *stdhttp.Server
-	mux    *stdhttp.ServeMux
+	server       *stdhttp.Server
+	mux          *stdhttp.ServeMux
+	applyUseCase ApplyUseCase
 }
 
-func NewServer(cfg Config) *Server {
+type ApplyUseCase interface {
+	Apply(context.Context, appagent.ApplyRequest) (appagent.ApplyResult, error)
+}
+
+type Option func(*Server)
+
+func WithApplyUseCase(useCase ApplyUseCase) Option {
+	return func(s *Server) {
+		s.applyUseCase = useCase
+	}
+}
+
+func NewServer(cfg Config, opts ...Option) *Server {
 	mux := stdhttp.NewServeMux()
 	server := &Server{
 		mux: mux,
@@ -30,6 +45,9 @@ func NewServer(cfg Config) *Server {
 			ReadTimeout:  cfg.ReadTimeout,
 			WriteTimeout: cfg.WriteTimeout,
 		},
+	}
+	for _, opt := range opts {
+		opt(server)
 	}
 	server.registerRoutes()
 
@@ -58,6 +76,9 @@ func (s *Server) Stop(ctx context.Context) error {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /health", healthHandler)
+	if s.applyUseCase != nil {
+		s.mux.HandleFunc("POST /v1/agents/apply", s.handleApply)
+	}
 }
 
 func healthHandler(w stdhttp.ResponseWriter, _ *stdhttp.Request) {

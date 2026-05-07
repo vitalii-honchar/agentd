@@ -92,7 +92,7 @@ definitions and verify Agent settings plus schedule summary.
 - [X] T044 [P] [US1] Add Agent Definition parser contract tests in internal/agentdserver/infra/definition/parser_test.go
 - [X] T045 [P] [US1] Add apply use case tests for created/updated/unchanged/rejected outcomes in internal/agentdserver/app/agent/apply_test.go
 - [X] T046 [P] [US1] Add settings repository tests for Agent and permission persistence in internal/agentdserver/infra/db/repository/agent_repository_test.go
-- [ ] T047 [P] [US1] Add REST contract tests for `POST /v1/agents/apply` in internal/agentdserver/infra/http/apply_handler_test.go
+- [X] T047 [P] [US1] Add REST contract tests for `POST /v1/agents/apply` in internal/agentdserver/infra/http/apply_handler_test.go
 - [ ] T048 [P] [US1] Add CLI apply command tests in internal/agentd/app/apply_test.go
 
 ### Implementation for User Story 1
@@ -102,9 +102,9 @@ definitions and verify Agent settings plus schedule summary.
 - [X] T051 [US1] Implement settings Agent repository create/update/read methods in internal/agentdserver/infra/db/repository/agent_repository.go
 - [X] T052 [US1] Implement per-Agent runtime DB creation after first apply in internal/agentdserver/infra/db/repository/runtime_db_manager.go
 - [X] T053 [US1] Implement apply use case in internal/agentdserver/app/agent/apply.go
-- [ ] T054 [US1] Implement apply HTTP request/response models in internal/agentdserver/infra/http/model/agent.go
-- [ ] T055 [US1] Implement `POST /v1/agents/apply` handler in internal/agentdserver/infra/http/apply_handler.go
-- [ ] T056 [US1] Register apply handler in internal/agentdserver/infra/http/server.go
+- [X] T054 [US1] Implement apply HTTP request/response models in internal/agentdserver/infra/http/model/agent.go
+- [X] T055 [US1] Implement `POST /v1/agents/apply` handler in internal/agentdserver/infra/http/apply_handler.go
+- [X] T056 [US1] Register apply handler in internal/agentdserver/infra/http/server.go
 - [ ] T057 [US1] Implement CLI HTTP client apply method in internal/agentd/infra/httpclient/agents.go
 - [ ] T058 [US1] Implement `agentd apply <path_to_file>` command in internal/agentd/app/apply.go
 - [ ] T059 [US1] Wire apply command into CLI root in internal/agentd/app/root.go
