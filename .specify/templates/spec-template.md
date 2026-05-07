@@ -74,6 +74,10 @@
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+- What happens if the daemon restarts while this operation is in progress?
+- What happens if Linux and macOS provide different host capabilities?
+- What host access must be denied by default for this scenario?
+- What is the simplest user-visible behavior that satisfies this scenario?
 
 ## Requirements *(mandatory)*
 
@@ -89,11 +93,20 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-006**: System MUST define required filesystem, network, environment,
+  credential, and privilege access for any agent execution behavior
+- **FR-007**: System MUST define Linux and macOS behavior for daemon, process,
+  filesystem, networking, and permission changes
+- **FR-008**: System MUST define restart, cancellation, cleanup, and recovery
+  behavior for work that can outlive a single request
+- **FR-009**: System MUST avoid requiring new abstractions, dependencies, or
+  optimizations unless they are justified by current requirements or measured
+  bottlenecks
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-010**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - local user, token, SSO?]
+- **FR-011**: System MUST retain workload state for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 

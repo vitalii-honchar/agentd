@@ -21,17 +21,35 @@
 **Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux + macOS daemon, Linux server, macOS local service or NEEDS CLARIFICATION]
+**Project Type**: [e.g., daemon-service/cli/library/web-service or NEEDS CLARIFICATION]
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Daemon/Agent Impact**: [control-plane operations, agent lifecycle changes, process ownership or N/A]
+**Isolation Policy**: [filesystem/network/env/credential/device access changes or N/A]
+**State & Recovery**: [persistence, migrations, restart behavior, cleanup requirements or N/A]
+**Observability**: [structured logs/events/metrics/traces and failure identifiers or N/A]
+**Architecture/Complexity**: [simplest viable design, SOLID/Clean Architecture boundaries, optimization evidence or N/A]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Daemon-first runtime**: PASS only if the feature defines control-plane
+  ownership and does not duplicate agent execution logic outside the daemon.
+- **Least-privilege isolation**: PASS only if host access, credentials, network,
+  and privilege changes are explicit and auditable.
+- **Linux/macOS portability**: PASS only if behavior on both primary OS targets
+  is specified, tested, or documented with a fallback.
+- **Durable recovery**: PASS only if persisted state, idempotency, shutdown,
+  restart recovery, and cleanup impacts are addressed or marked N/A.
+- **Observable tested operations**: PASS only if structured telemetry, actionable
+  errors, automated tests, and quickstart/manual verification are planned for
+  constitution-sensitive behavior.
+- **Simplicity and clean architecture**: PASS only if the plan avoids premature
+  optimization, keeps SOLID/Clean Architecture boundaries clear, and documents
+  evidence for any added abstraction, dependency, or optimization.
 
 ## Project Structure
 
