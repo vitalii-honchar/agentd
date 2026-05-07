@@ -62,7 +62,7 @@ that MUST be complete before user stories.
 - [X] T030 Implement runtime DB run/event repository skeleton in internal/agentdserver/infra/db/repository/run_repository.go
 - [X] T031 Add repository integration test fixtures in internal/agentdserver/infra/db/repository/repository_test.go
 - [X] T032 Define vendor-agnostic LLM provider port in internal/agentdserver/app/runtime/provider.go
-- [ ] T033 Implement fake LLM provider for tests in internal/agentdserver/app/runtime/fake_provider_test.go
+- [X] T033 Implement fake LLM provider for tests in internal/agentdserver/app/runtime/fake_provider_test.go
 - [ ] T034 Implement OpenAI provider adapter skeleton using `openai-go` in internal/agentdserver/infra/llm/openai/provider.go
 - [ ] T035 Add OpenAI provider configuration tests without real API calls in internal/agentdserver/infra/llm/openai/provider_test.go
 - [ ] T036 Define runtime manager interfaces for execute, stop, recovery, and active-run tracking in internal/agentdserver/app/runtime/manager.go
