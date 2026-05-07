@@ -66,7 +66,7 @@ that MUST be complete before user stories.
 - [X] T034 Implement OpenAI provider adapter skeleton using `openai-go` in internal/agentdserver/infra/llm/openai/provider.go
 - [X] T035 Add OpenAI provider configuration tests without real API calls in internal/agentdserver/infra/llm/openai/provider_test.go
 - [X] T036 Define runtime manager interfaces for execute, stop, recovery, and active-run tracking in internal/agentdserver/app/runtime/manager.go
-- [ ] T037 Define scheduler adapter interface for cron/manual schedules in internal/agentdserver/app/scheduling/scheduler.go
+- [X] T037 Define scheduler adapter interface for cron/manual schedules in internal/agentdserver/app/scheduling/scheduler.go
 - [ ] T038 Create REST server skeleton with health endpoint in internal/agentdserver/infra/http/server.go
 - [ ] T039 Add REST server health test in internal/agentdserver/infra/http/server_test.go
 - [ ] T040 Create daemon service wiring root in internal/agentdserver/service.go
