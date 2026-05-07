@@ -52,6 +52,7 @@ type RunLogReader interface {
 type LogQuery struct {
 	AgentName string
 	RunID     string
+	LogPath   string
 	Tail      int
 }
 

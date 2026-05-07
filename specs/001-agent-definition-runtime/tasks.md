@@ -173,7 +173,7 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 ### Tests for User Story 3
 
 - [X] T089 [P] [US3] Add inspect/list use case tests in internal/agentdserver/app/agent/inspect_test.go
-- [ ] T090 [P] [US3] Add logs use case tests for latest run, run ID, no logs, and pruned logs in internal/agentdserver/app/logs/logs_test.go
+- [X] T090 [P] [US3] Add logs use case tests for latest run, run ID, no logs, and pruned logs in internal/agentdserver/app/logs/logs_test.go
 - [ ] T091 [P] [US3] Add REST contract tests for list, inspect, and logs endpoints in internal/agentdserver/infra/http/query_handler_test.go
 - [ ] T092 [P] [US3] Add CLI inspect/list/logs command tests in internal/agentd/app/query_test.go
 - [ ] T093 [P] [US3] Add log isolation integration test for concurrent Agents in tests/e2e/logs_test.go
@@ -181,8 +181,8 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 ### Implementation for User Story 3
 
 - [X] T094 [US3] Implement inspect and list use cases in internal/agentdserver/app/agent/inspect.go
-- [ ] T095 [US3] Implement run log reader in internal/agentdserver/infra/logs/reader.go
-- [ ] T096 [US3] Implement logs use case in internal/agentdserver/app/logs/logs.go
+- [X] T095 [US3] Implement run log reader in internal/agentdserver/infra/logs/reader.go
+- [X] T096 [US3] Implement logs use case in internal/agentdserver/app/logs/logs.go
 - [ ] T097 [US3] Implement `GET /v1/agents` list handler in internal/agentdserver/infra/http/list_handler.go
 - [ ] T098 [US3] Implement `GET /v1/agents/{name}` inspect handler in internal/agentdserver/infra/http/inspect_handler.go
 - [ ] T099 [US3] Implement `GET /v1/agents/{name}/logs` logs handler in internal/agentdserver/infra/http/logs_handler.go
