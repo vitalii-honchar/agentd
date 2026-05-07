@@ -211,6 +211,7 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 - [ ] T113 Update quickstart examples in specs/001-agent-definition-runtime/quickstart.md after implementation paths are confirmed
 - [ ] T114 Run `go test ./...` and record any follow-up fixes in specs/001-agent-definition-runtime/tasks.md
 - [ ] T115 Run quickstart apply/execute/logs/recovery validation from specs/001-agent-definition-runtime/quickstart.md
+- [ ] T116 Verify Git history has no committed `.env` files or OpenAI API keys, and rewrite history before release if any are found
 
 ---
 
