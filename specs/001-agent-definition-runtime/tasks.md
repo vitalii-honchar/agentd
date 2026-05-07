@@ -126,7 +126,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 
 ### Tests for User Story 2
 
-- [ ] T061 [P] [US2] Add scheduler adapter tests for cron and manual schedule modes in internal/agentdserver/infra/scheduler/scheduler_test.go
+- [X] T061 [P] [US2] Add scheduler adapter tests for cron and manual schedule modes in internal/agentdserver/infra/scheduler/scheduler_test.go
 - [ ] T062 [P] [US2] Add runtime manager concurrency and isolation tests in internal/agentdserver/infra/runtime/manager_test.go
 - [ ] T063 [P] [US2] Add runtime DB Agent Run repository tests in internal/agentdserver/infra/db/repository/run_repository_test.go
 - [ ] T064 [P] [US2] Add execute use case tests for manual run, disabled Agent, unknown Agent, and same-Agent overlap rejection in internal/agentdserver/app/runtime/execute_test.go
@@ -137,7 +137,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 
 ### Implementation for User Story 2
 
-- [ ] T069 [US2] Implement cron/manual scheduler adapter in internal/agentdserver/infra/scheduler/scheduler.go
+- [X] T069 [US2] Implement cron/manual scheduler adapter in internal/agentdserver/infra/scheduler/scheduler.go
 - [ ] T070 [US2] Implement schedule reconciliation use case in internal/agentdserver/app/scheduling/reconcile.go
 - [ ] T071 [US2] Implement per-Agent runtime DB Agent Run create/update/query methods in internal/agentdserver/infra/db/repository/run_repository.go
 - [ ] T072 [US2] Implement runtime event repository methods in internal/agentdserver/infra/db/repository/event_repository.go
