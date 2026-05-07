@@ -72,7 +72,7 @@ that MUST be complete before user stories.
 - [X] T040 Create daemon service wiring root in internal/agentdserver/service.go
 - [X] T041 Add daemon service startup/shutdown wiring test in internal/agentdserver/service_test.go
 - [X] T042 Create CLI root command and output policy in internal/agentd/app/root.go
-- [ ] T043 Create CLI HTTP client skeleton in internal/agentd/infra/httpclient/client.go
+- [X] T043 Create CLI HTTP client skeleton in internal/agentd/infra/httpclient/client.go
 
 **Checkpoint**: Foundational architecture is ready for story implementation.
 
