@@ -156,3 +156,37 @@ go test ./...
 Expected:
 - Unit, repository, REST, CLI/server integration, concurrency, and recovery tests
   pass.
+
+## 10. Product research example
+
+`examples/ai-product-research.md` models the Python Agent from
+`/Users/vitaliihonchar/workspace/ai-product-research`.
+
+The example declares:
+
+- A manual schedule, so execution is controlled with `agentd execute ai-product-research`.
+- OpenAI as the initial LLM vendor.
+- A local `uv` script tool for the Python workflow.
+- A Playwright/Chromium setup tool for website screenshot support.
+- Environment variable names required by the script, without secret values.
+- Explicit read/write paths and network destinations, including broad HTTPS
+  egress for arbitrary product websites.
+
+Before applying it, review the filesystem paths and install the Python project
+dependencies in the source project:
+
+```bash
+cd /Users/vitaliihonchar/workspace/ai-product-research
+uv sync
+uv run python -m playwright install chromium
+```
+
+Then apply the definition:
+
+```bash
+go run ./cmd/agentd apply examples/ai-product-research.md
+```
+
+The current runtime persists and validates the script-tool declaration as part
+of the Agent Definition. Executing local script tools from an Agent Run is the
+next implementation step after the initial LLM-only runtime path.

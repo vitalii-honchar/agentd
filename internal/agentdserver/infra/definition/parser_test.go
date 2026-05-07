@@ -2,6 +2,7 @@ package definition
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"agentd/internal/agentdserver/domain"
@@ -149,5 +150,31 @@ func TestParseMarkdownRejectsMissingFrontMatter(t *testing.T) {
 	_, err := ParseMarkdown("bad.md", "Prompt without front matter")
 	if err == nil {
 		t.Fatal("ParseMarkdown returned nil error")
+	}
+}
+
+func TestParseAIProductResearchExample(t *testing.T) {
+	t.Parallel()
+
+	body, err := os.ReadFile("../../../../examples/ai-product-research.md")
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	definition, err := ParseMarkdown("examples/ai-product-research.md", string(body))
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+	if definition.Name != "ai-product-research" {
+		t.Fatalf("name: got %q", definition.Name)
+	}
+	if len(definition.Tools) != 2 {
+		t.Fatalf("tools length: got %d want 2", len(definition.Tools))
+	}
+	if definition.Tools[0].Command != "uv" {
+		t.Fatalf("tool command: got %q", definition.Tools[0].Command)
+	}
+	if len(definition.Tools[0].Env) != 5 {
+		t.Fatalf("tool env allow-list: %#v", definition.Tools[0].Env)
 	}
 }
