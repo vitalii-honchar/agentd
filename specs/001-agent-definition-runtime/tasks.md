@@ -42,7 +42,7 @@ that MUST be complete before user stories.
 
 - [X] T011 Define daemon configuration fields and defaults in internal/agentdserver/config/config.go
 - [X] T012 Add daemon `.env` loading and config validation tests in internal/agentdserver/config/config_test.go
-- [ ] T013 Configure `slog` service logger in internal/agentdserver/config/logger.go
+- [X] T013 Configure `slog` service logger in internal/agentdserver/config/logger.go
 - [ ] T014 [P] Define CLI configuration fields and defaults in internal/agentd/config/config.go
 - [ ] T015 [P] Add CLI configuration tests in internal/agentd/config/config_test.go
 - [ ] T016 Define domain errors in internal/agentdserver/domain/errors.go
