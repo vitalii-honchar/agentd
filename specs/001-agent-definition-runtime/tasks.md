@@ -20,7 +20,7 @@ implementation and testing of each story.
 
 **Purpose**: Initialize Go module, binary entrypoints, and project skeleton.
 
-- [ ] T001 Initialize Go module `agentd` with Go 1.26.2 in go.mod
+- [X] T001 Initialize Go module `agentd` with Go 1.26.2 in go.mod
 - [ ] T002 Add dependencies `spf13/cobra`, `modernc.org/sqlite`, `robfig/cron/v3`, `gopkg.in/yaml.v3`, `joho/godotenv`, `google/uuid`, and `github.com/openai/openai-go/v3` in go.mod
 - [ ] T003 Create CLI entrypoint skeleton in cmd/agentd/main.go
 - [ ] T004 Create daemon entrypoint skeleton in cmd/agentdserver/main.go
