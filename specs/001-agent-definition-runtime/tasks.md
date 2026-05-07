@@ -24,7 +24,7 @@ implementation and testing of each story.
 - [X] T002 Add dependencies `spf13/cobra`, `modernc.org/sqlite`, `robfig/cron/v3`, `gopkg.in/yaml.v3`, `joho/godotenv`, `google/uuid`, and `github.com/openai/openai-go/v3` in go.mod
 - [X] T003 Create CLI entrypoint skeleton in cmd/agentd/main.go
 - [X] T004 Create daemon entrypoint skeleton in cmd/agentdserver/main.go
-- [ ] T005 Create server package directory skeleton under internal/agentdserver/
+- [X] T005 Create server package directory skeleton under internal/agentdserver/
 - [ ] T006 Create CLI package directory skeleton under internal/agentd/
 - [ ] T007 [P] Create shared test utility package skeleton in internal/lib/testutil/testutil.go
 - [ ] T008 [P] Create validation helper package skeleton in internal/lib/validator/validator.go
