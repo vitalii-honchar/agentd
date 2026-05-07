@@ -205,7 +205,7 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 - [X] T107 [P] Add Linux/macOS runtime path and signal behavior tests in internal/agentdserver/infra/runtime/platform_test.go
 - [X] T108 [P] Add API error response consistency tests in internal/agentdserver/infra/http/errors_test.go
 - [X] T109 [P] Add CLI JSON/text output snapshot tests in internal/agentd/app/output_test.go
-- [ ] T110 [P] Add benchmark for five concurrent Agent Runs writing to separate runtime DBs in internal/agentdserver/infra/runtime/concurrency_benchmark_test.go
+- [X] T110 [P] Add benchmark for five concurrent Agent Runs writing to separate runtime DBs in internal/agentdserver/infra/runtime/concurrency_benchmark_test.go
 - [ ] T111 Add service-level slog event names and attributes documentation in docs/observability.md
 - [ ] T112 Add local development guide with `.env`, `OPENAI_API_KEY`, and data directory defaults in docs/development.md
 - [ ] T113 Update quickstart examples in specs/001-agent-definition-runtime/quickstart.md after implementation paths are confirmed
