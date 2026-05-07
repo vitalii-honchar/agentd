@@ -133,7 +133,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T065 [P] [US2] Add stop use case tests for cancellation outcomes in internal/agentdserver/app/runtime/stop_test.go
 - [X] T066 [P] [US2] Add recovery tests for interrupted active runs in internal/agentdserver/app/runtime/recovery_test.go
 - [X] T067 [P] [US2] Add REST contract tests for execute and stop endpoints in internal/agentdserver/infra/http/run_handler_test.go
-- [ ] T068 [P] [US2] Add CLI execute command tests in internal/agentd/app/execute_test.go
+- [X] T068 [P] [US2] Add CLI execute command tests in internal/agentd/app/execute_test.go
 
 ### Implementation for User Story 2
 
@@ -152,10 +152,10 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T081 [US2] Implement `POST /v1/agents/{name}/runs/{run_id}/stop` handler in internal/agentdserver/infra/http/stop_handler.go
 - [X] T082 [US2] Register run and stop handlers in internal/agentdserver/infra/http/server.go
 - [X] T083 [US2] Wire scheduler, runtime manager, provider, and recovery into daemon service in internal/agentdserver/service.go
-- [ ] T084 [US2] Implement CLI HTTP client execute and stop methods in internal/agentd/infra/httpclient/runs.go
-- [ ] T085 [US2] Implement `agentd execute <agent_name>` command in internal/agentd/app/execute.go
-- [ ] T086 [US2] Implement `agentd stop <agent_name> [--run <run_id>]` command in internal/agentd/app/stop.go
-- [ ] T087 [US2] Wire execute and stop commands into CLI root in internal/agentd/app/root.go
+- [X] T084 [US2] Implement CLI HTTP client execute and stop methods in internal/agentd/infra/httpclient/runs.go
+- [X] T085 [US2] Implement `agentd execute <agent_name>` command in internal/agentd/app/execute.go
+- [X] T086 [US2] Implement `agentd stop <agent_name> [--run <run_id>]` command in internal/agentd/app/stop.go
+- [X] T087 [US2] Wire execute and stop commands into CLI root in internal/agentd/app/root.go
 - [ ] T088 [US2] Add end-to-end concurrency and recovery test in tests/e2e/runtime_test.go
 
 **Checkpoint**: US2 is independently functional and testable.

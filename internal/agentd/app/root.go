@@ -12,10 +12,12 @@ import (
 )
 
 type RootOptions struct {
-	Config *config.Config
-	Client ApplyClient
-	Out    io.Writer
-	Err    io.Writer
+	Config        *config.Config
+	Client        ApplyClient
+	ExecuteClient ExecuteClient
+	StopClient    StopClient
+	Out           io.Writer
+	Err           io.Writer
 }
 
 type Output struct {
@@ -59,6 +61,12 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.OutputFormat, "output", cfg.OutputFormat, "output format: text or json")
 	if opts.Client != nil {
 		cmd.AddCommand(NewApplyCommand(opts.Client, NewOutput(cfg.OutputFormat, out)))
+	}
+	if opts.ExecuteClient != nil {
+		cmd.AddCommand(NewExecuteCommand(opts.ExecuteClient, NewOutput(cfg.OutputFormat, out)))
+	}
+	if opts.StopClient != nil {
+		cmd.AddCommand(NewStopCommand(opts.StopClient, NewOutput(cfg.OutputFormat, out)))
 	}
 
 	return cmd

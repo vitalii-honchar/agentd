@@ -106,6 +106,7 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs", s.handleExecute)
 	}
 	if s.stopUseCase != nil {
+		s.mux.HandleFunc("POST /v1/agents/{name}/runs/stop", s.handleStopActive)
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/{run_id}/stop", s.handleStop)
 	}
 }

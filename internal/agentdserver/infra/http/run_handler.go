@@ -30,6 +30,17 @@ func (s *Server) handleStop(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	writeJSON(w, stdhttp.StatusAccepted, toRunResponse(run))
 }
 
+func (s *Server) handleStopActive(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	run, err := s.stopUseCase.Stop(r.Context(), r.PathValue("name"), "")
+	if err != nil {
+		writeRunError(w, err)
+
+		return
+	}
+
+	writeJSON(w, stdhttp.StatusAccepted, toRunResponse(run))
+}
+
 func writeRunError(w stdhttp.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
