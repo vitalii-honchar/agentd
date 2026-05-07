@@ -59,7 +59,7 @@ that MUST be complete before user stories.
 - [X] T027 Define repository interfaces for Agents, Agent Runs, Runtime Events, and logs in internal/agentdserver/app/ports.go
 - [X] T028 Implement settings DB Agent repository skeleton in internal/agentdserver/infra/db/repository/agent_repository.go
 - [X] T029 Implement per-Agent runtime DB manager skeleton in internal/agentdserver/infra/db/repository/runtime_db_manager.go
-- [ ] T030 Implement runtime DB run/event repository skeleton in internal/agentdserver/infra/db/repository/run_repository.go
+- [X] T030 Implement runtime DB run/event repository skeleton in internal/agentdserver/infra/db/repository/run_repository.go
 - [ ] T031 Add repository integration test fixtures in internal/agentdserver/infra/db/repository/repository_test.go
 - [ ] T032 Define vendor-agnostic LLM provider port in internal/agentdserver/app/runtime/provider.go
 - [ ] T033 Implement fake LLM provider for tests in internal/agentdserver/app/runtime/fake_provider_test.go

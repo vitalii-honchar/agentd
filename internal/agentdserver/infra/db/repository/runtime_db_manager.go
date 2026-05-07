@@ -71,6 +71,18 @@ func (m *RuntimeDBManager) EnsureAgent(ctx context.Context, agentName string) er
 
 		return fmt.Errorf("start runtime db for agent %q: %w", agentName, err)
 	}
+	runs, err := NewAgentRunRepository(database)
+	if err != nil {
+		_ = database.Stop(ctx)
+
+		return err
+	}
+	events, err := NewRuntimeEventRepository(database)
+	if err != nil {
+		_ = database.Stop(ctx)
+
+		return err
+	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -82,7 +94,7 @@ func (m *RuntimeDBManager) EnsureAgent(ctx context.Context, agentName string) er
 
 		return nil
 	}
-	m.stores[agentName] = &runtimeStore{database: database}
+	m.stores[agentName] = &runtimeStore{database: database, runs: runs, events: events}
 
 	return nil
 }
