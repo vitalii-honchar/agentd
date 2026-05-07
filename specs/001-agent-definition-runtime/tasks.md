@@ -56,7 +56,7 @@ that MUST be complete before user stories.
 - [X] T024 Create runtime SQLite migration `002_run_logs.sql` in internal/agentdserver/infra/db/migrations/runtime/002_run_logs.sql
 - [X] T025 Create runtime SQLite migration `003_runtime_event_indexes.sql` in internal/agentdserver/infra/db/migrations/runtime/003_runtime_event_indexes.sql
 - [X] T026 Add migration schema tests for settings/runtime DBs in internal/agentdserver/infra/db/migrations_test.go
-- [ ] T027 Define repository interfaces for Agents, Agent Runs, Runtime Events, and logs in internal/agentdserver/app/ports.go
+- [X] T027 Define repository interfaces for Agents, Agent Runs, Runtime Events, and logs in internal/agentdserver/app/ports.go
 - [ ] T028 Implement settings DB Agent repository skeleton in internal/agentdserver/infra/db/repository/agent_repository.go
 - [ ] T029 Implement per-Agent runtime DB manager skeleton in internal/agentdserver/infra/db/repository/runtime_db_manager.go
 - [ ] T030 Implement runtime DB run/event repository skeleton in internal/agentdserver/infra/db/repository/run_repository.go
