@@ -40,7 +40,7 @@ that MUST be complete before user stories.
 
 **Critical**: No user story work begins until this phase is complete.
 
-- [ ] T011 Define daemon configuration fields and defaults in internal/agentdserver/config/config.go
+- [X] T011 Define daemon configuration fields and defaults in internal/agentdserver/config/config.go
 - [ ] T012 Add daemon `.env` loading and config validation tests in internal/agentdserver/config/config_test.go
 - [ ] T013 Configure `slog` service logger in internal/agentdserver/config/logger.go
 - [ ] T014 [P] Define CLI configuration fields and defaults in internal/agentd/config/config.go
