@@ -16,9 +16,9 @@ vendor/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
-data/
-logs/
-tmp/
+/data/
+/logs/
+/tmp/
 
 # OS/editor noise
 .DS_Store
