@@ -9,6 +9,7 @@ import (
 	"time"
 
 	appagent "agentd/internal/agentdserver/app/agent"
+	"agentd/internal/agentdserver/domain"
 )
 
 type Config struct {
@@ -18,13 +19,23 @@ type Config struct {
 }
 
 type Server struct {
-	server       *stdhttp.Server
-	mux          *stdhttp.ServeMux
-	applyUseCase ApplyUseCase
+	server         *stdhttp.Server
+	mux            *stdhttp.ServeMux
+	applyUseCase   ApplyUseCase
+	executeUseCase ExecuteUseCase
+	stopUseCase    StopUseCase
 }
 
 type ApplyUseCase interface {
 	Apply(context.Context, appagent.ApplyRequest) (appagent.ApplyResult, error)
+}
+
+type ExecuteUseCase interface {
+	Execute(context.Context, string) (domain.AgentRun, error)
+}
+
+type StopUseCase interface {
+	Stop(context.Context, string, string) (domain.AgentRun, error)
 }
 
 type Option func(*Server)
@@ -32,6 +43,18 @@ type Option func(*Server)
 func WithApplyUseCase(useCase ApplyUseCase) Option {
 	return func(s *Server) {
 		s.applyUseCase = useCase
+	}
+}
+
+func WithExecuteUseCase(useCase ExecuteUseCase) Option {
+	return func(s *Server) {
+		s.executeUseCase = useCase
+	}
+}
+
+func WithStopUseCase(useCase StopUseCase) Option {
+	return func(s *Server) {
+		s.stopUseCase = useCase
 	}
 }
 
@@ -78,6 +101,12 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /health", healthHandler)
 	if s.applyUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/apply", s.handleApply)
+	}
+	if s.executeUseCase != nil {
+		s.mux.HandleFunc("POST /v1/agents/{name}/runs", s.handleExecute)
+	}
+	if s.stopUseCase != nil {
+		s.mux.HandleFunc("POST /v1/agents/{name}/runs/{run_id}/stop", s.handleStop)
 	}
 }
 

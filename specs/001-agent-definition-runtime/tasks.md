@@ -132,7 +132,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T064 [P] [US2] Add execute use case tests for manual run, disabled Agent, unknown Agent, and same-Agent overlap rejection in internal/agentdserver/app/runtime/execute_test.go
 - [X] T065 [P] [US2] Add stop use case tests for cancellation outcomes in internal/agentdserver/app/runtime/stop_test.go
 - [X] T066 [P] [US2] Add recovery tests for interrupted active runs in internal/agentdserver/app/runtime/recovery_test.go
-- [ ] T067 [P] [US2] Add REST contract tests for execute and stop endpoints in internal/agentdserver/infra/http/run_handler_test.go
+- [X] T067 [P] [US2] Add REST contract tests for execute and stop endpoints in internal/agentdserver/infra/http/run_handler_test.go
 - [ ] T068 [P] [US2] Add CLI execute command tests in internal/agentd/app/execute_test.go
 
 ### Implementation for User Story 2
@@ -148,9 +148,9 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T077 [US2] Implement stop use case in internal/agentdserver/app/runtime/stop.go
 - [X] T078 [US2] Implement daemon restart recovery use case in internal/agentdserver/app/runtime/recovery.go
 - [X] T079 [US2] Implement OpenAI provider execution call behind provider port in internal/agentdserver/infra/llm/openai/provider.go
-- [ ] T080 [US2] Implement `POST /v1/agents/{name}/runs` handler in internal/agentdserver/infra/http/run_handler.go
-- [ ] T081 [US2] Implement `POST /v1/agents/{name}/runs/{run_id}/stop` handler in internal/agentdserver/infra/http/stop_handler.go
-- [ ] T082 [US2] Register run and stop handlers in internal/agentdserver/infra/http/server.go
+- [X] T080 [US2] Implement `POST /v1/agents/{name}/runs` handler in internal/agentdserver/infra/http/run_handler.go
+- [X] T081 [US2] Implement `POST /v1/agents/{name}/runs/{run_id}/stop` handler in internal/agentdserver/infra/http/stop_handler.go
+- [X] T082 [US2] Register run and stop handlers in internal/agentdserver/infra/http/server.go
 - [ ] T083 [US2] Wire scheduler, runtime manager, provider, and recovery into daemon service in internal/agentdserver/service.go
 - [ ] T084 [US2] Implement CLI HTTP client execute and stop methods in internal/agentd/infra/httpclient/runs.go
 - [ ] T085 [US2] Implement `agentd execute <agent_name>` command in internal/agentd/app/execute.go

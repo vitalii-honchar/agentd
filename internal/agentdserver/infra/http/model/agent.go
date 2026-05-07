@@ -12,6 +12,12 @@ type ApplyResponse struct {
 	Agent   AgentDetail `json:"agent"`
 }
 
+type RunResponse struct {
+	RunID     string `json:"run_id"`
+	AgentName string `json:"agent_name"`
+	Status    string `json:"status"`
+}
+
 type AgentSummary struct {
 	Name          string     `json:"name"`
 	Enabled       bool       `json:"enabled"`
