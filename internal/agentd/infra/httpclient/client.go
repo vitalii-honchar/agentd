@@ -92,7 +92,11 @@ func (c *Client) newRequest(
 	path string,
 	body any,
 ) (*stdhttp.Request, error) {
-	target := c.baseURL.ResolveReference(&url.URL{Path: strings.TrimPrefix(path, "/")})
+	relative, err := url.Parse(strings.TrimPrefix(path, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("parse daemon request path: %w", err)
+	}
+	target := c.baseURL.ResolveReference(relative)
 
 	var reader io.Reader
 	if body != nil {

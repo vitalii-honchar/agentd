@@ -30,6 +30,8 @@ type AgentDetail struct {
 	Revision     string `json:"revision"`
 	VendorName   string `json:"vendor_name"`
 	VendorModel  string `json:"vendor_model"`
+	LastRunID    string `json:"last_run_id,omitempty"`
+	RecentError  string `json:"recent_error,omitempty"`
 }
 
 func NewApplyCommand(client ApplyClient, output Output) *cobra.Command {

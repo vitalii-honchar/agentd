@@ -175,7 +175,7 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 - [X] T089 [P] [US3] Add inspect/list use case tests in internal/agentdserver/app/agent/inspect_test.go
 - [X] T090 [P] [US3] Add logs use case tests for latest run, run ID, no logs, and pruned logs in internal/agentdserver/app/logs/logs_test.go
 - [X] T091 [P] [US3] Add REST contract tests for list, inspect, and logs endpoints in internal/agentdserver/infra/http/query_handler_test.go
-- [ ] T092 [P] [US3] Add CLI inspect/list/logs command tests in internal/agentd/app/query_test.go
+- [X] T092 [P] [US3] Add CLI inspect/list/logs command tests in internal/agentd/app/query_test.go
 - [ ] T093 [P] [US3] Add log isolation integration test for concurrent Agents in tests/e2e/logs_test.go
 
 ### Implementation for User Story 3
@@ -187,11 +187,11 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 - [X] T098 [US3] Implement `GET /v1/agents/{name}` inspect handler in internal/agentdserver/infra/http/inspect_handler.go
 - [X] T099 [US3] Implement `GET /v1/agents/{name}/logs` logs handler in internal/agentdserver/infra/http/logs_handler.go
 - [X] T100 [US3] Register list, inspect, and logs handlers in internal/agentdserver/infra/http/server.go
-- [ ] T101 [US3] Implement CLI HTTP client list, inspect, and logs methods in internal/agentd/infra/httpclient/query.go
-- [ ] T102 [US3] Implement `agentd list` command in internal/agentd/app/list.go
-- [ ] T103 [US3] Implement `agentd inspect <agent_name>` command in internal/agentd/app/inspect.go
-- [ ] T104 [US3] Implement `agentd logs <agent_name> [--run <run_id>] [--tail N]` command in internal/agentd/app/logs.go
-- [ ] T105 [US3] Wire list, inspect, and logs commands into CLI root in internal/agentd/app/root.go
+- [X] T101 [US3] Implement CLI HTTP client list, inspect, and logs methods in internal/agentd/infra/httpclient/query.go
+- [X] T102 [US3] Implement `agentd list` command in internal/agentd/app/list.go
+- [X] T103 [US3] Implement `agentd inspect <agent_name>` command in internal/agentd/app/inspect.go
+- [X] T104 [US3] Implement `agentd logs <agent_name> [--run <run_id>] [--tail N]` command in internal/agentd/app/logs.go
+- [X] T105 [US3] Wire list, inspect, and logs commands into CLI root in internal/agentd/app/root.go
 - [ ] T106 [US3] Add end-to-end CLI operations test in tests/e2e/cli_operations_test.go
 
 **Checkpoint**: US3 is independently functional and testable.

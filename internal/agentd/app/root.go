@@ -16,6 +16,7 @@ type RootOptions struct {
 	Client        ApplyClient
 	ExecuteClient ExecuteClient
 	StopClient    StopClient
+	QueryClient   QueryClient
 	Out           io.Writer
 	Err           io.Writer
 }
@@ -67,6 +68,12 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	}
 	if opts.StopClient != nil {
 		cmd.AddCommand(NewStopCommand(opts.StopClient, NewOutput(cfg.OutputFormat, out)))
+	}
+	if opts.QueryClient != nil {
+		queryOutput := NewOutput(cfg.OutputFormat, out)
+		cmd.AddCommand(NewListCommand(opts.QueryClient, queryOutput))
+		cmd.AddCommand(NewInspectCommand(opts.QueryClient, queryOutput))
+		cmd.AddCommand(NewLogsCommand(opts.QueryClient, queryOutput))
 	}
 
 	return cmd
