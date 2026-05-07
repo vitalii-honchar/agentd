@@ -151,7 +151,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T080 [US2] Implement `POST /v1/agents/{name}/runs` handler in internal/agentdserver/infra/http/run_handler.go
 - [X] T081 [US2] Implement `POST /v1/agents/{name}/runs/{run_id}/stop` handler in internal/agentdserver/infra/http/stop_handler.go
 - [X] T082 [US2] Register run and stop handlers in internal/agentdserver/infra/http/server.go
-- [ ] T083 [US2] Wire scheduler, runtime manager, provider, and recovery into daemon service in internal/agentdserver/service.go
+- [X] T083 [US2] Wire scheduler, runtime manager, provider, and recovery into daemon service in internal/agentdserver/service.go
 - [ ] T084 [US2] Implement CLI HTTP client execute and stop methods in internal/agentd/infra/httpclient/runs.go
 - [ ] T085 [US2] Implement `agentd execute <agent_name>` command in internal/agentd/app/execute.go
 - [ ] T086 [US2] Implement `agentd stop <agent_name> [--run <run_id>]` command in internal/agentd/app/stop.go

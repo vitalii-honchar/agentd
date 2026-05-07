@@ -4,14 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 
 	appagent "agentd/internal/agentdserver/app/agent"
+	appruntime "agentd/internal/agentdserver/app/runtime"
+	appscheduling "agentd/internal/agentdserver/app/scheduling"
 	"agentd/internal/agentdserver/config"
+	"agentd/internal/agentdserver/domain"
 	"agentd/internal/agentdserver/infra/db"
 	"agentd/internal/agentdserver/infra/db/repository"
 	"agentd/internal/agentdserver/infra/definition"
 	daemonhttp "agentd/internal/agentdserver/infra/http"
 	openaiadapter "agentd/internal/agentdserver/infra/llm/openai"
+	runlogs "agentd/internal/agentdserver/infra/logs"
+	infraruntime "agentd/internal/agentdserver/infra/runtime"
+	infrascheduler "agentd/internal/agentdserver/infra/scheduler"
 )
 
 type AgentdServer struct {
@@ -70,14 +77,59 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 
 		return nil, fmt.Errorf("new runtime db manager: %w", err)
 	}
+	var providers []appruntime.Provider
 	if cfg.OpenAI.APIKey != "" {
-		if _, err := openaiadapter.NewProvider(openaiadapter.Config{APIKey: cfg.OpenAI.APIKey}); err != nil {
+		openAIProvider, err := openaiadapter.NewProvider(openaiadapter.Config{APIKey: cfg.OpenAI.APIKey})
+		if err != nil {
 			_ = settings.Stop(context.Background())
 			_ = runtimeDBs.Close(context.Background())
 
 			return nil, fmt.Errorf("new openai provider: %w", err)
 		}
+		providers = append(providers, openAIProvider)
 	}
+	logFactory, err := runlogs.NewRunLogFactory(cfg.Storage.RunLogDir)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new run log factory: %w", err)
+	}
+	isolation, err := infraruntime.NewIsolationBuilder(filepath.Join(cfg.Storage.DataDir, "work"))
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new isolation builder: %w", err)
+	}
+	runtimeManager, err := infraruntime.NewManager(runtimeDBs, logFactory, isolation, providers)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new runtime manager: %w", err)
+	}
+	scheduler := infrascheduler.New()
+	executeUC := appruntime.NewExecuteUseCase(agentRepo, runtimeManager)
+	stopUC := appruntime.NewStopUseCase(runtimeManager)
+	recoveryUC := appruntime.NewRecoveryUseCase(agentRepo, runtimeDBs)
+	reconcileUC := appscheduling.NewReconcileUseCase(
+		agentRepo,
+		scheduler,
+		func(ctx context.Context, trigger appscheduling.Trigger) error {
+			agent, err := agentRepo.FindByName(ctx, trigger.AgentName)
+			if err != nil {
+				return err
+			}
+			_, err = runtimeManager.Execute(ctx, appruntime.ExecuteRequest{
+				Agent:   agent,
+				Trigger: domain.RunTriggerSchedule,
+				DueAt:   &trigger.DueAt,
+			})
+
+			return err
+		},
+	)
 	applyUC, err := appagent.NewApplyUseCase(
 		appagent.ParserFunc(definition.ParseMarkdown),
 		agentRepo,
@@ -94,7 +146,11 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 		Address:      cfg.Server.Address(),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
-	}, daemonhttp.WithApplyUseCase(applyUC))
+	},
+		daemonhttp.WithApplyUseCase(applyUC),
+		daemonhttp.WithExecuteUseCase(executeUC),
+		daemonhttp.WithStopUseCase(stopUC),
+	)
 
 	return &AgentdServer{
 		Config:     cfg,
@@ -102,6 +158,15 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 		runtimeDBs: runtimeDBs,
 		components: []component{
 			{name: "settings", start: settings.Start, stop: settings.Stop},
+			{name: "recovery", start: func(ctx context.Context) error {
+				_, err := recoveryUC.Recover(ctx)
+
+				return err
+			}},
+			{name: "scheduler", start: scheduler.Start, stop: scheduler.Stop},
+			{name: "schedule-reconcile", start: func(ctx context.Context) error {
+				return reconcileUC.Reconcile(ctx)
+			}},
 			{name: "http", start: startHTTP(httpServer), stop: httpServer.Stop},
 			{name: "runtime-dbs", stop: runtimeDBs.Close},
 		},
