@@ -69,7 +69,7 @@ that MUST be complete before user stories.
 - [X] T037 Define scheduler adapter interface for cron/manual schedules in internal/agentdserver/app/scheduling/scheduler.go
 - [X] T038 Create REST server skeleton with health endpoint in internal/agentdserver/infra/http/server.go
 - [X] T039 Add REST server health test in internal/agentdserver/infra/http/server_test.go
-- [ ] T040 Create daemon service wiring root in internal/agentdserver/service.go
+- [X] T040 Create daemon service wiring root in internal/agentdserver/service.go
 - [ ] T041 Add daemon service startup/shutdown wiring test in internal/agentdserver/service_test.go
 - [ ] T042 Create CLI root command and output policy in internal/agentd/app/root.go
 - [ ] T043 Create CLI HTTP client skeleton in internal/agentd/infra/httpclient/client.go
