@@ -128,7 +128,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 
 - [X] T061 [P] [US2] Add scheduler adapter tests for cron and manual schedule modes in internal/agentdserver/infra/scheduler/scheduler_test.go
 - [ ] T062 [P] [US2] Add runtime manager concurrency and isolation tests in internal/agentdserver/infra/runtime/manager_test.go
-- [ ] T063 [P] [US2] Add runtime DB Agent Run repository tests in internal/agentdserver/infra/db/repository/run_repository_test.go
+- [X] T063 [P] [US2] Add runtime DB Agent Run repository tests in internal/agentdserver/infra/db/repository/run_repository_test.go
 - [ ] T064 [P] [US2] Add execute use case tests for manual run, disabled Agent, unknown Agent, and same-Agent overlap rejection in internal/agentdserver/app/runtime/execute_test.go
 - [ ] T065 [P] [US2] Add stop use case tests for cancellation outcomes in internal/agentdserver/app/runtime/stop_test.go
 - [ ] T066 [P] [US2] Add recovery tests for interrupted active runs in internal/agentdserver/app/runtime/recovery_test.go
@@ -139,8 +139,8 @@ restart daemon to mark active runs interrupted and restore schedules.
 
 - [X] T069 [US2] Implement cron/manual scheduler adapter in internal/agentdserver/infra/scheduler/scheduler.go
 - [ ] T070 [US2] Implement schedule reconciliation use case in internal/agentdserver/app/scheduling/reconcile.go
-- [ ] T071 [US2] Implement per-Agent runtime DB Agent Run create/update/query methods in internal/agentdserver/infra/db/repository/run_repository.go
-- [ ] T072 [US2] Implement runtime event repository methods in internal/agentdserver/infra/db/repository/event_repository.go
+- [X] T071 [US2] Implement per-Agent runtime DB Agent Run create/update/query methods in internal/agentdserver/infra/db/repository/run_repository.go
+- [X] T072 [US2] Implement runtime event repository methods in internal/agentdserver/infra/db/repository/event_repository.go
 - [ ] T073 [US2] Implement per-run work directory and environment builder in internal/agentdserver/infra/runtime/isolation.go
 - [ ] T074 [US2] Implement isolated per-run log writer creation in internal/agentdserver/infra/logs/run_writer.go
 - [ ] T075 [US2] Implement concurrent runtime manager with active run registry in internal/agentdserver/infra/runtime/manager.go
