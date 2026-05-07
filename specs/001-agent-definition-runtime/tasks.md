@@ -90,7 +90,7 @@ definitions and verify Agent settings plus schedule summary.
 ### Tests for User Story 1
 
 - [X] T044 [P] [US1] Add Agent Definition parser contract tests in internal/agentdserver/infra/definition/parser_test.go
-- [ ] T045 [P] [US1] Add apply use case tests for created/updated/unchanged/rejected outcomes in internal/agentdserver/app/agent/apply_test.go
+- [X] T045 [P] [US1] Add apply use case tests for created/updated/unchanged/rejected outcomes in internal/agentdserver/app/agent/apply_test.go
 - [X] T046 [P] [US1] Add settings repository tests for Agent and permission persistence in internal/agentdserver/infra/db/repository/agent_repository_test.go
 - [ ] T047 [P] [US1] Add REST contract tests for `POST /v1/agents/apply` in internal/agentdserver/infra/http/apply_handler_test.go
 - [ ] T048 [P] [US1] Add CLI apply command tests in internal/agentd/app/apply_test.go
