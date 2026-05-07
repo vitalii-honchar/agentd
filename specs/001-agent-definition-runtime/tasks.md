@@ -156,7 +156,7 @@ restart daemon to mark active runs interrupted and restore schedules.
 - [X] T085 [US2] Implement `agentd execute <agent_name>` command in internal/agentd/app/execute.go
 - [X] T086 [US2] Implement `agentd stop <agent_name> [--run <run_id>]` command in internal/agentd/app/stop.go
 - [X] T087 [US2] Wire execute and stop commands into CLI root in internal/agentd/app/root.go
-- [ ] T088 [US2] Add end-to-end concurrency and recovery test in tests/e2e/runtime_test.go
+- [X] T088 [US2] Add end-to-end concurrency and recovery test in tests/e2e/runtime_test.go
 
 **Checkpoint**: US2 is independently functional and testable.
 
