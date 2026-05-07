@@ -98,10 +98,10 @@ definitions and verify Agent settings plus schedule summary.
 ### Implementation for User Story 1
 
 - [X] T049 [US1] Implement Markdown front matter parser in internal/agentdserver/infra/definition/parser.go
-- [ ] T050 [US1] Implement Agent Definition validation and normalization in internal/agentdserver/app/agent/definition_validator.go
+- [X] T050 [US1] Implement Agent Definition validation and normalization in internal/agentdserver/app/agent/definition_validator.go
 - [X] T051 [US1] Implement settings Agent repository create/update/read methods in internal/agentdserver/infra/db/repository/agent_repository.go
-- [ ] T052 [US1] Implement per-Agent runtime DB creation after first apply in internal/agentdserver/infra/db/repository/runtime_db_manager.go
-- [ ] T053 [US1] Implement apply use case in internal/agentdserver/app/agent/apply.go
+- [X] T052 [US1] Implement per-Agent runtime DB creation after first apply in internal/agentdserver/infra/db/repository/runtime_db_manager.go
+- [X] T053 [US1] Implement apply use case in internal/agentdserver/app/agent/apply.go
 - [ ] T054 [US1] Implement apply HTTP request/response models in internal/agentdserver/infra/http/model/agent.go
 - [ ] T055 [US1] Implement `POST /v1/agents/apply` handler in internal/agentdserver/infra/http/apply_handler.go
 - [ ] T056 [US1] Register apply handler in internal/agentdserver/infra/http/server.go

@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"agentd/internal/agentdserver/app"
 	"agentd/internal/agentdserver/domain"
@@ -30,6 +32,7 @@ type ApplyUseCase struct {
 	parser     DefinitionParser
 	agents     app.AgentRepository
 	runtimeDBs app.RuntimeDBManager
+	now        func() time.Time
 }
 
 type ApplyRequest struct {
@@ -57,12 +60,76 @@ func NewApplyUseCase(
 		return nil, fmt.Errorf("runtime db manager is required")
 	}
 
-	return &ApplyUseCase{parser: parser, agents: agents, runtimeDBs: runtimeDBs}, nil
+	return &ApplyUseCase{
+		parser:     parser,
+		agents:     agents,
+		runtimeDBs: runtimeDBs,
+		now:        func() time.Time { return time.Now().UTC() },
+	}, nil
 }
 
 func (u *ApplyUseCase) Apply(
-	_ context.Context,
-	_ ApplyRequest,
+	ctx context.Context,
+	request ApplyRequest,
 ) (ApplyResult, error) {
-	return ApplyResult{}, fmt.Errorf("apply use case not implemented")
+	definition, err := u.parser.ParseMarkdown(request.SourcePath, request.Markdown)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	normalized, err := NormalizeDefinition(definition)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+
+	existing, err := u.agents.FindByName(ctx, normalized.Definition.Name)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return ApplyResult{}, err
+	}
+	if err == nil && existing.Revision == normalized.Revision {
+		return ApplyResult{Outcome: ApplyOutcomeUnchanged, Agent: existing}, nil
+	}
+
+	agent := agentFromDefinition(normalized.Definition, normalized.Revision, u.now())
+	outcome := ApplyOutcomeCreated
+	if err == nil {
+		agent.CreatedAt = existing.CreatedAt
+		agent.LastRunID = existing.LastRunID
+		agent.LastError = existing.LastError
+		outcome = ApplyOutcomeUpdated
+	}
+
+	if err := u.agents.Save(ctx, agent, normalized.Definition.Tools, normalized.Definition.MCPServers); err != nil {
+		return ApplyResult{}, err
+	}
+	if err := u.runtimeDBs.EnsureAgent(ctx, agent.Name); err != nil {
+		return ApplyResult{}, err
+	}
+
+	return ApplyResult{Outcome: outcome, Agent: agent}, nil
+}
+
+func agentFromDefinition(
+	definition domain.AgentDefinition,
+	revision string,
+	now time.Time,
+) domain.Agent {
+	status := domain.AgentStatusActive
+	if !definition.Enabled {
+		status = domain.AgentStatusDisabled
+	}
+
+	return domain.Agent{
+		Name:               definition.Name,
+		Revision:           revision,
+		DefinitionSource:   definition.SourcePath,
+		DefinitionMarkdown: definition.RawMarkdown,
+		Prompt:             definition.Prompt,
+		Enabled:            definition.Enabled,
+		Vendor:             definition.Vendor,
+		Schedule:           definition.Schedule,
+		Status:             status,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		AppliedAt:          now,
+	}
 }
