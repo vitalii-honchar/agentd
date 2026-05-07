@@ -7,7 +7,15 @@ developer machine.
 
 - Go 1.26.2
 - Linux or macOS
-- `OPENAI_API_KEY` available in `.env` or the shell environment
+- `OPENAI_API_KEY` available in `.env` or the shell environment when executing
+  OpenAI-backed Agents
+
+Optional local overrides:
+
+```bash
+export AGENTD_DATA_DIR=./data
+export AGENTD_SERVER_URL=http://127.0.0.1:18080
+```
 
 ## 1. Start the daemon
 
@@ -21,6 +29,7 @@ Expected:
 - The settings SQLite database is created locally if missing.
 - Each applied Agent gets its own runtime SQLite database for run/event/log
   metadata.
+- Runtime state defaults to `./data`.
 
 ## 2. Create a manual Agent Definition
 
@@ -59,6 +68,13 @@ Expected:
 - `agentd inspect release-notes-helper` shows schedule mode `manual` and no
   automatic next run.
 
+List and inspect the applied Agent:
+
+```bash
+go run ./cmd/agentd list
+go run ./cmd/agentd inspect release-notes-helper
+```
+
 ## 4. Execute manually
 
 ```bash
@@ -69,6 +85,8 @@ Expected:
 - CLI prints an Agent Run ID.
 - `agentd inspect release-notes-helper` shows the latest run state.
 - The run has an isolated work directory and isolated log file.
+- If `OPENAI_API_KEY` is missing or invalid, the run is recorded as failed with
+  provider error details.
 
 ## 5. Read isolated logs
 
@@ -79,6 +97,12 @@ go run ./cmd/agentd logs release-notes-helper
 Expected:
 - Only logs for `release-notes-helper` are shown.
 - Logs from other Agents are not mixed into this output.
+
+Read a specific run if needed:
+
+```bash
+go run ./cmd/agentd logs release-notes-helper --run <run_id> --tail 100
+```
 
 ## 6. Validate concurrent Agents
 
@@ -108,7 +132,22 @@ Expected:
 - Future schedules are restored.
 - Service logs include daemon recovery events.
 
-## 8. Run automated verification
+## 8. Storage layout
+
+Expected default files:
+
+```text
+data/
+├── agentd-settings.db
+├── agents/
+│   └── release-notes-helper.db
+├── logs/
+│   └── release-notes-helper/<run_id>.log
+└── work/
+    └── release-notes-helper/<run_id>/
+```
+
+## 9. Run automated verification
 
 ```bash
 go test ./...
