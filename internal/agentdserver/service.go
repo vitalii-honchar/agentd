@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	appagent "agentd/internal/agentdserver/app/agent"
 	"agentd/internal/agentdserver/config"
 	"agentd/internal/agentdserver/infra/db"
 	"agentd/internal/agentdserver/infra/db/repository"
+	"agentd/internal/agentdserver/infra/definition"
 	daemonhttp "agentd/internal/agentdserver/infra/http"
 	openaiadapter "agentd/internal/agentdserver/infra/llm/openai"
 )
@@ -52,7 +54,8 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open settings db: %w", err)
 	}
-	if _, err := repository.NewAgentRepository(settings); err != nil {
+	agentRepo, err := repository.NewAgentRepository(settings)
+	if err != nil {
 		_ = settings.Stop(context.Background())
 
 		return nil, fmt.Errorf("new agent repository: %w", err)
@@ -75,12 +78,23 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 			return nil, fmt.Errorf("new openai provider: %w", err)
 		}
 	}
+	applyUC, err := appagent.NewApplyUseCase(
+		appagent.ParserFunc(definition.ParseMarkdown),
+		agentRepo,
+		runtimeDBs,
+	)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new apply use case: %w", err)
+	}
 
 	httpServer := daemonhttp.NewServer(daemonhttp.Config{
 		Address:      cfg.Server.Address(),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
-	})
+	}, daemonhttp.WithApplyUseCase(applyUC))
 
 	return &AgentdServer{
 		Config:     cfg,
