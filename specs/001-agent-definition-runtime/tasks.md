@@ -26,7 +26,7 @@ implementation and testing of each story.
 - [X] T004 Create daemon entrypoint skeleton in cmd/agentdserver/main.go
 - [X] T005 Create server package directory skeleton under internal/agentdserver/
 - [X] T006 Create CLI package directory skeleton under internal/agentd/
-- [ ] T007 [P] Create shared test utility package skeleton in internal/lib/testutil/testutil.go
+- [X] T007 [P] Create shared test utility package skeleton in internal/lib/testutil/testutil.go
 - [ ] T008 [P] Create validation helper package skeleton in internal/lib/validator/validator.go
 - [ ] T009 [P] Add sample manual Agent Definition in examples/release-notes-helper.md
 - [ ] T010 [P] Add sample cron Agent Definition in examples/daily-pr-review.md
