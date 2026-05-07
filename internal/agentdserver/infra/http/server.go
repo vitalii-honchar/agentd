@@ -9,6 +9,7 @@ import (
 	"time"
 
 	appagent "agentd/internal/agentdserver/app/agent"
+	applogs "agentd/internal/agentdserver/app/logs"
 	"agentd/internal/agentdserver/domain"
 )
 
@@ -24,6 +25,9 @@ type Server struct {
 	applyUseCase   ApplyUseCase
 	executeUseCase ExecuteUseCase
 	stopUseCase    StopUseCase
+	listUseCase    ListUseCase
+	inspectUseCase InspectUseCase
+	logsUseCase    LogsUseCase
 }
 
 type ApplyUseCase interface {
@@ -36,6 +40,18 @@ type ExecuteUseCase interface {
 
 type StopUseCase interface {
 	Stop(context.Context, string, string) (domain.AgentRun, error)
+}
+
+type ListUseCase interface {
+	List(context.Context) ([]domain.Agent, error)
+}
+
+type InspectUseCase interface {
+	Inspect(context.Context, string) (domain.Agent, error)
+}
+
+type LogsUseCase interface {
+	Read(context.Context, applogs.Query) (applogs.Result, error)
 }
 
 type Option func(*Server)
@@ -55,6 +71,24 @@ func WithExecuteUseCase(useCase ExecuteUseCase) Option {
 func WithStopUseCase(useCase StopUseCase) Option {
 	return func(s *Server) {
 		s.stopUseCase = useCase
+	}
+}
+
+func WithListUseCase(useCase ListUseCase) Option {
+	return func(s *Server) {
+		s.listUseCase = useCase
+	}
+}
+
+func WithInspectUseCase(useCase InspectUseCase) Option {
+	return func(s *Server) {
+		s.inspectUseCase = useCase
+	}
+}
+
+func WithLogsUseCase(useCase LogsUseCase) Option {
+	return func(s *Server) {
+		s.logsUseCase = useCase
 	}
 }
 
@@ -99,8 +133,14 @@ func (s *Server) Stop(ctx context.Context) error {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /health", healthHandler)
+	if s.listUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents", s.handleList)
+	}
 	if s.applyUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/apply", s.handleApply)
+	}
+	if s.inspectUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents/{name}", s.handleInspect)
 	}
 	if s.executeUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs", s.handleExecute)
@@ -108,6 +148,9 @@ func (s *Server) registerRoutes() {
 	if s.stopUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/stop", s.handleStopActive)
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/{run_id}/stop", s.handleStop)
+	}
+	if s.logsUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents/{name}/logs", s.handleLogs)
 	}
 }
 

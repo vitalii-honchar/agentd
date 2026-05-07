@@ -18,6 +18,10 @@ type RunResponse struct {
 	Status    string `json:"status"`
 }
 
+type ListResponse struct {
+	Agents []AgentSummary `json:"agents"`
+}
+
 type AgentSummary struct {
 	Name          string     `json:"name"`
 	Enabled       bool       `json:"enabled"`
@@ -34,6 +38,18 @@ type AgentDetail struct {
 	VendorModel string `json:"vendor_model"`
 	LastRunID   string `json:"last_run_id,omitempty"`
 	RecentError string `json:"recent_error,omitempty"`
+}
+
+type LogsResponse struct {
+	AgentName string     `json:"agent_name"`
+	RunID     string     `json:"run_id,omitempty"`
+	Entries   []LogEntry `json:"entries"`
+}
+
+type LogEntry struct {
+	Timestamp time.Time `json:"timestamp"`
+	RunID     string    `json:"run_id,omitempty"`
+	Line      string    `json:"line"`
 }
 
 type ErrorResponse struct {

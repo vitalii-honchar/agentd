@@ -67,20 +67,3 @@ func writeError(
 		},
 	})
 }
-
-func toAgentDetail(agent domain.Agent) model.AgentDetail {
-	return model.AgentDetail{
-		AgentSummary: model.AgentSummary{
-			Name:         agent.Name,
-			Enabled:      agent.Enabled,
-			Status:       string(agent.Status),
-			ScheduleType: string(agent.Schedule.Type),
-			NextRunAt:    agent.NextRunAt,
-		},
-		Revision:    agent.Revision,
-		VendorName:  agent.Vendor.Name,
-		VendorModel: agent.Vendor.Model,
-		LastRunID:   agent.LastRunID,
-		RecentError: agent.LastError,
-	}
-}
