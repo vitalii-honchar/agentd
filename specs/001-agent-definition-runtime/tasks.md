@@ -210,7 +210,7 @@ Agents, and retrieve logs with no cross-Agent log mixing.
 - [X] T112 Add local development guide with `.env`, `OPENAI_API_KEY`, and data directory defaults in docs/development.md
 - [X] T113 Update quickstart examples in specs/001-agent-definition-runtime/quickstart.md after implementation paths are confirmed
 - [X] T114 Run `go test ./...` and record any follow-up fixes in specs/001-agent-definition-runtime/tasks.md (passed 2026-05-07; no follow-up fixes required)
-- [ ] T115 Run quickstart apply/execute/logs/recovery validation from specs/001-agent-definition-runtime/quickstart.md
+- [X] T115 Run quickstart apply/execute/logs/recovery validation from specs/001-agent-definition-runtime/quickstart.md (validated with E2E CLI/server quickstart flows on 2026-05-07)
 - [ ] T116 Verify Git history has no committed `.env` files or OpenAI API keys, and rewrite history before release if any are found
 - [ ] T117 Add ai-product-research example Agent Definition and local script-tool support plan in examples/ai-product-research.md and specs/001-agent-definition-runtime/quickstart.md: model the Product Hunt research workflow, include a Playwright screenshot tool declaration, document required env vars without committing secrets, and verify the runtime can represent script tools with explicit command, args, env allow-list, read/write paths, and network allow-list
 
