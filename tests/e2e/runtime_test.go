@@ -11,6 +11,7 @@ import (
 	"time"
 
 	appagent "agentd/internal/agentdserver/app/agent"
+	applogs "agentd/internal/agentdserver/app/logs"
 	appruntime "agentd/internal/agentdserver/app/runtime"
 	"agentd/internal/agentdserver/domain"
 	"agentd/internal/agentdserver/infra/db"
@@ -25,7 +26,7 @@ import (
 func TestRuntimeConcurrencyStopAndRecovery(t *testing.T) {
 	t.Parallel()
 
-	stack := newRuntimeStack(t)
+	stack := newRuntimeStackWithProvider(t, blockingE2EProvider{})
 	postApply(t, stack.server, "agent-a.md", runtimeDefinition("agent-a"))
 	postApply(t, stack.server, "agent-b.md", runtimeDefinition("agent-b"))
 
@@ -70,6 +71,12 @@ type runtimeStack struct {
 func newRuntimeStack(t *testing.T) runtimeStack {
 	t.Helper()
 
+	return newRuntimeStackWithProvider(t, blockingE2EProvider{})
+}
+
+func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) runtimeStack {
+	t.Helper()
+
 	dir := t.TempDir()
 	settingsDB, err := db.New("settings", db.Config{
 		Path:         filepath.Join(dir, "settings.db"),
@@ -104,6 +111,10 @@ func newRuntimeStack(t *testing.T) runtimeStack {
 	if err != nil {
 		t.Fatalf("NewRunLogFactory: %v", err)
 	}
+	logReader, err := runlogs.NewRunLogReader(filepath.Join(dir, "logs"))
+	if err != nil {
+		t.Fatalf("NewRunLogReader: %v", err)
+	}
 	isolation, err := infraruntime.NewIsolationBuilder(filepath.Join(dir, "work"))
 	if err != nil {
 		t.Fatalf("NewIsolationBuilder: %v", err)
@@ -112,7 +123,7 @@ func newRuntimeStack(t *testing.T) runtimeStack {
 		runtimeDBs,
 		logFactory,
 		isolation,
-		[]appruntime.Provider{blockingE2EProvider{}},
+		[]appruntime.Provider{provider},
 	)
 	if err != nil {
 		t.Fatalf("NewManager: %v", err)
@@ -127,10 +138,25 @@ func newRuntimeStack(t *testing.T) runtimeStack {
 	}
 	executeUC := appruntime.NewExecuteUseCase(agentRepo, manager)
 	stopUC := appruntime.NewStopUseCase(manager)
+	listUC, err := appagent.NewListUseCase(agentRepo)
+	if err != nil {
+		t.Fatalf("NewListUseCase: %v", err)
+	}
+	inspectUC, err := appagent.NewInspectUseCase(agentRepo)
+	if err != nil {
+		t.Fatalf("NewInspectUseCase: %v", err)
+	}
+	logsUC, err := applogs.NewUseCase(agentRepo, runtimeDBs, logReader)
+	if err != nil {
+		t.Fatalf("NewLogsUseCase: %v", err)
+	}
 	server := daemonhttp.NewServer(daemonhttp.Config{},
 		daemonhttp.WithApplyUseCase(applyUC),
 		daemonhttp.WithExecuteUseCase(executeUC),
 		daemonhttp.WithStopUseCase(stopUC),
+		daemonhttp.WithListUseCase(listUC),
+		daemonhttp.WithInspectUseCase(inspectUC),
+		daemonhttp.WithLogsUseCase(logsUC),
 	)
 
 	return runtimeStack{
