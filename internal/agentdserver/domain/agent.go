@@ -83,6 +83,8 @@ func (d AgentDefinition) Validate() error {
 	}
 	if strings.TrimSpace(string(d.Schedule.Type)) == "" {
 		issues = append(issues, ValidationIssue{Field: "schedule.type", Message: "is required"})
+	} else if d.Schedule.Type != ScheduleTypeCron && d.Schedule.Type != ScheduleTypeManual {
+		issues = append(issues, ValidationIssue{Field: "schedule.type", Message: "must be cron or manual"})
 	}
 	if d.Schedule.Type == ScheduleTypeCron && strings.TrimSpace(d.Schedule.Expression) == "" {
 		issues = append(issues, ValidationIssue{

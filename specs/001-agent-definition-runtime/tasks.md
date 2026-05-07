@@ -97,7 +97,7 @@ definitions and verify Agent settings plus schedule summary.
 
 ### Implementation for User Story 1
 
-- [ ] T049 [US1] Implement Markdown front matter parser in internal/agentdserver/infra/definition/parser.go
+- [X] T049 [US1] Implement Markdown front matter parser in internal/agentdserver/infra/definition/parser.go
 - [ ] T050 [US1] Implement Agent Definition validation and normalization in internal/agentdserver/app/agent/definition_validator.go
 - [ ] T051 [US1] Implement settings Agent repository create/update/read methods in internal/agentdserver/infra/db/repository/agent_repository.go
 - [ ] T052 [US1] Implement per-Agent runtime DB creation after first apply in internal/agentdserver/infra/db/repository/runtime_db_manager.go
