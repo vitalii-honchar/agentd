@@ -1,14 +1,8 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 -> 1.1.0
+Version change: 1.1.0 -> 1.2.0
 Modified principles:
-- I. Daemon-First Agent Runtime
-- II. Isolation and Least Privilege
-- III. Linux and macOS Portability
-- IV. Durable State and Recovery
-- V. Observable and Tested Operations
-Added principles:
-- VI. Simplicity and Clean Architecture
+- II. Isolation and Least Privilege (secret file handling clarified)
 Added sections:
 - None
 Removed sections:
@@ -42,6 +36,13 @@ and device access MUST be explicit in the workload configuration. Host root,
 unbounded filesystem access, inherited secrets, and unrestricted networking
 MUST NOT be defaults. Any elevated capability MUST be documented with the
 specific user value, risk, and audit signal.
+
+Local secret-bearing files, including `.env`, `.env.*`, API keys, tokens,
+private keys, certificates with private material, and generated credential
+stores, MUST NOT be committed to Git. Repositories MUST ignore these files by
+default. If a secret-bearing file is accidentally committed, work MUST stop until
+the secret is removed from history or confirmed absent, credentials are rotated
+when exposure is possible, and the prevention rule is restored.
 
 Rationale: executing AI agents can run untrusted or semi-trusted commands, so
 host safety is a core product requirement rather than an optional hardening step.
@@ -136,4 +137,4 @@ Compliance review is required for every feature plan and implementation review.
 Any approved deviation MUST be recorded in the plan's Complexity Tracking table
 with the reason, rejected simpler alternative, and mitigation.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-07
+**Version**: 1.2.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-07
