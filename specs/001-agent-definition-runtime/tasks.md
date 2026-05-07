@@ -108,7 +108,7 @@ definitions and verify Agent settings plus schedule summary.
 - [X] T057 [US1] Implement CLI HTTP client apply method in internal/agentd/infra/httpclient/agents.go
 - [X] T058 [US1] Implement `agentd apply <path_to_file>` command in internal/agentd/app/apply.go
 - [X] T059 [US1] Wire apply command into CLI root in internal/agentd/app/root.go
-- [ ] T060 [US1] Add end-to-end apply smoke test in tests/e2e/apply_test.go
+- [X] T060 [US1] Add end-to-end apply smoke test in tests/e2e/apply_test.go
 
 **Checkpoint**: US1 is independently functional and testable.
 
