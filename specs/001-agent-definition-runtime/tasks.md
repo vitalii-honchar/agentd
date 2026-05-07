@@ -29,7 +29,7 @@ implementation and testing of each story.
 - [X] T007 [P] Create shared test utility package skeleton in internal/lib/testutil/testutil.go
 - [X] T008 [P] Create validation helper package skeleton in internal/lib/validator/validator.go
 - [X] T009 [P] Add sample manual Agent Definition in examples/release-notes-helper.md
-- [ ] T010 [P] Add sample cron Agent Definition in examples/daily-pr-review.md
+- [X] T010 [P] Add sample cron Agent Definition in examples/daily-pr-review.md
 
 ---
 
