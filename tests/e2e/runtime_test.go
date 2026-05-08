@@ -12,6 +12,7 @@ import (
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
 	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db"
@@ -150,10 +151,20 @@ func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) run
 	if err != nil {
 		t.Fatalf("NewLogsUseCase: %v", err)
 	}
+	runListUC, err := appresult.NewListRunsUseCase(agentRepo, runtimeDBs)
+	if err != nil {
+		t.Fatalf("NewListRunsUseCase: %v", err)
+	}
+	resultUC, err := appresult.NewUseCase(agentRepo, runtimeDBs)
+	if err != nil {
+		t.Fatalf("NewResultUseCase: %v", err)
+	}
 	server := daemonhttp.NewServer(daemonhttp.Config{},
 		daemonhttp.WithApplyUseCase(applyUC),
 		daemonhttp.WithExecuteUseCase(executeUC),
 		daemonhttp.WithStopUseCase(stopUC),
+		daemonhttp.WithRunListUseCase(runListUC),
+		daemonhttp.WithResultUseCase(resultUC),
 		daemonhttp.WithListUseCase(listUC),
 		daemonhttp.WithInspectUseCase(inspectUC),
 		daemonhttp.WithLogsUseCase(logsUC),
