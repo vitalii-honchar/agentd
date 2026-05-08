@@ -106,7 +106,7 @@ func TestLogsCommandFormatsActionLogs(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	if !strings.Contains(out.String(), "2026-05-08T10:00:00Z llm.prompt.send sent prompt") {
+	if !strings.Contains(out.String(), "2026-05-08T10:00:00Z run-1 llm.prompt.send sent prompt") {
 		t.Fatalf("output: %q", out.String())
 	}
 }

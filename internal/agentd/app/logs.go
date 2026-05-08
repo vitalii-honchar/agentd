@@ -52,7 +52,11 @@ func NewLogsCommand(client QueryClient, output Output) *cobra.Command {
 			for _, entry := range response.Entries {
 				line := entry.Line
 				if entry.Action != "" {
-					line = fmt.Sprintf("%s %s %s", entry.Timestamp.Format(time.RFC3339), entry.Action, entry.Message)
+					if entry.RunID != "" {
+						line = fmt.Sprintf("%s %s %s %s", entry.Timestamp.Format(time.RFC3339), entry.RunID, entry.Action, entry.Message)
+					} else {
+						line = fmt.Sprintf("%s %s %s", entry.Timestamp.Format(time.RFC3339), entry.Action, entry.Message)
+					}
 				}
 				if _, err := fmt.Fprintln(output.writer, line); err != nil {
 					return err
