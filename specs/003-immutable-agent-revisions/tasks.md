@@ -36,7 +36,7 @@ handling, and logs.
 - [x] T020 Update Cybersecurity Reddit Watch definition from local_tool to custom_tool in examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md
 - [x] T021 Update Hacker News Builder Brief definition from local_tool to custom_tool in examples/hacker-news-builder-brief/hacker-news-builder-brief.md
 - [x] T022 Update Reddit Customer Pain Monitor definition from local_tool to custom_tool in examples/reddit-customer-pain-monitor/reddit-customer-pain-monitor.md
-- [ ] T023 Update Product Hunt Launch Radar definition from local_tool to custom_tool in examples/product-hunt-launch-radar/product-hunt-launch-radar.md
+- [x] T023 Update Product Hunt Launch Radar definition from local_tool to custom_tool in examples/product-hunt-launch-radar/product-hunt-launch-radar.md
 - [ ] T024 Update GitHub Trending Engineering Radar definition from local_tool to custom_tool in examples/github-trending-engineering-radar/github-trending-engineering-radar.md
 - [ ] T025 Update Developer Dependency Release Monitor definition from local_tool to custom_tool in examples/developer-dependency-release-monitor/developer-dependency-release-monitor.md
 - [ ] T026 Update AI Engineering Hiring Signal Monitor definition from local_tool to custom_tool in examples/ai-engineering-hiring-signal-monitor/ai-engineering-hiring-signal-monitor.md

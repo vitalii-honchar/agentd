@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_product_hunt_launches
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_product_hunt_launches.py
     args: ["--fixture", "fixtures/product_hunt_sample.json"]
     timeout: 45s
