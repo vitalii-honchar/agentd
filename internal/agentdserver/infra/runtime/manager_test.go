@@ -246,6 +246,35 @@ func TestManagerExecutesHostToolCommand(t *testing.T) {
 	}
 }
 
+func TestManagerFailsMissingHostToolExecutable(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{t: t, failOnExecute: true})
+	agent := testAgent("missing-host-tool-agent")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "missing",
+		Kind:    domain.ToolKindHostTool,
+		Command: "agentd-missing-host-tool-executable",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusFailed)
+	events, err := runtimeDBs.Events(agent.Name).ListByRun(context.Background(), run.ID, 20)
+	if err != nil {
+		t.Fatalf("ListByRun: %v", err)
+	}
+	assertEventType(t, events, domain.RunActionToolExecuteFail)
+	assertEventMessageContains(t, events, domain.RunActionToolExecuteFail, "host tool executable")
+}
+
 func TestManagerLogsDeclaredToolStderrOnFailure(t *testing.T) {
 	t.Parallel()
 
