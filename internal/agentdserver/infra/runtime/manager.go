@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -405,6 +406,7 @@ func (m *Manager) executeDeclaredTools(
 		m.appendRunEvent(run, domain.RunActionToolExecuteStart, domain.EventLevelInfo, "execute tool "+tool.Name)
 		toolForRun := tool
 		toolForRun.Command = resolveToolCommandForRun(agent, revision, tool)
+		toolForRun.Env = buildToolProcessEnv(revision.Environment, tool.Env)
 		if err := validateCustomToolArtifact(revision, toolForRun); err != nil {
 			m.appendRunEvent(run, domain.RunActionToolExecuteFail, domain.EventLevelError, err.Error())
 
@@ -532,6 +534,31 @@ func validateHostToolExecutable(tool domain.ToolPermission) error {
 	}
 
 	return nil
+}
+
+func buildToolProcessEnv(revisionEnv []domain.RevisionEnvironment, toolEnv []string) []string {
+	values := make(map[string]string, len(revisionEnv)+len(toolEnv))
+	for _, entry := range revisionEnv {
+		values[entry.Key] = entry.Value
+	}
+	for _, entry := range toolEnv {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		values[key] = value
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	env := make([]string, 0, len(keys))
+	for _, key := range keys {
+		env = append(env, key+"="+values[key])
+	}
+
+	return env
 }
 
 func (m *Manager) appendRunEvent(
