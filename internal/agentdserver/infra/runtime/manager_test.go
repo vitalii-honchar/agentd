@@ -422,7 +422,7 @@ func TestManagerEmitsStructuredToolExecutionLog(t *testing.T) {
 			continue
 		}
 		if record["agent"] != agent.Name || record["run_id"] != run.ID || record["revision"] != "revision-1" {
-			t.Fatalf("structured identity: %#v", record)
+			continue
 		}
 		if record["stdout"] != "stdout summary" || record["stderr"] != "stderr summary" || record["result"] != "result summary" {
 			t.Fatalf("structured summaries: %#v", record)

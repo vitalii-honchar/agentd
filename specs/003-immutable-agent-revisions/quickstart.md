@@ -105,3 +105,11 @@ Run:
 ```bash
 go test ./...
 ```
+
+Codex verification on 2026-05-08:
+
+- Command: `go test ./...`
+- Result: passed.
+- Notes: an initial run exposed a race in the structured runtime log test where
+  global logs from another parallel test were matched first; the assertion now
+  filters by the target run ID and the full suite passes.
