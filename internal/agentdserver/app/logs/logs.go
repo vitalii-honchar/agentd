@@ -69,8 +69,33 @@ func (u *UseCase) Read(ctx context.Context, query Query) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if events := u.runtimeDBs.Events(agent.Name); events != nil {
+		actionEvents, err := events.ListByRun(ctx, run.ID, query.Tail)
+		if err != nil {
+			return Result{}, err
+		}
+		entries = append(runtimeEventsToLogEntries(actionEvents), entries...)
+		if query.Tail > 0 && len(entries) > query.Tail {
+			entries = entries[:query.Tail]
+		}
+	}
 
 	return Result{Agent: agent, Run: run, Entries: entries}, nil
+}
+
+func runtimeEventsToLogEntries(events []domain.RuntimeEvent) []app.LogEntry {
+	entries := make([]app.LogEntry, 0, len(events))
+	for _, event := range events {
+		entries = append(entries, app.LogEntry{
+			Timestamp: event.CreatedAt,
+			RunID:     event.RunID,
+			Action:    event.EventType,
+			Message:   event.Message,
+			Line:      event.Message,
+		})
+	}
+
+	return entries
 }
 
 func findRun(ctx context.Context, repo app.AgentRunRepository, runID string) (domain.AgentRun, error) {

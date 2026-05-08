@@ -158,7 +158,7 @@ contracts, and example smoke verification.
 ### Tests for User Story 4
 
 - [x] T069 [P] [US4] Add runtime event repository tests for action lookup by run in internal/agentdserver/infra/db/repository/run_repository_test.go
-- [ ] T070 [P] [US4] Add logs use case tests for scoped action logs in internal/agentdserver/app/logs/logs_test.go
+- [x] T070 [P] [US4] Add logs use case tests for scoped action logs in internal/agentdserver/app/logs/logs_test.go
 - [ ] T071 [P] [US4] Add CLI logs regression test for action logs in internal/agentd/app/logs_test.go
 
 ### Implementation for User Story 4

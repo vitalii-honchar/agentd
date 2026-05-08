@@ -44,6 +44,8 @@ func (c *Client) Logs(ctx context.Context, request app.LogsRequest) (app.LogsRes
 		entries = append(entries, app.LogEntry{
 			Timestamp: entry.Timestamp,
 			RunID:     entry.RunID,
+			Action:    entry.Action,
+			Message:   entry.Message,
 			Line:      entry.Line,
 		})
 	}

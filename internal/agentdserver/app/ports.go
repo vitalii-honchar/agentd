@@ -61,5 +61,7 @@ type LogQuery struct {
 type LogEntry struct {
 	Timestamp time.Time
 	RunID     string
+	Action    string
+	Message   string
 	Line      string
 }

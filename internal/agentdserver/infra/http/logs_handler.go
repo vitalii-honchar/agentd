@@ -63,6 +63,8 @@ func toLogEntry(entry app.LogEntry) model.LogEntry {
 	return model.LogEntry{
 		Timestamp: entry.Timestamp,
 		RunID:     entry.RunID,
+		Action:    entry.Action,
+		Message:   entry.Message,
 		Line:      entry.Line,
 	}
 }

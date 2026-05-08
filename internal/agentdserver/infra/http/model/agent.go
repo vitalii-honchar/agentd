@@ -79,6 +79,8 @@ type LogsResponse struct {
 type LogEntry struct {
 	Timestamp time.Time `json:"timestamp"`
 	RunID     string    `json:"run_id,omitempty"`
+	Action    string    `json:"action,omitempty"`
+	Message   string    `json:"message,omitempty"`
 	Line      string    `json:"line"`
 }
 
