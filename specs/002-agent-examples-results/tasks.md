@@ -99,7 +99,7 @@ contracts, and example smoke verification.
 ### Tests for User Story 2
 
 - [x] T042 [P] [US2] Add HTTP contract tests for GET /v1/runs active/all in internal/agentdserver/infra/http/run_query_handler_test.go
-- [ ] T043 [P] [US2] Add CLI tests for agentd ps and ps -a in internal/agentd/app/ps_test.go
+- [x] T043 [P] [US2] Add CLI tests for agentd ps and ps -a in internal/agentd/app/ps_test.go
 - [ ] T044 [P] [US2] Add public client tests for ListRuns in pkg/agentdclient/runs_test.go
 
 ### Implementation for User Story 2

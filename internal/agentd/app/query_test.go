@@ -104,9 +104,10 @@ func TestRootCommandWiresQueryCommands(t *testing.T) {
 }
 
 type fakeQueryClient struct {
-	listCalled   bool
-	inspectAgent string
-	logsRequest  LogsRequest
+	listCalled         bool
+	inspectAgent       string
+	logsRequest        LogsRequest
+	listRunsIncludeAll bool
 
 	listResponse ListResponse
 	runsResponse RunListResponse
@@ -133,7 +134,8 @@ func (f *fakeQueryClient) Inspect(_ context.Context, agentName string) (AgentDet
 	return f.agent, nil
 }
 
-func (f *fakeQueryClient) ListRuns(context.Context, bool) (RunListResponse, error) {
+func (f *fakeQueryClient) ListRuns(_ context.Context, includeAll bool) (RunListResponse, error) {
+	f.listRunsIncludeAll = includeAll
 	if f.err != nil {
 		return RunListResponse{}, f.err
 	}
