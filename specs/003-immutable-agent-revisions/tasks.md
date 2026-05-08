@@ -11,7 +11,7 @@ handling, and logs.
 
 ## Phase 1: Setup
 
-- [ ] T001 Create settings migration for revision tables in internal/agentdserver/infra/db/migrations/settings/003_agent_revisions.sql
+- [x] T001 Create settings migration for revision tables in internal/agentdserver/infra/db/migrations/settings/003_agent_revisions.sql
 - [ ] T002 Add revision, artifact, environment, execution workdir, and tool log domain types in internal/agentdserver/domain/agent.go
 - [ ] T003 Add custom_tool and host_tool ToolKind constants in internal/agentdserver/domain/agent.go
 - [ ] T004 Extend agent repository ports for revision save/list/lookup/latest/corruption operations in internal/agentdserver/app/ports.go
