@@ -27,6 +27,7 @@ type Server struct {
 	applyUseCase   ApplyUseCase
 	executeUseCase ExecuteUseCase
 	stopUseCase    StopUseCase
+	runListUseCase RunListUseCase
 	listUseCase    ListUseCase
 	inspectUseCase InspectUseCase
 	logsUseCase    LogsUseCase
@@ -42,6 +43,10 @@ type ExecuteUseCase interface {
 
 type StopUseCase interface {
 	Stop(context.Context, string, string) (domain.AgentRun, error)
+}
+
+type RunListUseCase interface {
+	ListRuns(context.Context, bool) ([]domain.AgentRun, error)
 }
 
 type ListUseCase interface {
@@ -73,6 +78,12 @@ func WithExecuteUseCase(useCase ExecuteUseCase) Option {
 func WithStopUseCase(useCase StopUseCase) Option {
 	return func(s *Server) {
 		s.stopUseCase = useCase
+	}
+}
+
+func WithRunListUseCase(useCase RunListUseCase) Option {
+	return func(s *Server) {
+		s.runListUseCase = useCase
 	}
 }
 

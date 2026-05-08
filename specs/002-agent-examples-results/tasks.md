@@ -105,7 +105,7 @@ contracts, and example smoke verification.
 ### Implementation for User Story 2
 
 - [x] T045 [US2] Implement run list use case in internal/agentdserver/app/result/list_runs.go
-- [ ] T046 [US2] Add GET /v1/runs handler in internal/agentdserver/infra/http/run_query_handler.go
+- [x] T046 [US2] Add GET /v1/runs handler in internal/agentdserver/infra/http/run_query_handler.go
 - [ ] T047 [US2] Register GET /v1/runs route in internal/agentdserver/infra/http/server.go
 - [ ] T048 [US2] Implement ListRuns in pkg/agentdclient/runs.go
 - [ ] T049 [US2] Wire CLI QueryClient to public client run listing in internal/agentd/infra/httpclient/runs.go

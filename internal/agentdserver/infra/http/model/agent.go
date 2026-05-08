@@ -18,6 +18,19 @@ type RunResponse struct {
 	Status    string `json:"status"`
 }
 
+type RunListResponse struct {
+	Runs []RunSummary `json:"runs"`
+}
+
+type RunSummary struct {
+	RunID       string     `json:"run_id"`
+	AgentName   string     `json:"agent_name"`
+	Status      string     `json:"status"`
+	Trigger     string     `json:"trigger"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
 type ListResponse struct {
 	Agents []AgentSummary `json:"agents"`
 }
