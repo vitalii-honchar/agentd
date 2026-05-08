@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info:
+  title: agentd Local Daemon API - Results Extension
+  version: 0.2.0
+  description: REST contract additions for run listing, result retrieval, and same-host local access.
+servers:
+  - url: http://127.0.0.1:18080
+paths:
+  /v1/runs:
+    get:
+      summary: List Agent Runs
+      parameters:
+        - name: all
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Runs listed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunListResponse"
+        "403":
+          description: Remote client rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/agents/{name}/results:
+    get:
+      summary: List terminal run results for an Agent
+      parameters:
+        - $ref: "#/components/parameters/AgentName"
+      responses:
+        "200":
+          description: Results listed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResultsResponse"
+        "404":
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/runs/{run_id}/result:
+    get:
+      summary: Get full result for one Agent Run
+      parameters:
+        - $ref: "#/components/parameters/RunID"
+      responses:
+        "200":
+          description: Run result returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResult"
+        "409":
+          description: Run is active and has no final result yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    AgentName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+    RunID:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    RunListResponse:
+      type: object
+      required: [runs]
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunSummary"
+    AgentResultsResponse:
+      type: object
+      required: [agent_name, results]
+      properties:
+        agent_name:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunResultSummary"
+    RunSummary:
+      type: object
+      required: [run_id, agent_name, status, trigger]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        agent_name:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, stopping, stopped, interrupted]
+        trigger:
+          type: string
+          enum: [schedule, manual, recovery]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+    RunResultSummary:
+      allOf:
+        - $ref: "#/components/schemas/RunSummary"
+        - type: object
+          required: [result_summary]
+          properties:
+            result_summary:
+              type: string
+    RunResult:
+      allOf:
+        - $ref: "#/components/schemas/RunSummary"
+        - type: object
+          required: [result]
+          properties:
+            result:
+              type: string
+            result_summary:
+              type: string
+            failure:
+              $ref: "#/components/schemas/Failure"
+    Failure:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - agent_not_found
+                - run_not_found
+                - run_not_terminal
+                - validation_failed
+                - daemon_unavailable
+                - remote_client_forbidden
+            message:
+              type: string

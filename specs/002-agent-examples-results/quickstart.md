@@ -1,0 +1,105 @@
+# Quickstart: Agent Examples and Results
+
+This quickstart verifies the planned feature from a fresh clone after local
+dependencies are installed.
+
+## 1. Build and start the daemon
+
+```bash
+go test ./...
+go build ./cmd/agentd ./cmd/agentdserver
+agentdserver
+```
+
+The daemon listens on `127.0.0.1` by default and rejects non-same-host requests.
+
+## 2. Apply examples
+
+```bash
+agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
+agentd apply examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md
+agentd apply examples/website-snapshot-analyst/website-snapshot-analyst.md
+agentd list
+```
+
+Expected:
+- Each applied example is listed.
+- Scheduled examples show daily cron schedule metadata.
+- Website snapshot shows manual schedule mode.
+
+## 3. Run a manual example
+
+```bash
+agentd execute website-snapshot-analyst --input url=https://example.com --output json
+agentd ps
+agentd ps -a
+```
+
+Expected:
+- `execute` returns a run ID.
+- `ps` shows the active run while it is running.
+- `ps -a` shows the run after completion or failure.
+
+## 4. Retrieve results
+
+```bash
+agentd result website-snapshot-analyst
+agentd result <run-id>
+agentd result <run-id> --output json
+```
+
+Expected:
+- Agent-name lookup returns a readable table with trimmed result text.
+- Run-ID lookup returns the full untrimmed result or failed-run explanation.
+- JSON output includes stable fields for automation.
+
+## 5. Inspect scoped logs
+
+```bash
+agentd logs website-snapshot-analyst --run <run-id>
+```
+
+Expected action names include prompt submission, tool start, tool terminal
+outcome, result persistence, and run terminal outcome.
+
+## 6. Verify Bash automation
+
+```bash
+run_id=$(agentd execute website-snapshot-analyst --input url=https://example.com --output json | jq -r .run_id)
+agentd result "$run_id" --output json | jq -r .result
+```
+
+Expected:
+- Script can capture run ID and retrieve the final result without parsing a
+  human table.
+
+## 7. Verify Go integration
+
+Create a small local Go program using `pkg/agentdclient`:
+
+```go
+client := agentdclient.New(agentdclient.Config{ServerURL: "http://127.0.0.1:18080"})
+run, err := client.Execute(ctx, "website-snapshot-analyst", map[string]string{"url": "https://example.com"})
+result, err := client.ResultByRunID(ctx, run.RunID)
+```
+
+Expected:
+- The program imports only `pkg/agentdclient`.
+- It can execute an agent and retrieve result data through typed methods.
+
+## 8. Example smoke test rule
+
+For every example folder:
+
+```bash
+agentd apply examples/<agent-name>/<agent-name>.md
+agentd execute <agent-name> --output json   # scheduled examples may use manual execute for smoke tests
+agentd result <agent-name>
+agentd logs <agent-name> --tail 100
+```
+
+Expected:
+- No required API keys.
+- No external account setup.
+- No CI/SaaS/private data setup.
+- README documents any local dependencies and optional enhancements.
