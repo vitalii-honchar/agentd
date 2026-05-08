@@ -74,6 +74,71 @@ func TestInspectHandlerNotFound(t *testing.T) {
 	}
 }
 
+func TestRevisionListHandlerReturnsRevisions(t *testing.T) {
+	t.Parallel()
+
+	revisions := &fakeRevisionUseCase{revisions: []domain.AgentRevision{{
+		AgentName:         "release-notes-helper",
+		RevisionID:        "revision-1",
+		Status:            domain.AgentRevisionStatusFinalized,
+		ArtifactPath:      "data/work/release-notes-helper/revision-1",
+		IsLatestFinalized: true,
+	}}}
+	server := NewServer(Config{}, WithRevisionUseCase(revisions))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/revisions", nil)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusOK, response.Body.String())
+	}
+	var body model.RevisionListResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(body.Revisions) != 1 || body.Revisions[0].RevisionID != "revision-1" || !body.Revisions[0].Latest {
+		t.Fatalf("revisions: %#v", body.Revisions)
+	}
+}
+
+func TestRevisionInspectHandlerReturnsRevision(t *testing.T) {
+	t.Parallel()
+
+	revisions := &fakeRevisionUseCase{revision: domain.AgentRevision{
+		AgentName:    "release-notes-helper",
+		RevisionID:   "revision-1",
+		Status:       domain.AgentRevisionStatusFinalized,
+		ArtifactPath: "data/work/release-notes-helper/revision-1",
+		Tools: []domain.RevisionTool{{
+			Name:             "fetch",
+			Kind:             domain.ToolKindCustomTool,
+			RewrittenCommand: "data/work/release-notes-helper/revision-1/tools/fetch.py",
+		}},
+		Environment: []domain.RevisionEnvironment{{
+			Key:    "GITHUB_TOKEN",
+			Value:  "********",
+			Masked: true,
+		}},
+	}}
+	server := NewServer(Config{}, WithRevisionUseCase(revisions))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/revisions/revision-1", nil)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusOK, response.Body.String())
+	}
+	var body model.RevisionInspectResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Revision.RevisionID != "revision-1" || len(body.Revision.Tools) != 1 || len(body.Revision.Environment) != 1 {
+		t.Fatalf("revision: %#v", body.Revision)
+	}
+}
+
 func TestLogsHandlerReturnsEntries(t *testing.T) {
 	t.Parallel()
 
@@ -156,6 +221,37 @@ func (f *fakeInspectUseCase) Inspect(_ context.Context, name string) (domain.Age
 	}
 
 	return f.agent, nil
+}
+
+type fakeRevisionUseCase struct {
+	agentName  string
+	revisionID string
+	revisions  []domain.AgentRevision
+	revision   domain.AgentRevision
+	err        error
+}
+
+func (f *fakeRevisionUseCase) ListRevisions(_ context.Context, agentName string) ([]domain.AgentRevision, error) {
+	f.agentName = agentName
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return f.revisions, nil
+}
+
+func (f *fakeRevisionUseCase) InspectRevision(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+) (domain.AgentRevision, error) {
+	f.agentName = agentName
+	f.revisionID = revisionID
+	if f.err != nil {
+		return domain.AgentRevision{}, f.err
+	}
+
+	return f.revision, nil
 }
 
 type fakeLogsUseCase struct {
