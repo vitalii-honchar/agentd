@@ -42,6 +42,19 @@ func (c *Client) ListRevisions(ctx context.Context, agentName string) (app.Revis
 	return response, nil
 }
 
+func (c *Client) InspectRevision(
+	ctx context.Context,
+	agentName string,
+	revisionID string,
+) (app.RevisionInspectResponse, error) {
+	revision, err := c.client.InspectRevision(ctx, agentName, revisionID)
+	if err != nil {
+		return app.RevisionInspectResponse{}, err
+	}
+
+	return app.RevisionInspectResponse{Revision: toAppRevisionDetail(revision)}, nil
+}
+
 func (c *Client) Logs(ctx context.Context, request app.LogsRequest) (app.LogsResponse, error) {
 	response, err := c.client.Logs(ctx, agentdclient.LogsQuery{
 		AgentName: request.AgentName,

@@ -87,6 +87,54 @@ func TestRevisionsCommandCallsClient(t *testing.T) {
 	}
 }
 
+func TestInspectCommandCallsRevisionClientForRevisionSelector(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{revisionInspectResponse: RevisionInspectResponse{Revision: RevisionDetail{
+		RevisionSummary: RevisionSummary{
+			RevisionID:   "revision-1",
+			Status:       "finalized",
+			ArtifactPath: "data/work/release-notes-helper/revision-1",
+			Latest:       true,
+		},
+		Prompt: "Write release notes.",
+		Tools: []RevisionTool{{
+			Name:             "fetch",
+			Kind:             "custom_tool",
+			RewrittenCommand: "data/work/release-notes-helper/revision-1/tools/fetch.py",
+			CopiedFiles:      []string{"tools/fetch.py"},
+		}},
+		Environment: []RevisionEnvironment{{
+			Key:    "GITHUB_TOKEN",
+			Value:  "********",
+			Source: "variable",
+			Masked: true,
+		}},
+	}}}
+	var out bytes.Buffer
+	cmd := NewInspectCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper:revision-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.inspectRevisionAgent != "release-notes-helper" || client.inspectRevisionID != "revision-1" {
+		t.Fatalf("inspect revision: agent=%q revision=%q", client.inspectRevisionAgent, client.inspectRevisionID)
+	}
+	output := out.String()
+	for _, want := range []string{
+		"revision: revision-1",
+		"artifact: data/work/release-notes-helper/revision-1",
+		"- fetch custom_tool",
+		"rewritten: data/work/release-notes-helper/revision-1/tools/fetch.py",
+		"GITHUB_TOKEN=******** source=variable masked=true",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q: %q", want, output)
+		}
+	}
+}
+
 func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
 	t.Parallel()
 
@@ -161,22 +209,25 @@ func TestRootCommandWiresQueryCommands(t *testing.T) {
 }
 
 type fakeQueryClient struct {
-	listCalled         bool
-	inspectAgent       string
-	revisionsAgent     string
-	logsRequest        LogsRequest
-	listRunsIncludeAll bool
-	resultAgentName    string
-	resultRunID        string
+	listCalled           bool
+	inspectAgent         string
+	revisionsAgent       string
+	inspectRevisionAgent string
+	inspectRevisionID    string
+	logsRequest          LogsRequest
+	listRunsIncludeAll   bool
+	resultAgentName      string
+	resultRunID          string
 
-	listResponse         ListResponse
-	revisionListResponse RevisionListResponse
-	runsResponse         RunListResponse
-	agentResultsResponse AgentResultsResponse
-	runResult            RunResult
-	agent                AgentDetail
-	logsResponse         LogsResponse
-	err                  error
+	listResponse            ListResponse
+	revisionListResponse    RevisionListResponse
+	revisionInspectResponse RevisionInspectResponse
+	runsResponse            RunListResponse
+	agentResultsResponse    AgentResultsResponse
+	runResult               RunResult
+	agent                   AgentDetail
+	logsResponse            LogsResponse
+	err                     error
 }
 
 func (f *fakeQueryClient) List(ctx context.Context) (ListResponse, error) {
@@ -204,6 +255,20 @@ func (f *fakeQueryClient) ListRevisions(_ context.Context, agentName string) (Re
 	}
 
 	return f.revisionListResponse, nil
+}
+
+func (f *fakeQueryClient) InspectRevision(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+) (RevisionInspectResponse, error) {
+	f.inspectRevisionAgent = agentName
+	f.inspectRevisionID = revisionID
+	if f.err != nil {
+		return RevisionInspectResponse{}, f.err
+	}
+
+	return f.revisionInspectResponse, nil
 }
 
 func (f *fakeQueryClient) ListRuns(_ context.Context, includeAll bool) (RunListResponse, error) {

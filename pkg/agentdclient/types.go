@@ -92,6 +92,41 @@ type RevisionListResponse struct {
 	Revisions []RevisionSummary `json:"revisions"`
 }
 
+type RevisionInspectResponse struct {
+	Revision RevisionDetail `json:"revision"`
+}
+
+type RevisionDetail struct {
+	RevisionSummary
+	Prompt        string                 `json:"prompt,omitempty"`
+	Tools         []RevisionTool         `json:"tools,omitempty"`
+	ArtifactFiles []RevisionArtifactFile `json:"artifact_files,omitempty"`
+	Environment   []RevisionEnvironment  `json:"environment,omitempty"`
+}
+
+type RevisionTool struct {
+	Name             string   `json:"name"`
+	Kind             string   `json:"kind"`
+	OriginalCommand  string   `json:"original_command,omitempty"`
+	RewrittenCommand string   `json:"rewritten_command,omitempty"`
+	HostCommand      string   `json:"host_command,omitempty"`
+	CopiedFiles      []string `json:"copied_files,omitempty"`
+}
+
+type RevisionArtifactFile struct {
+	Path       string `json:"path"`
+	SourcePath string `json:"source_path,omitempty"`
+	SHA256     string `json:"sha256,omitempty"`
+	SizeBytes  int64  `json:"size_bytes,omitempty"`
+}
+
+type RevisionEnvironment struct {
+	Key    string `json:"key"`
+	Value  string `json:"value,omitempty"`
+	Source string `json:"source,omitempty"`
+	Masked bool   `json:"masked"`
+}
+
 type RunSummary struct {
 	RunID         string     `json:"run_id"`
 	AgentName     string     `json:"agent_name"`

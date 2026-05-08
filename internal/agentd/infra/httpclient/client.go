@@ -73,6 +73,60 @@ func toAppRevisionSummary(revision agentdclient.RevisionSummary) app.RevisionSum
 	}
 }
 
+func toAppRevisionDetail(revision agentdclient.RevisionDetail) app.RevisionDetail {
+	return app.RevisionDetail{
+		RevisionSummary: toAppRevisionSummary(revision.RevisionSummary),
+		Prompt:          revision.Prompt,
+		Tools:           toAppRevisionTools(revision.Tools),
+		ArtifactFiles:   toAppRevisionArtifactFiles(revision.ArtifactFiles),
+		Environment:     toAppRevisionEnvironment(revision.Environment),
+	}
+}
+
+func toAppRevisionTools(tools []agentdclient.RevisionTool) []app.RevisionTool {
+	mapped := make([]app.RevisionTool, 0, len(tools))
+	for _, tool := range tools {
+		mapped = append(mapped, app.RevisionTool{
+			Name:             tool.Name,
+			Kind:             tool.Kind,
+			OriginalCommand:  tool.OriginalCommand,
+			RewrittenCommand: tool.RewrittenCommand,
+			HostCommand:      tool.HostCommand,
+			CopiedFiles:      append([]string(nil), tool.CopiedFiles...),
+		})
+	}
+
+	return mapped
+}
+
+func toAppRevisionArtifactFiles(files []agentdclient.RevisionArtifactFile) []app.RevisionArtifactFile {
+	mapped := make([]app.RevisionArtifactFile, 0, len(files))
+	for _, file := range files {
+		mapped = append(mapped, app.RevisionArtifactFile{
+			Path:       file.Path,
+			SourcePath: file.SourcePath,
+			SHA256:     file.SHA256,
+			SizeBytes:  file.SizeBytes,
+		})
+	}
+
+	return mapped
+}
+
+func toAppRevisionEnvironment(environment []agentdclient.RevisionEnvironment) []app.RevisionEnvironment {
+	mapped := make([]app.RevisionEnvironment, 0, len(environment))
+	for _, entry := range environment {
+		mapped = append(mapped, app.RevisionEnvironment{
+			Key:    entry.Key,
+			Value:  entry.Value,
+			Source: entry.Source,
+			Masked: entry.Masked,
+		})
+	}
+
+	return mapped
+}
+
 func toAppRunResponse(run agentdclient.RunSummary) app.RunResponse {
 	return app.RunResponse{
 		RunID:         run.RunID,

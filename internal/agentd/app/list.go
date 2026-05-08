@@ -12,6 +12,7 @@ type QueryClient interface {
 	List(context.Context) (ListResponse, error)
 	Inspect(context.Context, string) (AgentDetail, error)
 	ListRevisions(context.Context, string) (RevisionListResponse, error)
+	InspectRevision(context.Context, string, string) (RevisionInspectResponse, error)
 	ListRuns(context.Context, bool) (RunListResponse, error)
 	ResultsByAgent(context.Context, string) (AgentResultsResponse, error)
 	ResultByRunID(context.Context, string) (RunResult, error)
@@ -43,6 +44,41 @@ type RevisionSummary struct {
 
 type RevisionListResponse struct {
 	Revisions []RevisionSummary `json:"revisions"`
+}
+
+type RevisionInspectResponse struct {
+	Revision RevisionDetail `json:"revision"`
+}
+
+type RevisionDetail struct {
+	RevisionSummary
+	Prompt        string                 `json:"prompt,omitempty"`
+	Tools         []RevisionTool         `json:"tools,omitempty"`
+	ArtifactFiles []RevisionArtifactFile `json:"artifact_files,omitempty"`
+	Environment   []RevisionEnvironment  `json:"environment,omitempty"`
+}
+
+type RevisionTool struct {
+	Name             string   `json:"name"`
+	Kind             string   `json:"kind"`
+	OriginalCommand  string   `json:"original_command,omitempty"`
+	RewrittenCommand string   `json:"rewritten_command,omitempty"`
+	HostCommand      string   `json:"host_command,omitempty"`
+	CopiedFiles      []string `json:"copied_files,omitempty"`
+}
+
+type RevisionArtifactFile struct {
+	Path       string `json:"path"`
+	SourcePath string `json:"source_path,omitempty"`
+	SHA256     string `json:"sha256,omitempty"`
+	SizeBytes  int64  `json:"size_bytes,omitempty"`
+}
+
+type RevisionEnvironment struct {
+	Key    string `json:"key"`
+	Value  string `json:"value,omitempty"`
+	Source string `json:"source,omitempty"`
+	Masked bool   `json:"masked"`
 }
 
 type RunSummary struct {

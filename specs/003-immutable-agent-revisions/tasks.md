@@ -96,7 +96,7 @@ handling, and logs.
 - [x] T065 [US5] Add revision list and inspect HTTP routes in internal/agentdserver/infra/http/server.go
 - [x] T066 [US5] Add revision list and inspect HTTP handlers in internal/agentdserver/infra/http/inspect_handler.go
 - [x] T067 [US5] Add CLI revision list output in internal/agentd/app/list.go
-- [ ] T068 [US5] Add CLI revision inspect output in internal/agentd/app/inspect.go
+- [x] T068 [US5] Add CLI revision inspect output in internal/agentd/app/inspect.go
 
 ## Phase 8: Recovery, Docs, and Verification
 

@@ -43,3 +43,17 @@ func (c *Client) ListRevisions(ctx context.Context, agentName string) ([]Revisio
 
 	return response.Revisions, nil
 }
+
+func (c *Client) InspectRevision(ctx context.Context, agentName string, revisionID string) (RevisionDetail, error) {
+	var response RevisionInspectResponse
+	path := fmt.Sprintf(
+		"/v1/agents/%s/revisions/%s",
+		url.PathEscape(agentName),
+		url.PathEscape(revisionID),
+	)
+	if err := c.doJSON(ctx, http.MethodGet, path, nil, &response); err != nil {
+		return RevisionDetail{}, err
+	}
+
+	return response.Revision, nil
+}
