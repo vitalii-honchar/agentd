@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	appruntime "agentd/internal/agentdserver/app/runtime"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/db/repository"
-	runlogs "agentd/internal/agentdserver/infra/logs"
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db/repository"
+	runlogs "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/logs"
 )
 
 func BenchmarkFiveConcurrentAgentRunsSeparateRuntimeDBs(b *testing.B) {

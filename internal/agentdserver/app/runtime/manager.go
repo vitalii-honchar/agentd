@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 type Manager interface {

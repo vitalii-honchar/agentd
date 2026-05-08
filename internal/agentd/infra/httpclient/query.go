@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"agentd/internal/agentd/app"
+	"github.com/vitalii-honchar/agentd/internal/agentd/app"
 )
 
 func (c *Client) List(ctx context.Context) (app.ListResponse, error) {

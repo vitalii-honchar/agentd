@@ -10,17 +10,17 @@ import (
 	"testing"
 	"time"
 
-	appagent "agentd/internal/agentdserver/app/agent"
-	applogs "agentd/internal/agentdserver/app/logs"
-	appruntime "agentd/internal/agentdserver/app/runtime"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/db"
-	"agentd/internal/agentdserver/infra/db/repository"
-	"agentd/internal/agentdserver/infra/definition"
-	daemonhttp "agentd/internal/agentdserver/infra/http"
-	"agentd/internal/agentdserver/infra/http/model"
-	runlogs "agentd/internal/agentdserver/infra/logs"
-	infraruntime "agentd/internal/agentdserver/infra/runtime"
+	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
+	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db/repository"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/definition"
+	daemonhttp "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
+	runlogs "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/logs"
+	infraruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/runtime"
 )
 
 func TestRuntimeConcurrencyStopAndRecovery(t *testing.T) {

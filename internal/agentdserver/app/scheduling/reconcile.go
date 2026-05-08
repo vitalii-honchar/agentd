@@ -3,7 +3,7 @@ package scheduling
 import (
 	"context"
 
-	"agentd/internal/agentdserver/app"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
 )
 
 type ReconcileUseCase struct {

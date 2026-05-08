@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agentd/internal/agentdserver/infra/db"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db"
 )
 
 type settingsRepositoryFixture struct {

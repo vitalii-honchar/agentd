@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/internal/agentd/config"
 )
 
 func TestApplyCommandReadsFileAndCallsClient(t *testing.T) {

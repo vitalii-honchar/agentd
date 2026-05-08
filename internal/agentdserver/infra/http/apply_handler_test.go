@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	appagent "agentd/internal/agentdserver/app/agent"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/http/model"
+	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
 )
 
 func TestApplyHandlerCreated(t *testing.T) {

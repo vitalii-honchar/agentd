@@ -3,7 +3,7 @@ package runtime
 import (
 	"context"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 type StopUseCase struct {

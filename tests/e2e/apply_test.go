@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	appagent "agentd/internal/agentdserver/app/agent"
-	"agentd/internal/agentdserver/infra/db"
-	"agentd/internal/agentdserver/infra/db/repository"
-	"agentd/internal/agentdserver/infra/definition"
-	daemonhttp "agentd/internal/agentdserver/infra/http"
-	"agentd/internal/agentdserver/infra/http/model"
+	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db/repository"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/definition"
+	daemonhttp "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
 )
 
 func TestApplySmokeCreatedThenUnchanged(t *testing.T) {

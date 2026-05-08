@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 func TestAgentRepositorySaveFindAndList(t *testing.T) {

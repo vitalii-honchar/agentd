@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 type IsolationBuilder struct {

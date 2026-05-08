@@ -3,8 +3,8 @@ package http
 import (
 	stdhttp "net/http"
 
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/http/model"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
 )
 
 func (s *Server) handleList(w stdhttp.ResponseWriter, r *stdhttp.Request) {

@@ -8,9 +8,9 @@ import (
 	stdhttp "net/http"
 	"time"
 
-	appagent "agentd/internal/agentdserver/app/agent"
-	applogs "agentd/internal/agentdserver/app/logs"
-	"agentd/internal/agentdserver/domain"
+	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
+	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 type Config struct {

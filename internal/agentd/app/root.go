@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/internal/agentd/config"
 
 	"github.com/spf13/cobra"
 )

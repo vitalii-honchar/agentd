@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 func TestExecuteUseCaseStartsManualRun(t *testing.T) {

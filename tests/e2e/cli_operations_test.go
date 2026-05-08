@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	cliapp "agentd/internal/agentd/app"
-	cliconfig "agentd/internal/agentd/config"
-	"agentd/internal/agentd/infra/httpclient"
-	"agentd/internal/agentdserver/domain"
+	cliapp "github.com/vitalii-honchar/agentd/internal/agentd/app"
+	cliconfig "github.com/vitalii-honchar/agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/internal/agentd/infra/httpclient"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 func TestCLIOperationsAgainstDaemonAPI(t *testing.T) {

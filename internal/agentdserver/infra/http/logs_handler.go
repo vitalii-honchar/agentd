@@ -4,9 +4,9 @@ import (
 	stdhttp "net/http"
 	"strconv"
 
-	"agentd/internal/agentdserver/app"
-	applogs "agentd/internal/agentdserver/app/logs"
-	"agentd/internal/agentdserver/infra/http/model"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
 )
 
 func (s *Server) handleLogs(w stdhttp.ResponseWriter, r *stdhttp.Request) {

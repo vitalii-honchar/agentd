@@ -5,7 +5,7 @@ import (
 	"fmt"
 	stdhttp "net/http"
 
-	"agentd/internal/agentd/app"
+	"github.com/vitalii-honchar/agentd/internal/agentd/app"
 )
 
 func (c *Client) Execute(ctx context.Context, agentName string) (app.RunResponse, error) {

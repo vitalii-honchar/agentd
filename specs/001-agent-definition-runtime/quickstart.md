@@ -160,7 +160,7 @@ Expected:
 ## 10. Product research example
 
 `examples/ai-product-research.md` models the Python Agent from
-`/Users/vitaliihonchar/workspace/ai-product-research`.
+`/path/to/ai-product-research`.
 
 The example declares:
 
@@ -176,7 +176,7 @@ Before applying it, review the filesystem paths and install the Python project
 dependencies in the source project:
 
 ```bash
-cd /Users/vitaliihonchar/workspace/ai-product-research
+cd /path/to/ai-product-research
 uv sync
 uv run python -m playwright install chromium
 ```

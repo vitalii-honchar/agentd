@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"agentd/internal/agentdserver/config"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/config"
 )
 
 func TestNewWithConfigStartStop(t *testing.T) {

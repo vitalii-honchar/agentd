@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"agentd/internal/agentdserver/app"
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 type InspectUseCase struct {

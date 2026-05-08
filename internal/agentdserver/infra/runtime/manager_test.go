@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"agentd/internal/agentdserver/app"
-	appruntime "agentd/internal/agentdserver/app/runtime"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/db/repository"
-	runlogs "agentd/internal/agentdserver/infra/logs"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db/repository"
+	runlogs "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/logs"
 )
 
 func TestManagerRunsDifferentAgentsConcurrentlyAndIsolatesLogs(t *testing.T) {

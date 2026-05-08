@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"agentd/internal/agentdserver/app"
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 type RunLogReader struct {

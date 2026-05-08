@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	appruntime "agentd/internal/agentdserver/app/runtime"
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
 
 	openaisdk "github.com/openai/openai-go/v3"
 )

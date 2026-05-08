@@ -4,7 +4,7 @@ import (
 	"context"
 	stdhttp "net/http"
 
-	"agentd/internal/agentd/app"
+	"github.com/vitalii-honchar/agentd/internal/agentd/app"
 )
 
 func (c *Client) Apply(ctx context.Context, request app.ApplyRequest) (app.ApplyResponse, error) {

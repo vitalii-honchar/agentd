@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	appscheduling "agentd/internal/agentdserver/app/scheduling"
-	"agentd/internal/agentdserver/domain"
+	appscheduling "github.com/vitalii-honchar/agentd/internal/agentdserver/app/scheduling"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 
 	"github.com/robfig/cron/v3"
 )

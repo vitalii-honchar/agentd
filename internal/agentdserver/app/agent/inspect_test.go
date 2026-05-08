@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 func TestInspectUseCaseFindsAgentByName(t *testing.T) {

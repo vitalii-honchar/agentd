@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	cliapp "agentd/internal/agentd/app"
-	"agentd/internal/agentd/config"
-	"agentd/internal/agentd/infra/httpclient"
+	cliapp "github.com/vitalii-honchar/agentd/internal/agentd/app"
+	"github.com/vitalii-honchar/agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/internal/agentd/infra/httpclient"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 
 	"github.com/robfig/cron/v3"
 )

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"agentd/internal/agentdserver/app"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/db"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db"
 )
 
 var errRuntimeDBDirRequired = errors.New("runtime db directory is required")

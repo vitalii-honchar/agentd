@@ -18,9 +18,9 @@ tools:
       - TELEGRAM_CHANNEL_ID
       - DEBUG
     read_paths:
-      - /Users/vitaliihonchar/workspace/ai-product-research
+      - /path/to/ai-product-research
     write_paths:
-      - /Users/vitaliihonchar/workspace/ai-product-research/.agentd
+      - /path/to/ai-product-research/.agentd
     network_allow:
       - api.openai.com
       - api.producthunt.com
@@ -32,18 +32,18 @@ tools:
     args: ["run", "python", "-m", "playwright", "install", "chromium"]
     env: []
     read_paths:
-      - /Users/vitaliihonchar/workspace/ai-product-research
+      - /path/to/ai-product-research
     write_paths:
-      - /Users/vitaliihonchar/workspace/ai-product-research/.agentd
+      - /path/to/ai-product-research/.agentd
     network_allow:
       - playwright.azureedge.net
 mcp_servers: []
 access:
   filesystem:
     read:
-      - /Users/vitaliihonchar/workspace/ai-product-research
+      - /path/to/ai-product-research
     write:
-      - /Users/vitaliihonchar/workspace/ai-product-research/.agentd
+      - /path/to/ai-product-research/.agentd
   network:
     allow:
       - api.openai.com

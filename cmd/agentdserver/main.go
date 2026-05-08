@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	agentdserver "agentd/internal/agentdserver"
+	agentdserver "github.com/vitalii-honchar/agentd/internal/agentdserver"
 )
 
 func main() {

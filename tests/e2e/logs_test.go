@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	appruntime "agentd/internal/agentdserver/app/runtime"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/http/model"
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
 )
 
 func TestLogsAreIsolatedAcrossConcurrentAgents(t *testing.T) {

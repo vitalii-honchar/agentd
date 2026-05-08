@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/internal/agentd/config"
 )
 
 type Client struct {

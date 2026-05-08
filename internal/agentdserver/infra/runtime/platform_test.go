@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	appruntime "agentd/internal/agentdserver/app/runtime"
-	"agentd/internal/agentdserver/domain"
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 func TestIsolationBuilderUsesPortableNestedPath(t *testing.T) {

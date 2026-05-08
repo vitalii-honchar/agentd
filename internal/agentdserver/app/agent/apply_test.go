@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"agentd/internal/agentdserver/app"
-	"agentd/internal/agentdserver/domain"
-	"agentd/internal/agentdserver/infra/definition"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/definition"
 )
 
 func TestApplyUseCaseCreatedUpdatedUnchanged(t *testing.T) {
