@@ -97,6 +97,7 @@ func postApply(
 		t.Fatalf("marshal request: %v", err)
 	}
 	request := httptest.NewRequest(stdhttp.MethodPost, "/v1/agents/apply", bytes.NewReader(payload))
+	request.RemoteAddr = "127.0.0.1:12345"
 	response := httptest.NewRecorder()
 
 	server.Handler().ServeHTTP(response, request)

@@ -59,6 +59,7 @@ func getLogs(t *testing.T, server interface{ Handler() http.Handler }, agentName
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodGet, "/v1/agents/"+agentName+"/logs", nil)
+	request.RemoteAddr = "127.0.0.1:12345"
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusOK {

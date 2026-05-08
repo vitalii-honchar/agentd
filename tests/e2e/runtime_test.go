@@ -189,6 +189,7 @@ func postRun(t *testing.T, server *daemonhttp.Server, agentName string) model.Ru
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodPost, "/v1/agents/"+agentName+"/runs", nil)
+	request.RemoteAddr = "127.0.0.1:12345"
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusAccepted {
@@ -216,6 +217,7 @@ func postStop(
 		"/v1/agents/"+agentName+"/runs/"+runID+"/stop",
 		nil,
 	)
+	request.RemoteAddr = "127.0.0.1:12345"
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusAccepted {

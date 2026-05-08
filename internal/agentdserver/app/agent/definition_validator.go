@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
@@ -27,6 +28,12 @@ func NormalizeDefinition(definition domain.AgentDefinition) (NormalizedDefinitio
 		return NormalizedDefinition{}, err
 	}
 	if err := validatePermissionNames(definition.MCPServers, "mcp_servers"); err != nil {
+		return NormalizedDefinition{}, err
+	}
+	if err := validateInputNames(definition.Inputs); err != nil {
+		return NormalizedDefinition{}, err
+	}
+	if err := validateExampleLocalTools(definition); err != nil {
 		return NormalizedDefinition{}, err
 	}
 
@@ -60,6 +67,49 @@ func validatePermissionNames(permissions []domain.ToolPermission, field string) 
 			return fmt.Errorf("%w: %s.name %q is duplicated", domain.ErrInvalidDefinition, field, name)
 		}
 		seen[name] = struct{}{}
+	}
+
+	return nil
+}
+
+func validateInputNames(inputs []domain.InputDefinition) error {
+	seen := make(map[string]struct{}, len(inputs))
+	for _, input := range inputs {
+		name := strings.TrimSpace(input.Name)
+		if name == "" {
+			return fmt.Errorf("%w: inputs.name is required", domain.ErrInvalidDefinition)
+		}
+		if _, ok := seen[name]; ok {
+			return fmt.Errorf("%w: inputs.name %q is duplicated", domain.ErrInvalidDefinition, name)
+		}
+		seen[name] = struct{}{}
+	}
+
+	return nil
+}
+
+func validateExampleLocalTools(definition domain.AgentDefinition) error {
+	sourcePath := filepath.ToSlash(strings.TrimSpace(definition.SourcePath))
+	if !strings.HasPrefix(sourcePath, "examples/") {
+		return nil
+	}
+	for _, tool := range definition.Tools {
+		if tool.Kind != domain.ToolKindLocalTool {
+			continue
+		}
+		command := filepath.ToSlash(strings.TrimSpace(tool.Command))
+		if command == "" {
+			return fmt.Errorf("%w: tools.command is required", domain.ErrInvalidDefinition)
+		}
+		if filepath.IsAbs(command) || strings.HasPrefix(command, "../") || strings.Contains(command, "/../") {
+			return fmt.Errorf("%w: tools.command must stay inside the example folder", domain.ErrInvalidDefinition)
+		}
+		if !strings.HasPrefix(command, "tools/") {
+			return fmt.Errorf("%w: tools.command must reference tools/", domain.ErrInvalidDefinition)
+		}
+		if len(tool.Env) > 0 {
+			return fmt.Errorf("%w: example tools must not require environment secrets", domain.ErrInvalidDefinition)
+		}
 	}
 
 	return nil
