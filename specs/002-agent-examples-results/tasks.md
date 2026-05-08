@@ -190,7 +190,7 @@ contracts, and example smoke verification.
 
 ### Implementation for User Story 5
 
-- [ ] T083 [US5] Add ToolExecutor port to internal/agentdserver/app/runtime/provider.go
+- [x] T083 [US5] Add ToolExecutor port to internal/agentdserver/app/runtime/provider.go
 - [ ] T084 [US5] Implement command-line process tool adapter in internal/agentdserver/infra/runtime/tool_process.go
 - [ ] T085 [US5] Persist tool execution records in internal/agentdserver/infra/db/repository/run_repository.go
 - [ ] T086 [US5] Wire ToolExecutor into service construction in internal/agentdserver/service.go
