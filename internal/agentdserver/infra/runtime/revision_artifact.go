@@ -119,6 +119,11 @@ func (s *RevisionArtifactService) Create(
 			return RevisionArtifactResult{}, err
 		}
 	}
+	for _, envFile := range request.Definition.Environment.Files {
+		if _, err := copier.copyDeclaredPath(envFile); err != nil {
+			return RevisionArtifactResult{}, err
+		}
+	}
 
 	artifactFiles := copier.artifactFiles(request.Definition.Name, request.RevisionID)
 	copiedFiles := artifactRelativePaths(artifactFiles)

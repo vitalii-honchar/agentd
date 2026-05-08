@@ -113,6 +113,13 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 
 		return nil, fmt.Errorf("new isolation builder: %w", err)
 	}
+	revisionArtifacts, err := infraruntime.NewRevisionArtifactService(filepath.Join(cfg.Storage.DataDir, "work"))
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new revision artifact service: %w", err)
+	}
 	runtimeManager, err := infraruntime.NewManager(runtimeDBs, logFactory, isolation, providers)
 	if err != nil {
 		_ = settings.Stop(context.Background())
@@ -146,6 +153,7 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 		appagent.ParserFunc(definition.ParseMarkdown),
 		agentRepo,
 		runtimeDBs,
+		appagent.WithRevisionArtifactCreator(revisionArtifactCreator{service: revisionArtifacts}),
 	)
 	if err != nil {
 		_ = settings.Stop(context.Background())
@@ -319,6 +327,26 @@ type revisionArtifactRepository interface {
 	List(ctx context.Context) ([]domain.Agent, error)
 	ListRevisions(ctx context.Context, agentName string) ([]domain.AgentRevision, error)
 	MarkRevisionCorrupt(ctx context.Context, agentName, revisionID, errorMessage string) error
+}
+
+type revisionArtifactCreator struct {
+	service *infraruntime.RevisionArtifactService
+}
+
+func (c revisionArtifactCreator) CreateRevisionArtifact(
+	ctx context.Context,
+	request appagent.RevisionArtifactRequest,
+) (appagent.RevisionArtifactResult, error) {
+	result, err := c.service.Create(ctx, infraruntime.RevisionArtifactRequest{
+		Definition: request.Definition,
+		RevisionID: request.RevisionID,
+		CreatedAt:  request.CreatedAt,
+	})
+	if err != nil {
+		return appagent.RevisionArtifactResult{}, err
+	}
+
+	return appagent.RevisionArtifactResult{Revision: result.Revision}, nil
 }
 
 func revisionArtifactCorruption(revision domain.AgentRevision, workRoot string) string {

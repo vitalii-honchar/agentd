@@ -38,15 +38,37 @@ func (f ParserFunc) ParseMarkdown(sourcePath string, markdown string) (domain.Ag
 }
 
 type ApplyUseCase struct {
-	parser     DefinitionParser
-	agents     app.AgentRepository
-	revisions  app.AgentRevisionRepository
-	runtimeDBs app.RuntimeDBManager
-	logger     *slog.Logger
-	now        func() time.Time
+	parser          DefinitionParser
+	agents          app.AgentRepository
+	revisions       app.AgentRevisionRepository
+	runtimeDBs      app.RuntimeDBManager
+	artifactCreator RevisionArtifactCreator
+	logger          *slog.Logger
+	now             func() time.Time
 }
 
 type ApplyOption func(*ApplyUseCase)
+
+type RevisionArtifactCreator interface {
+	CreateRevisionArtifact(context.Context, RevisionArtifactRequest) (RevisionArtifactResult, error)
+}
+
+type RevisionArtifactRequest struct {
+	Definition    domain.AgentDefinition
+	RevisionID    string
+	ContentDigest string
+	CreatedAt     time.Time
+}
+
+type RevisionArtifactResult struct {
+	Revision domain.AgentRevision
+}
+
+func WithRevisionArtifactCreator(creator RevisionArtifactCreator) ApplyOption {
+	return func(u *ApplyUseCase) {
+		u.artifactCreator = creator
+	}
+}
 
 func WithLogger(logger *slog.Logger) ApplyOption {
 	return func(u *ApplyUseCase) {
@@ -167,7 +189,13 @@ func (u *ApplyUseCase) Apply(
 
 			return ApplyResult{}, err
 		}
-		revision, err = revisionFromDefinition(normalized.Definition, uuid.NewString(), normalized.Revision, u.now())
+		revision, err = u.createRevisionArtifact(
+			ctx,
+			normalized.Definition,
+			uuid.NewString(),
+			normalized.Revision,
+			u.now(),
+		)
 		if err != nil {
 			u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
 
@@ -189,6 +217,38 @@ func (u *ApplyUseCase) Apply(
 	u.logApplyResult(ctx, outcome, agent)
 
 	return applyResult(outcome, agent, revision, reusedRevision), nil
+}
+
+func (u *ApplyUseCase) createRevisionArtifact(
+	ctx context.Context,
+	definition domain.AgentDefinition,
+	revisionID string,
+	contentDigest string,
+	createdAt time.Time,
+) (domain.AgentRevision, error) {
+	if u.artifactCreator == nil {
+		return revisionFromDefinition(definition, revisionID, contentDigest, createdAt)
+	}
+	environment, envArtifactFiles, err := captureDefinitionEnvironment(definition, revisionID, createdAt)
+	if err != nil {
+		return domain.AgentRevision{}, err
+	}
+	result, err := u.artifactCreator.CreateRevisionArtifact(ctx, RevisionArtifactRequest{
+		Definition:    definition,
+		RevisionID:    revisionID,
+		ContentDigest: contentDigest,
+		CreatedAt:     createdAt,
+	})
+	if err != nil {
+		return domain.AgentRevision{}, err
+	}
+	revision := result.Revision
+	revision.ContentDigest = contentDigest
+	revision.EnvironmentJSON = "[]"
+	revision.Environment = environment
+	revision.ArtifactFiles = mergeArtifactFiles(revision.ArtifactFiles, envArtifactFiles)
+
+	return revision, nil
 }
 
 func applyResult(
@@ -428,6 +488,32 @@ func captureDefinitionEnvironment(
 	})
 
 	return environment, artifactFiles, nil
+}
+
+func mergeArtifactFiles(
+	artifactFiles []domain.RevisionArtifactFile,
+	additionalFiles []domain.RevisionArtifactFile,
+) []domain.RevisionArtifactFile {
+	byPath := make(map[string]domain.RevisionArtifactFile, len(artifactFiles)+len(additionalFiles))
+	for _, file := range artifactFiles {
+		byPath[file.ArtifactRelativePath] = file
+	}
+	for _, file := range additionalFiles {
+		if _, exists := byPath[file.ArtifactRelativePath]; !exists {
+			byPath[file.ArtifactRelativePath] = file
+		}
+	}
+	merged := make([]domain.RevisionArtifactFile, 0, len(byPath))
+	keys := make([]string, 0, len(byPath))
+	for path := range byPath {
+		keys = append(keys, path)
+	}
+	sort.Strings(keys)
+	for _, path := range keys {
+		merged = append(merged, byPath[path])
+	}
+
+	return merged
 }
 
 type simpleEnvEntry struct {

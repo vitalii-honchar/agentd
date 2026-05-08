@@ -120,6 +120,10 @@ func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) run
 	if err != nil {
 		t.Fatalf("NewIsolationBuilder: %v", err)
 	}
+	revisionArtifacts, err := infraruntime.NewRevisionArtifactService(filepath.Join(dir, "work"))
+	if err != nil {
+		t.Fatalf("NewRevisionArtifactService: %v", err)
+	}
 	manager, err := infraruntime.NewManager(
 		runtimeDBs,
 		logFactory,
@@ -133,6 +137,7 @@ func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) run
 		appagent.ParserFunc(definition.ParseMarkdown),
 		agentRepo,
 		runtimeDBs,
+		appagent.WithRevisionArtifactCreator(e2eRevisionArtifactCreator{service: revisionArtifacts}),
 	)
 	if err != nil {
 		t.Fatalf("NewApplyUseCase: %v", err)
@@ -146,6 +151,10 @@ func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) run
 	inspectUC, err := appagent.NewInspectUseCase(agentRepo)
 	if err != nil {
 		t.Fatalf("NewInspectUseCase: %v", err)
+	}
+	revisionUC, err := appagent.NewRevisionUseCase(agentRepo)
+	if err != nil {
+		t.Fatalf("NewRevisionUseCase: %v", err)
 	}
 	logsUC, err := applogs.NewUseCase(agentRepo, runtimeDBs, logReader)
 	if err != nil {
@@ -167,6 +176,7 @@ func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) run
 		daemonhttp.WithResultUseCase(resultUC),
 		daemonhttp.WithListUseCase(listUC),
 		daemonhttp.WithInspectUseCase(inspectUC),
+		daemonhttp.WithRevisionUseCase(revisionUC),
 		daemonhttp.WithLogsUseCase(logsUC),
 	)
 
@@ -176,6 +186,26 @@ func newRuntimeStackWithProvider(t *testing.T, provider appruntime.Provider) run
 		runtimeDBs: runtimeDBs,
 		agentRepo:  agentRepo,
 	}
+}
+
+type e2eRevisionArtifactCreator struct {
+	service *infraruntime.RevisionArtifactService
+}
+
+func (c e2eRevisionArtifactCreator) CreateRevisionArtifact(
+	ctx context.Context,
+	request appagent.RevisionArtifactRequest,
+) (appagent.RevisionArtifactResult, error) {
+	result, err := c.service.Create(ctx, infraruntime.RevisionArtifactRequest{
+		Definition: request.Definition,
+		RevisionID: request.RevisionID,
+		CreatedAt:  request.CreatedAt,
+	})
+	if err != nil {
+		return appagent.RevisionArtifactResult{}, err
+	}
+
+	return appagent.RevisionArtifactResult{Revision: result.Revision}, nil
 }
 
 type blockingE2EProvider struct{}
