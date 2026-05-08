@@ -27,6 +27,9 @@ func TestApplyHandlerCreated(t *testing.T) {
 				Vendor:   domain.Vendor{Name: "openai", Model: "gpt-5"},
 				Schedule: domain.Schedule{Type: domain.ScheduleTypeManual},
 			},
+			RevisionID:     "11111111-1111-4111-8111-111111111111",
+			ArtifactPath:   "data/work/release-notes-helper/11111111-1111-4111-8111-111111111111",
+			RevisionStatus: domain.AgentRevisionStatusFinalized,
 		},
 	}
 	server := NewServer(Config{}, WithApplyUseCase(useCase))
@@ -50,8 +53,60 @@ func TestApplyHandlerCreated(t *testing.T) {
 	if body.Agent.Name != "release-notes-helper" {
 		t.Fatalf("agent name: got %q", body.Agent.Name)
 	}
+	if body.RevisionID != "11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("revision id: got %q", body.RevisionID)
+	}
+	if body.ArtifactPath != "data/work/release-notes-helper/11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("artifact path: got %q", body.ArtifactPath)
+	}
+	if body.RevisionStatus != string(domain.AgentRevisionStatusFinalized) {
+		t.Fatalf("revision status: got %q", body.RevisionStatus)
+	}
+	if body.RevisionReused {
+		t.Fatal("revision reused: got true want false")
+	}
 	if useCase.request.SourcePath != "agent.md" {
 		t.Fatalf("source path: got %q", useCase.request.SourcePath)
+	}
+}
+
+func TestApplyHandlerUnchangedIncludesReusedRevision(t *testing.T) {
+	t.Parallel()
+
+	useCase := &fakeApplyUseCase{
+		result: appagent.ApplyResult{
+			Outcome: appagent.ApplyOutcomeUnchanged,
+			Agent: domain.Agent{
+				Name:     "release-notes-helper",
+				Revision: "11111111-1111-4111-8111-111111111111",
+				Enabled:  true,
+				Status:   domain.AgentStatusActive,
+				Vendor:   domain.Vendor{Name: "openai", Model: "gpt-5"},
+				Schedule: domain.Schedule{Type: domain.ScheduleTypeManual},
+			},
+			RevisionID:     "11111111-1111-4111-8111-111111111111",
+			ArtifactPath:   "data/work/release-notes-helper/11111111-1111-4111-8111-111111111111",
+			RevisionStatus: domain.AgentRevisionStatusFinalized,
+			RevisionReused: true,
+		},
+	}
+	server := NewServer(Config{}, WithApplyUseCase(useCase))
+
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, jsonRequest(t, map[string]string{
+		"source_path": "agent.md",
+		"markdown":    "---\nname: release-notes-helper\n---\nprompt",
+	}))
+
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusOK, response.Body.String())
+	}
+	var body model.ApplyResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Outcome != string(appagent.ApplyOutcomeUnchanged) || !body.RevisionReused {
+		t.Fatalf("unchanged response: %#v", body)
 	}
 }
 
