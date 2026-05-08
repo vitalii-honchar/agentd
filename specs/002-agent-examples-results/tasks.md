@@ -64,7 +64,7 @@ contracts, and example smoke verification.
 ### Tests for User Story 1
 
 - [x] T023 [P] [US1] Add example catalog validation test in internal/agentdserver/infra/definition/example_catalog_test.go
-- [ ] T024 [P] [US1] Add example README checklist test in internal/agentdserver/infra/definition/example_readme_test.go
+- [x] T024 [P] [US1] Add example README checklist test in internal/agentdserver/infra/definition/example_readme_test.go
 - [ ] T025 [P] [US1] Add definition parser fixture tests for local tools, inputs, and network access in internal/agentdserver/infra/definition/parser_test.go
 - [ ] T026 [P] [US1] Add example smoke test harness in tests/e2e/examples_smoke_test.go
 
