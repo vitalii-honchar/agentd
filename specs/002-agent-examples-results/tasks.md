@@ -139,7 +139,7 @@ contracts, and example smoke verification.
 - [x] T061 [US3] Implement ResultsByAgent and ResultByRunID use cases in internal/agentdserver/app/result/result.go
 - [x] T062 [US3] Add result HTTP handlers in internal/agentdserver/infra/http/result_handler.go
 - [x] T063 [US3] Register result routes in internal/agentdserver/infra/http/server.go
-- [ ] T064 [US3] Implement ResultsByAgent and ResultByRunID in pkg/agentdclient/runs.go
+- [x] T064 [US3] Implement ResultsByAgent and ResultByRunID in pkg/agentdclient/runs.go
 - [ ] T065 [US3] Implement agentd result command dispatch for agent name vs UUID in internal/agentd/app/result.go
 - [ ] T066 [US3] Add CLI exit-code mapping for missing agent, missing run, active run, failed run, and daemon unavailable in internal/agentd/app/result.go
 - [ ] T067 [US3] Update OpenAPI results contract in specs/002-agent-examples-results/contracts/openapi.yaml
