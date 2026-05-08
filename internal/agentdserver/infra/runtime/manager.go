@@ -388,7 +388,7 @@ func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, 
 	}
 	var outputs []string
 	for _, tool := range agent.Tools {
-		if tool.Kind != domain.ToolKindLocalTool {
+		if tool.Kind != domain.ToolKindLocalTool && tool.Kind != domain.ToolKindCustomTool {
 			continue
 		}
 		startedAt := m.now()

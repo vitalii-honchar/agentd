@@ -1,3 +1,41 @@
+CREATE TABLE IF NOT EXISTS agent_tools_v003 (
+    agent_name TEXT NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('local_tool', 'custom_tool', 'host_tool', 'mcp_server')),
+    command TEXT,
+    args_json TEXT NOT NULL DEFAULT '[]',
+    env_json TEXT NOT NULL DEFAULT '[]',
+    read_paths_json TEXT NOT NULL DEFAULT '[]',
+    write_paths_json TEXT NOT NULL DEFAULT '[]',
+    network_allow_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (agent_name, name),
+    FOREIGN KEY (agent_name) REFERENCES agents(name) ON DELETE CASCADE
+);
+
+INSERT INTO agent_tools_v003 (
+    agent_name, name, kind, command, args_json, env_json,
+    read_paths_json, write_paths_json, network_allow_json, created_at
+)
+SELECT
+    agent_name, name, kind, command, args_json, env_json,
+    read_paths_json, write_paths_json, network_allow_json, created_at
+FROM agent_tools;
+
+DROP TABLE agent_tools;
+
+ALTER TABLE agent_tools_v003 RENAME TO agent_tools;
+
+CREATE INDEX IF NOT EXISTS idx_agent_tools_agent_name
+ON agent_tools(agent_name);
+
+CREATE INDEX IF NOT EXISTS idx_agent_tools_kind
+ON agent_tools(kind);
+
+CREATE INDEX IF NOT EXISTS idx_agent_tools_command
+ON agent_tools(command)
+WHERE command IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS agent_revisions (
     agent_name TEXT NOT NULL,
     revision_id TEXT NOT NULL,
