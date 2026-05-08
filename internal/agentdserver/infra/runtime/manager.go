@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -144,7 +145,7 @@ func (m *Manager) Execute(
 	m.active[run.ID] = active
 	m.mu.Unlock()
 
-	go m.runProvider(runCtx, provider, request.Agent, run, logWriter, active)
+	go m.runProvider(runCtx, provider, request.Agent, run, request.Inputs, logWriter, active)
 
 	return run, nil
 }
@@ -208,6 +209,7 @@ func (m *Manager) runProvider(
 	provider appruntime.Provider,
 	agent domain.Agent,
 	run domain.AgentRun,
+	inputs map[string]string,
 	logWriter app.RunLogWriter,
 	active *activeRun,
 ) {
@@ -215,8 +217,26 @@ func (m *Manager) runProvider(
 	defer logWriter.Close()
 	defer m.removeActive(run.ID)
 
-	prompt := agent.Prompt
-	toolOutput, toolErr := m.executeDeclaredTools(ctx, agent, run)
+	preparedAgent, inputErr := applyRunInputs(agent, inputs)
+	if inputErr != nil {
+		completedAt := m.now()
+		run.CompletedAt = &completedAt
+		run.Status = domain.AgentRunStatusFailed
+		run.ErrorCode = "missing_input"
+		run.ErrorMessage = inputErr.Error()
+		run.Result = fmt.Sprintf("run failed: %s", inputErr.Error())
+		run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+		if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
+			_ = repo.Update(context.Background(), run)
+		}
+		m.appendRunEvent(run, domain.RunActionResultPersisted, domain.EventLevelInfo, "persisted run result")
+		m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed")
+
+		return
+	}
+
+	prompt := preparedAgent.Prompt
+	toolOutput, toolErr := m.executeDeclaredTools(ctx, preparedAgent, run)
 	if toolErr != nil {
 		completedAt := m.now()
 		run.CompletedAt = &completedAt
@@ -279,6 +299,61 @@ func (m *Manager) runProvider(
 	} else {
 		m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed or stopped")
 	}
+}
+
+var inputPlaceholderPattern = regexp.MustCompile(`\{\{inputs\.([A-Za-z0-9_-]+)\}\}`)
+
+func applyRunInputs(agent domain.Agent, inputs map[string]string) (domain.Agent, error) {
+	var err error
+	if agent.Prompt, err = expandRunInputs(agent.Prompt, inputs); err != nil {
+		return domain.Agent{}, err
+	}
+	for i := range agent.Tools {
+		if agent.Tools[i].Command, err = expandRunInputs(agent.Tools[i].Command, inputs); err != nil {
+			return domain.Agent{}, err
+		}
+		if agent.Tools[i].Args, err = expandRunInputList(agent.Tools[i].Args, inputs); err != nil {
+			return domain.Agent{}, err
+		}
+		if agent.Tools[i].Env, err = expandRunInputList(agent.Tools[i].Env, inputs); err != nil {
+			return domain.Agent{}, err
+		}
+	}
+
+	return agent, nil
+}
+
+func expandRunInputList(values []string, inputs map[string]string) ([]string, error) {
+	expanded := make([]string, 0, len(values))
+	for _, value := range values {
+		next, err := expandRunInputs(value, inputs)
+		if err != nil {
+			return nil, err
+		}
+		expanded = append(expanded, next)
+	}
+
+	return expanded, nil
+}
+
+func expandRunInputs(value string, inputs map[string]string) (string, error) {
+	var missing string
+	expanded := inputPlaceholderPattern.ReplaceAllStringFunc(value, func(match string) string {
+		key := inputPlaceholderPattern.FindStringSubmatch(match)[1]
+		replacement, ok := inputs[key]
+		if !ok {
+			missing = key
+
+			return match
+		}
+
+		return replacement
+	})
+	if missing != "" {
+		return "", fmt.Errorf("missing required input %q", missing)
+	}
+
+	return expanded, nil
 }
 
 func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, run domain.AgentRun) (string, error) {

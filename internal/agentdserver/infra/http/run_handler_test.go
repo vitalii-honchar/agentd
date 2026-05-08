@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	stdhttp "net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
@@ -37,6 +38,46 @@ func TestExecuteHandlerAccepted(t *testing.T) {
 	}
 	if execute.agentName != "release-notes-helper" {
 		t.Fatalf("agent name: got %q", execute.agentName)
+	}
+}
+
+func TestExecuteHandlerPassesInputs(t *testing.T) {
+	t.Parallel()
+
+	execute := &fakeExecuteUseCase{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: "website-snapshot-analyst",
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	server := NewServer(Config{}, WithExecuteUseCase(execute))
+	response := httptest.NewRecorder()
+	request := localRequest(
+		stdhttp.MethodPost,
+		"/v1/agents/website-snapshot-analyst/runs",
+		strings.NewReader(`{"inputs":{"url":"https://example.com"}}`),
+	)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusAccepted {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusAccepted, response.Body.String())
+	}
+	if execute.inputs["url"] != "https://example.com" {
+		t.Fatalf("inputs: %#v", execute.inputs)
+	}
+}
+
+func TestExecuteHandlerRejectsInvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	server := NewServer(Config{}, WithExecuteUseCase(&fakeExecuteUseCase{}))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodPost, "/v1/agents/website-snapshot-analyst/runs", strings.NewReader(`{`))
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", response.Code, stdhttp.StatusBadRequest)
 	}
 }
 
@@ -100,12 +141,14 @@ func TestStopHandlerNotFound(t *testing.T) {
 
 type fakeExecuteUseCase struct {
 	agentName string
+	inputs    map[string]string
 	run       domain.AgentRun
 	err       error
 }
 
-func (f *fakeExecuteUseCase) Execute(_ context.Context, agentName string) (domain.AgentRun, error) {
+func (f *fakeExecuteUseCase) Execute(_ context.Context, agentName string, inputs map[string]string) (domain.AgentRun, error) {
 	f.agentName = agentName
+	f.inputs = inputs
 	if f.err != nil {
 		return domain.AgentRun{}, f.err
 	}

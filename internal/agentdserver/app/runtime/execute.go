@@ -16,7 +16,7 @@ func NewExecuteUseCase(agents app.AgentRepository, manager Manager) *ExecuteUseC
 	return &ExecuteUseCase{agents: agents, manager: manager}
 }
 
-func (u *ExecuteUseCase) Execute(ctx context.Context, agentName string) (domain.AgentRun, error) {
+func (u *ExecuteUseCase) Execute(ctx context.Context, agentName string, inputs map[string]string) (domain.AgentRun, error) {
 	agent, err := u.agents.FindByName(ctx, agentName)
 	if err != nil {
 		return domain.AgentRun{}, err
@@ -28,5 +28,6 @@ func (u *ExecuteUseCase) Execute(ctx context.Context, agentName string) (domain.
 	return u.manager.Execute(ctx, ExecuteRequest{
 		Agent:   agent,
 		Trigger: domain.RunTriggerManual,
+		Inputs:  inputs,
 	})
 }

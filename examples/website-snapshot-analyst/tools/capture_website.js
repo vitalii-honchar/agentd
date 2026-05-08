@@ -8,9 +8,17 @@ function argValue(name, fallback) {
   return process.argv[index + 1];
 }
 
+function stdinInputs() {
+  if (process.stdin.isTTY) return {};
+  const body = fs.readFileSync(0, "utf8").trim();
+  if (!body) return {};
+  return JSON.parse(body);
+}
+
 async function main() {
-  const url = argValue("--url", "https://example.com");
-  const output = argValue("--output", ".agentd-work/screenshot.png");
+  const inputs = stdinInputs();
+  const url = argValue("--url", inputs.url || "https://example.com");
+  const output = argValue("--output", inputs.output || ".agentd-work/screenshot.png");
   const result = { url, screenshot: output, title: "", status: "fixture" };
 
   try {

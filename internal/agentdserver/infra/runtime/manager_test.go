@@ -127,19 +127,21 @@ func TestManagerExecutesDeclaredLocalToolsBeforeProvider(t *testing.T) {
 
 	provider := &capturingProvider{name: "openai", output: "analysis complete"}
 	manager, runtimeDBs := newManagerFixture(t, provider)
-	manager.SetToolExecutor(&recordingToolExecutor{
+	toolExecutor := &recordingToolExecutor{
 		result: appruntime.ToolResult{StdoutSummary: "snapshot title: Example"},
-	})
+	}
+	manager.SetToolExecutor(toolExecutor)
 	agent := testAgent("website-snapshot-analyst")
 	agent.DefinitionSource = filepath.Join(t.TempDir(), "website-snapshot-analyst.md")
 	agent.Tools = []domain.ToolPermission{{
 		Name:    "snapshot",
 		Kind:    domain.ToolKindLocalTool,
 		Command: "tools/snapshot.js",
+		Args:    []string{"--url", "{{inputs.url}}"},
 	}}
 
 	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
-		Agent: agent, Trigger: domain.RunTriggerManual,
+		Agent: agent, Trigger: domain.RunTriggerManual, Inputs: map[string]string{"url": "https://example.com"},
 	})
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -148,6 +150,9 @@ func TestManagerExecutesDeclaredLocalToolsBeforeProvider(t *testing.T) {
 	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
 	if !strings.Contains(provider.prompt(), "Tool results:\nsnapshot stdout: snapshot title: Example") {
 		t.Fatalf("provider prompt missing tool output: %q", provider.prompt())
+	}
+	if got := toolExecutor.request().Tool.Args[1]; got != "https://example.com" {
+		t.Fatalf("tool input arg: got %q", got)
 	}
 	events, err := runtimeDBs.Events(agent.Name).ListByRun(context.Background(), run.ID, 20)
 	if err != nil {
@@ -231,14 +236,27 @@ type recordingToolExecutor struct {
 	t             *testing.T
 	failOnExecute bool
 	result        appruntime.ToolResult
+
+	mu          sync.Mutex
+	lastRequest appruntime.ToolRequest
 }
 
-func (e *recordingToolExecutor) Execute(_ context.Context, _ appruntime.ToolRequest) (appruntime.ToolResult, error) {
+func (e *recordingToolExecutor) Execute(_ context.Context, request appruntime.ToolRequest) (appruntime.ToolResult, error) {
+	e.mu.Lock()
+	e.lastRequest = request
+	e.mu.Unlock()
 	if e.failOnExecute {
 		e.t.Fatal("undeclared tool was executed")
 	}
 
 	return e.result, nil
+}
+
+func (e *recordingToolExecutor) request() appruntime.ToolRequest {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	return e.lastRequest
 }
 
 func testAgent(name string) domain.Agent {

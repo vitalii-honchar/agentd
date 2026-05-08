@@ -12,6 +12,10 @@ type ApplyResponse struct {
 	Agent   AgentDetail `json:"agent"`
 }
 
+type ExecuteRequest struct {
+	Inputs map[string]string `json:"inputs,omitempty"`
+}
+
 type RunResponse struct {
 	RunID     string `json:"run_id"`
 	AgentName string `json:"agent_name"`

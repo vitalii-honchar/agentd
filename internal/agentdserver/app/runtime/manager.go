@@ -18,6 +18,7 @@ type ExecuteRequest struct {
 	Agent   domain.Agent
 	Trigger domain.RunTrigger
 	DueAt   *time.Time
+	Inputs  map[string]string
 }
 
 type StopRequest struct {

@@ -40,7 +40,7 @@ type ApplyUseCase interface {
 }
 
 type ExecuteUseCase interface {
-	Execute(context.Context, string) (domain.AgentRun, error)
+	Execute(context.Context, string, map[string]string) (domain.AgentRun, error)
 }
 
 type StopUseCase interface {

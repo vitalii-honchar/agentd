@@ -19,7 +19,7 @@ func TestExecuteUseCaseStartsManualRun(t *testing.T) {
 	}}
 	useCase := NewExecuteUseCase(repo, manager)
 
-	run, err := useCase.Execute(context.Background(), "release-notes-helper")
+	run, err := useCase.Execute(context.Background(), "release-notes-helper", nil)
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestExecuteUseCasePassesDeclaredToolsToManager(t *testing.T) {
 	}}
 	useCase := NewExecuteUseCase(repo, manager)
 
-	if _, err := useCase.Execute(context.Background(), agent.Name); err != nil {
+	if _, err := useCase.Execute(context.Background(), agent.Name, map[string]string{"url": "https://example.com"}); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
 	if len(manager.executeRequest.Agent.Tools) != 1 {
@@ -56,6 +56,9 @@ func TestExecuteUseCasePassesDeclaredToolsToManager(t *testing.T) {
 	}
 	if manager.executeRequest.Agent.Tools[0].Command != "tools/snapshot.js" {
 		t.Fatalf("tool command: got %q", manager.executeRequest.Agent.Tools[0].Command)
+	}
+	if manager.executeRequest.Inputs["url"] != "https://example.com" {
+		t.Fatalf("inputs: %#v", manager.executeRequest.Inputs)
 	}
 }
 
@@ -67,7 +70,7 @@ func TestExecuteUseCaseRejectsDisabledAgent(t *testing.T) {
 	repo := newRuntimeAgentRepo(agent)
 	useCase := NewExecuteUseCase(repo, &fakeManager{})
 
-	_, err := useCase.Execute(context.Background(), agent.Name)
+	_, err := useCase.Execute(context.Background(), agent.Name, nil)
 	if !errors.Is(err, domain.ErrAgentDisabled) {
 		t.Fatalf("Execute error: got %v want %v", err, domain.ErrAgentDisabled)
 	}
@@ -77,7 +80,7 @@ func TestExecuteUseCaseUnknownAgent(t *testing.T) {
 	t.Parallel()
 
 	useCase := NewExecuteUseCase(newRuntimeAgentRepo(), &fakeManager{})
-	_, err := useCase.Execute(context.Background(), "missing")
+	_, err := useCase.Execute(context.Background(), "missing", nil)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("Execute error: got %v want %v", err, domain.ErrNotFound)
 	}
@@ -88,7 +91,7 @@ func TestExecuteUseCasePropagatesSameAgentOverlap(t *testing.T) {
 
 	repo := newRuntimeAgentRepo(testRuntimeAgent("release-notes-helper"))
 	useCase := NewExecuteUseCase(repo, &fakeManager{err: domain.ErrRunAlreadyActive})
-	_, err := useCase.Execute(context.Background(), "release-notes-helper")
+	_, err := useCase.Execute(context.Background(), "release-notes-helper", nil)
 	if !errors.Is(err, domain.ErrRunAlreadyActive) {
 		t.Fatalf("Execute error: got %v want %v", err, domain.ErrRunAlreadyActive)
 	}

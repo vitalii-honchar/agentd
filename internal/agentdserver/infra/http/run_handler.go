@@ -1,6 +1,9 @@
 package http
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	stdhttp "net/http"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
@@ -8,7 +11,15 @@ import (
 )
 
 func (s *Server) handleExecute(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-	run, err := s.executeUseCase.Execute(r.Context(), r.PathValue("name"))
+	var request model.ExecuteRequest
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil && !errors.Is(err, io.EOF) {
+			writeError(w, stdhttp.StatusBadRequest, errorCodeInvalidJSON, "invalid execute request", nil)
+
+			return
+		}
+	}
+	run, err := s.executeUseCase.Execute(r.Context(), r.PathValue("name"), request.Inputs)
 	if err != nil {
 		writeExecuteError(w, err)
 

@@ -6,8 +6,8 @@ import (
 	"github.com/vitalii-honchar/agentd/internal/agentd/app"
 )
 
-func (c *Client) Execute(ctx context.Context, agentName string) (app.RunResponse, error) {
-	response, err := c.client.Execute(ctx, agentName, nil)
+func (c *Client) Execute(ctx context.Context, agentName string, inputs map[string]string) (app.RunResponse, error) {
+	response, err := c.client.Execute(ctx, agentName, inputs)
 	if err != nil {
 		return app.RunResponse{}, err
 	}
