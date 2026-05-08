@@ -100,6 +100,60 @@ func TestRevisionUseCaseListsRevisionsWithLatestMarker(t *testing.T) {
 	}
 }
 
+func TestRevisionUseCaseInspectsRevisionDetailsWithMaskedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	repo.agents["release-notes-helper"] = testAgent("release-notes-helper")
+	repo.revisions = []domain.AgentRevision{{
+		AgentName:    "release-notes-helper",
+		RevisionID:   "revision-1",
+		Status:       domain.AgentRevisionStatusFinalized,
+		ArtifactPath: "data/work/release-notes-helper/revision-1",
+		Tools: []domain.RevisionTool{
+			{
+				Name:             "fetch",
+				Kind:             domain.ToolKindCustomTool,
+				OriginalCommand:  "tools/fetch.py",
+				RewrittenCommand: "data/work/release-notes-helper/revision-1/tools/fetch.py",
+				CopiedFiles:      []string{"tools/fetch.py"},
+			},
+			{
+				Name:        "github_api",
+				Kind:        domain.ToolKindHostTool,
+				HostCommand: "gh",
+			},
+		},
+		Environment: []domain.RevisionEnvironment{{
+			Key:    "GITHUB_TOKEN",
+			Value:  "secret",
+			Source: domain.RevisionEnvironmentSourceLiteral,
+			Masked: true,
+		}},
+	}}
+	useCase, err := NewRevisionUseCase(repo)
+	if err != nil {
+		t.Fatalf("NewRevisionUseCase: %v", err)
+	}
+
+	revision, err := useCase.InspectRevision(context.Background(), "release-notes-helper", "revision-1")
+	if err != nil {
+		t.Fatalf("InspectRevision: %v", err)
+	}
+	if len(revision.Tools) != 2 {
+		t.Fatalf("tools: %#v", revision.Tools)
+	}
+	if revision.Tools[0].Kind != domain.ToolKindCustomTool || revision.Tools[0].RewrittenCommand == "" || len(revision.Tools[0].CopiedFiles) != 1 {
+		t.Fatalf("custom tool: %#v", revision.Tools[0])
+	}
+	if revision.Tools[1].Kind != domain.ToolKindHostTool || revision.Tools[1].HostCommand != "gh" {
+		t.Fatalf("host tool: %#v", revision.Tools[1])
+	}
+	if len(revision.Environment) != 1 || revision.Environment[0].Value != "********" {
+		t.Fatalf("masked environment: %#v", revision.Environment)
+	}
+}
+
 func testAgent(name string) domain.Agent {
 	return domain.Agent{
 		Name:     name,
