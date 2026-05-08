@@ -58,6 +58,17 @@ const (
 	EventLevelError EventLevel = "error"
 )
 
+const (
+	RunActionLLMPromptSend       = "llm.prompt.send"
+	RunActionLLMResponseReceive  = "llm.response.receive"
+	RunActionToolExecuteStart    = "tool.execute.start"
+	RunActionToolExecuteComplete = "tool.execute.complete"
+	RunActionToolExecuteFail     = "tool.execute.fail"
+	RunActionResultPersisted     = "run.result.persisted"
+	RunActionComplete            = "run.complete"
+	RunActionFail                = "run.fail"
+)
+
 var agentNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 
 type AgentDefinition struct {

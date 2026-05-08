@@ -163,7 +163,7 @@ contracts, and example smoke verification.
 
 ### Implementation for User Story 4
 
-- [ ] T072 [US4] Add stable run action constants in internal/agentdserver/domain/agent.go
+- [x] T072 [US4] Add stable run action constants in internal/agentdserver/domain/agent.go
 - [ ] T073 [US4] Emit llm.prompt.send and provider response action events in internal/agentdserver/app/runtime/manager.go
 - [ ] T074 [US4] Emit run.result.persisted, run.complete, and run.fail events in internal/agentdserver/app/runtime/manager.go
 - [ ] T075 [US4] Update log reader to merge or expose runtime action events by run in internal/agentdserver/infra/logs/reader.go
