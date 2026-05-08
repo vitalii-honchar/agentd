@@ -178,6 +178,10 @@ func (s *Server) registerRoutes() {
 	if s.runListUseCase != nil {
 		s.mux.HandleFunc("GET /v1/runs", s.handleListRuns)
 	}
+	if s.resultUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents/{name}/results", s.handleAgentResults)
+		s.mux.HandleFunc("GET /v1/runs/{run_id}/result", s.handleRunResult)
+	}
 	if s.logsUseCase != nil {
 		s.mux.HandleFunc("GET /v1/agents/{name}/logs", s.handleLogs)
 	}
