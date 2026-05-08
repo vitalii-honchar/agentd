@@ -34,7 +34,7 @@ contracts, and example smoke verification.
 
 **CRITICAL**: No user story work should start until this phase is complete.
 
-- [ ] T007 Add run result fields and ToolExecution domain types in internal/agentdserver/domain/agent.go
+- [x] T007 Add run result fields and ToolExecution domain types in internal/agentdserver/domain/agent.go
 - [ ] T008 Add runtime migration for run result columns in internal/agentdserver/infra/db/migrations/runtime/004_run_results.sql
 - [ ] T009 Add runtime migration for tool executions in internal/agentdserver/infra/db/migrations/runtime/005_tool_executions.sql
 - [ ] T010 Update migration coverage for result/tool tables in internal/agentdserver/infra/db/migrations_test.go

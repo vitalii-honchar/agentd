@@ -179,9 +179,26 @@ type AgentRun struct {
 	WorkDir           string
 	LogPath           string
 	ProviderRequestID string
+	Result            string
+	ResultSummary     string
 	ErrorCode         string
 	ErrorMessage      string
 	StopRequestedAt   *time.Time
+}
+
+type ToolExecution struct {
+	ID             string
+	RunID          string
+	AgentName      string
+	ToolName       string
+	CommandSummary string
+	StartedAt      time.Time
+	CompletedAt    *time.Time
+	ExitCode       int
+	TimedOut       bool
+	StdoutSummary  string
+	StderrSummary  string
+	ErrorMessage   string
 }
 
 func (r AgentRun) IsActive() bool {
