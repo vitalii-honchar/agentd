@@ -47,8 +47,12 @@ type ApplyRequest struct {
 }
 
 type ApplyResponse struct {
-	Outcome string      `json:"outcome"`
-	Agent   AgentDetail `json:"agent"`
+	Outcome        string      `json:"outcome"`
+	Agent          AgentDetail `json:"agent"`
+	RevisionID     string      `json:"revision_id,omitempty"`
+	ArtifactPath   string      `json:"artifact_path,omitempty"`
+	RevisionStatus string      `json:"revision_status,omitempty"`
+	RevisionReused bool        `json:"revision_reused"`
 }
 
 type AgentSummary struct {

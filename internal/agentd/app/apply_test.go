@@ -21,8 +21,11 @@ func TestApplyCommandReadsFileAndCallsClient(t *testing.T) {
 	}
 
 	client := &fakeApplyClient{response: ApplyResponse{
-		Outcome: "created",
-		Agent:   AgentDetail{Name: "release-notes-helper"},
+		Outcome:        "created",
+		Agent:          AgentDetail{Name: "release-notes-helper"},
+		RevisionID:     "11111111-1111-4111-8111-111111111111",
+		ArtifactPath:   "data/work/release-notes-helper/11111111-1111-4111-8111-111111111111",
+		RevisionStatus: "finalized",
 	}}
 	var out bytes.Buffer
 	cmd := NewApplyCommand(client, NewOutput(config.OutputText, &out))
@@ -37,7 +40,11 @@ func TestApplyCommandReadsFileAndCallsClient(t *testing.T) {
 	if client.request.Markdown != markdown {
 		t.Fatalf("markdown: got %q", client.request.Markdown)
 	}
-	if !strings.Contains(out.String(), "created release-notes-helper") {
+	if !strings.Contains(out.String(), "APPLIED release-notes-helper") ||
+		!strings.Contains(out.String(), "OUTCOME created") ||
+		!strings.Contains(out.String(), "REVISION 11111111-1111-4111-8111-111111111111") ||
+		!strings.Contains(out.String(), "ARTIFACT data/work/release-notes-helper/11111111-1111-4111-8111-111111111111") ||
+		!strings.Contains(out.String(), "STATUS finalized") {
 		t.Fatalf("output: got %q", out.String())
 	}
 }

@@ -17,7 +17,11 @@ func (c *Client) Apply(ctx context.Context, request app.ApplyRequest) (app.Apply
 	}
 
 	return app.ApplyResponse{
-		Outcome: response.Outcome,
-		Agent:   toAppAgentDetail(response.Agent),
+		Outcome:        response.Outcome,
+		Agent:          toAppAgentDetail(response.Agent),
+		RevisionID:     response.RevisionID,
+		ArtifactPath:   response.ArtifactPath,
+		RevisionStatus: response.RevisionStatus,
+		RevisionReused: response.RevisionReused,
 	}, nil
 }

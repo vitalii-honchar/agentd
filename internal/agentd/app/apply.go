@@ -18,8 +18,12 @@ type ApplyRequest struct {
 }
 
 type ApplyResponse struct {
-	Outcome string      `json:"outcome"`
-	Agent   AgentDetail `json:"agent"`
+	Outcome        string      `json:"outcome"`
+	Agent          AgentDetail `json:"agent"`
+	RevisionID     string      `json:"revision_id,omitempty"`
+	ArtifactPath   string      `json:"artifact_path,omitempty"`
+	RevisionStatus string      `json:"revision_status,omitempty"`
+	RevisionReused bool        `json:"revision_reused"`
 }
 
 type AgentDetail struct {
@@ -60,7 +64,15 @@ func NewApplyCommand(client ApplyClient, output Output) *cobra.Command {
 				return output.Write(response)
 			}
 
-			return output.Write(fmt.Sprintf("%s %s", response.Outcome, response.Agent.Name))
+			return output.Write(fmt.Sprintf(
+				"APPLIED %s\nOUTCOME %s\nREVISION %s\nARTIFACT %s\nSTATUS %s\nREUSED %t",
+				response.Agent.Name,
+				response.Outcome,
+				response.RevisionID,
+				response.ArtifactPath,
+				response.RevisionStatus,
+				response.RevisionReused,
+			))
 		},
 	}
 
