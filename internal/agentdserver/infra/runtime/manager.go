@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -403,6 +404,11 @@ func (m *Manager) executeDeclaredTools(
 		m.appendRunEvent(run, domain.RunActionToolExecuteStart, domain.EventLevelInfo, "execute tool "+tool.Name)
 		toolForRun := tool
 		toolForRun.Command = resolveToolCommandForRun(agent, revision, tool)
+		if err := validateCustomToolArtifact(revision, toolForRun); err != nil {
+			m.appendRunEvent(run, domain.RunActionToolExecuteFail, domain.EventLevelError, err.Error())
+
+			return "", err
+		}
 		result, err := m.tools.Execute(ctx, appruntime.ToolRequest{
 			RunID:   run.ID,
 			Agent:   agent,
@@ -488,6 +494,17 @@ func resolveToolCommandForRun(agent domain.Agent, revision domain.AgentRevision,
 	}
 
 	return resolveToolCommand(agent.DefinitionSource, tool.Command)
+}
+
+func validateCustomToolArtifact(revision domain.AgentRevision, tool domain.ToolPermission) error {
+	if tool.Kind != domain.ToolKindCustomTool || revision.ArtifactPath == "" {
+		return nil
+	}
+	if _, err := os.Stat(tool.Command); err != nil {
+		return fmt.Errorf("custom tool artifact %q is not executable from revision %s: %w", tool.Command, revision.RevisionID, err)
+	}
+
+	return nil
 }
 
 func (m *Manager) appendRunEvent(
