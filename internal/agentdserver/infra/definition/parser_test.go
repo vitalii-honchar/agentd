@@ -124,6 +124,59 @@ Review open pull requests and identify issues that need attention.`)
 	}
 }
 
+func TestParseMarkdownDefinitionWithInputsAndNestedToolNetwork(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("examples/website-snapshot-analyst/website-snapshot-analyst.md", `---
+name: website-snapshot-analyst
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5.4-mini
+inputs:
+  - name: url
+    required: true
+    description: Website URL to capture
+tools:
+  - name: capture_website
+    kind: local_tool
+    command: tools/capture_website.js
+    timeout: 60s
+    network:
+      allow:
+        - https://example.com
+access:
+  filesystem:
+    read: ["fixtures/"]
+    write: [".agentd-work/"]
+  network:
+    allow: ["https://example.com"]
+---
+Capture a screenshot and summarize the supplied website.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if len(definition.Inputs) != 1 {
+		t.Fatalf("inputs: got %d want 1", len(definition.Inputs))
+	}
+	if input := definition.Inputs[0]; input.Name != "url" || !input.Required {
+		t.Fatalf("input: %#v", input)
+	}
+	if len(definition.Tools) != 1 {
+		t.Fatalf("tools: got %d want 1", len(definition.Tools))
+	}
+	tool := definition.Tools[0]
+	if tool.Timeout != "60s" {
+		t.Fatalf("tool timeout: got %q", tool.Timeout)
+	}
+	if len(tool.NetworkAllow) != 1 || tool.NetworkAllow[0] != "https://example.com" {
+		t.Fatalf("tool network allow: %#v", tool.NetworkAllow)
+	}
+}
+
 func TestParseMarkdownRejectsInvalidDefinition(t *testing.T) {
 	t.Parallel()
 
