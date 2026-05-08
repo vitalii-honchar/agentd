@@ -212,6 +212,40 @@ func TestManagerExecutesCustomToolFromRevisionArtifact(t *testing.T) {
 	}
 }
 
+func TestManagerExecutesHostToolCommand(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	toolExecutor := &recordingToolExecutor{
+		result: appruntime.ToolResult{StdoutSummary: "host output"},
+	}
+	manager.SetToolExecutor(toolExecutor)
+	agent := testAgent("host-tool-agent")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "github_api",
+		Kind:    domain.ToolKindHostTool,
+		Command: "gh",
+		Args:    []string{"api", "search/repositories"},
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	request := toolExecutor.request()
+	if request.Tool.Command != "gh" {
+		t.Fatalf("tool command: got %q want gh", request.Tool.Command)
+	}
+	if request.Tool.Kind != domain.ToolKindHostTool {
+		t.Fatalf("tool kind: got %q", request.Tool.Kind)
+	}
+}
+
 func TestManagerLogsDeclaredToolStderrOnFailure(t *testing.T) {
 	t.Parallel()
 
