@@ -67,7 +67,10 @@ func (c *Client) doJSON(ctx context.Context, method string, path string, body an
 	}
 	response, err := c.http.Do(request)
 	if err != nil {
-		return fmt.Errorf("daemon request %s %s: %w", method, path, err)
+		return &Error{
+			Code:    ErrorCodeDaemonUnavailable,
+			Message: fmt.Sprintf("daemon request %s %s: %v", method, path, err),
+		}
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
@@ -116,14 +119,14 @@ func decodeError(response *http.Response) error {
 		Error Error `json:"error"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
-		return &Error{Code: "daemon_error", Message: response.Status, HTTPStatus: response.StatusCode}
+		return &Error{Code: ErrorCodeDaemonError, Message: response.Status, HTTPStatus: response.StatusCode}
 	}
 	payload.Error.HTTPStatus = response.StatusCode
 	if payload.Error.Message == "" {
 		payload.Error.Message = response.Status
 	}
 	if payload.Error.Code == "" {
-		payload.Error.Code = "daemon_error"
+		payload.Error.Code = ErrorCodeDaemonError
 	}
 
 	return &payload.Error

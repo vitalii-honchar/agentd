@@ -5,6 +5,21 @@ import (
 	"time"
 )
 
+const (
+	ErrorCodeAgentDisabled         = "agent_disabled"
+	ErrorCodeAgentNotFound         = "agent_not_found"
+	ErrorCodeAgentRunFailed        = "agent_run_failed"
+	ErrorCodeDaemonError           = "daemon_error"
+	ErrorCodeDaemonUnavailable     = "daemon_unavailable"
+	ErrorCodeInvalidQuery          = "invalid_query"
+	ErrorCodeInvalidState          = "invalid_state"
+	ErrorCodeRemoteClientForbidden = "remote_client_forbidden"
+	ErrorCodeRunAlreadyActive      = "run_already_active"
+	ErrorCodeRunNotFound           = "run_not_found"
+	ErrorCodeRunNotTerminal        = "run_not_terminal"
+	ErrorCodeValidationFailed      = "validation_failed"
+)
+
 type Error struct {
 	Code       string `json:"code"`
 	Message    string `json:"message"`
@@ -20,6 +35,10 @@ func (e *Error) Error() string {
 	}
 
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+func (e *Error) IsCode(code string) bool {
+	return e != nil && e.Code == code
 }
 
 type ApplyRequest struct {
