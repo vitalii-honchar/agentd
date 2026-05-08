@@ -162,6 +162,9 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/stop", s.handleStopActive)
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/{run_id}/stop", s.handleStop)
 	}
+	if s.runListUseCase != nil {
+		s.mux.HandleFunc("GET /v1/runs", s.handleListRuns)
+	}
 	if s.logsUseCase != nil {
 		s.mux.HandleFunc("GET /v1/agents/{name}/logs", s.handleLogs)
 	}
