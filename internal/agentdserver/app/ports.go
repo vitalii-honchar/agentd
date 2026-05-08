@@ -14,6 +14,15 @@ type AgentRepository interface {
 	List(ctx context.Context) ([]domain.Agent, error)
 }
 
+type AgentRevisionRepository interface {
+	SaveRevision(ctx context.Context, revision domain.AgentRevision) error
+	ListRevisions(ctx context.Context, agentName string) ([]domain.AgentRevision, error)
+	FindRevisionByID(ctx context.Context, agentName, revisionID string) (domain.AgentRevision, error)
+	FindRevisionByDigest(ctx context.Context, agentName, contentDigest string) (domain.AgentRevision, error)
+	FindLatestFinalizedRevision(ctx context.Context, agentName string) (domain.AgentRevision, error)
+	MarkRevisionCorrupt(ctx context.Context, agentName, revisionID, errorMessage string) error
+}
+
 type RuntimeDBManager interface {
 	EnsureAgent(ctx context.Context, agentName string) error
 	Runs(agentName string) AgentRunRepository

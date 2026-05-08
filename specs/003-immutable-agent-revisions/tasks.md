@@ -14,7 +14,7 @@ handling, and logs.
 - [x] T001 Create settings migration for revision tables in internal/agentdserver/infra/db/migrations/settings/003_agent_revisions.sql
 - [x] T002 Add revision, artifact, environment, execution workdir, and tool log domain types in internal/agentdserver/domain/agent.go
 - [x] T003 Add custom_tool and host_tool ToolKind constants in internal/agentdserver/domain/agent.go
-- [ ] T004 Extend agent repository ports for revision save/list/lookup/latest/corruption operations in internal/agentdserver/app/ports.go
+- [x] T004 Extend agent repository ports for revision save/list/lookup/latest/corruption operations in internal/agentdserver/app/ports.go
 - [ ] T005 Add revision artifact service file in internal/agentdserver/infra/runtime/revision_artifact.go
 - [ ] T006 Add env parsing helper file in internal/agentdserver/infra/runtime/env_file.go
 
