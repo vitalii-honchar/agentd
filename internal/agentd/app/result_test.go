@@ -47,8 +47,10 @@ func TestResultCommandShowsFullRunResultJSON(t *testing.T) {
 	cmd := NewResultCommand(client, NewOutput(config.OutputJSON, &out))
 	cmd.SetArgs([]string{"11111111-1111-4111-8111-111111111111"})
 
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("Execute error is nil")
+	} else if ExitCode(err) != 5 {
+		t.Fatalf("exit code: got %d want 5", ExitCode(err))
 	}
 	if client.resultRunID != "11111111-1111-4111-8111-111111111111" {
 		t.Fatalf("run id: got %q", client.resultRunID)

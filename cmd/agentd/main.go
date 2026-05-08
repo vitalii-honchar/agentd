@@ -31,6 +31,6 @@ func main() {
 	})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(cliapp.ExitCode(err))
 	}
 }

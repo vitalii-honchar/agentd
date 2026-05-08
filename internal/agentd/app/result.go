@@ -1,10 +1,12 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 
 	"github.com/vitalii-honchar/agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/pkg/agentdclient"
 
 	"github.com/spf13/cobra"
 )
@@ -24,18 +26,25 @@ func NewResultCommand(client QueryClient, output Output) *cobra.Command {
 			if uuidPattern.MatchString(target) {
 				result, err := client.ResultByRunID(cmd.Context(), target)
 				if err != nil {
-					return err
+					return mapResultError(err)
 				}
 				if output.format == config.OutputJSON {
-					return output.Write(result)
+					if err := output.Write(result); err != nil {
+						return err
+					}
+				} else if err := output.Write(result.Result); err != nil {
+					return err
+				}
+				if result.Status == "failed" {
+					return ExitError{Code: 5, Err: fmt.Errorf("agent run failed")}
 				}
 
-				return output.Write(result.Result)
+				return nil
 			}
 
 			response, err := client.ResultsByAgent(cmd.Context(), target)
 			if err != nil {
-				return err
+				return mapResultError(err)
 			}
 			if output.format == config.OutputJSON {
 				return output.Write(response)
@@ -52,5 +61,50 @@ func NewResultCommand(client QueryClient, output Output) *cobra.Command {
 
 			return output.WriteTable([]string{"RUN ID", "STATUS", "COMPLETED", "RESULT"}, rows)
 		},
+	}
+}
+
+type ExitError struct {
+	Code int
+	Err  error
+}
+
+func (e ExitError) Error() string {
+	if e.Err == nil {
+		return fmt.Sprintf("exit code %d", e.Code)
+	}
+
+	return e.Err.Error()
+}
+
+func (e ExitError) Unwrap() error {
+	return e.Err
+}
+
+func ExitCode(err error) int {
+	var exitErr ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.Code
+	}
+
+	return 1
+}
+
+func mapResultError(err error) error {
+	var daemonErr *agentdclient.Error
+	if !errors.As(err, &daemonErr) {
+		return err
+	}
+	switch daemonErr.Code {
+	case agentdclient.ErrorCodeAgentNotFound:
+		return ExitError{Code: 2, Err: err}
+	case agentdclient.ErrorCodeRunNotFound:
+		return ExitError{Code: 3, Err: err}
+	case agentdclient.ErrorCodeRunNotTerminal:
+		return ExitError{Code: 4, Err: err}
+	case agentdclient.ErrorCodeDaemonUnavailable:
+		return ExitError{Code: 10, Err: err}
+	default:
+		return err
 	}
 }
