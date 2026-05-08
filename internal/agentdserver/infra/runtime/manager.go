@@ -208,6 +208,7 @@ func (m *Manager) runProvider(
 	defer logWriter.Close()
 	defer m.removeActive(run.ID)
 
+	m.appendRunEvent(run, domain.RunActionLLMPromptSend, domain.EventLevelInfo, "send LLM prompt to provider")
 	response, err := provider.Execute(ctx, appruntime.ProviderRequest{
 		RunID:     run.ID,
 		AgentName: agent.Name,
@@ -229,6 +230,7 @@ func (m *Manager) runProvider(
 	} else {
 		run.Status = domain.AgentRunStatusCompleted
 		run.ProviderRequestID = response.RequestID
+		m.appendRunEvent(run, domain.RunActionLLMResponseReceive, domain.EventLevelInfo, "received LLM provider response")
 		if response.Output != "" {
 			run.Result = response.Output
 			run.ResultSummary = appresult.Summarize(response.Output, appresult.DefaultSummaryLimit)
@@ -242,6 +244,34 @@ func (m *Manager) runProvider(
 	if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
 		_ = repo.Update(context.Background(), run)
 	}
+	m.appendRunEvent(run, domain.RunActionResultPersisted, domain.EventLevelInfo, "persisted run result")
+	if run.Status == domain.AgentRunStatusCompleted {
+		m.appendRunEvent(run, domain.RunActionComplete, domain.EventLevelInfo, "run completed")
+	} else {
+		m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed or stopped")
+	}
+}
+
+func (m *Manager) appendRunEvent(
+	run domain.AgentRun,
+	action string,
+	level domain.EventLevel,
+	message string,
+) {
+	repo := m.runtimeDBs.Events(run.AgentName)
+	if repo == nil {
+		return
+	}
+	_ = repo.Append(context.Background(), domain.RuntimeEvent{
+		ID:             uuid.NewString(),
+		AgentName:      run.AgentName,
+		RunID:          run.ID,
+		EventType:      action,
+		Level:          level,
+		Message:        message,
+		AttributesJSON: "{}",
+		CreatedAt:      m.now(),
+	})
 }
 
 func (m *Manager) findActive(agentName, runID string) (*activeRun, error) {

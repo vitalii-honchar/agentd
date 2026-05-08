@@ -164,11 +164,11 @@ contracts, and example smoke verification.
 ### Implementation for User Story 4
 
 - [x] T072 [US4] Add stable run action constants in internal/agentdserver/domain/agent.go
-- [ ] T073 [US4] Emit llm.prompt.send and provider response action events in internal/agentdserver/app/runtime/manager.go
-- [ ] T074 [US4] Emit run.result.persisted, run.complete, and run.fail events in internal/agentdserver/app/runtime/manager.go
-- [ ] T075 [US4] Update log reader to merge or expose runtime action events by run in internal/agentdserver/infra/logs/reader.go
-- [ ] T076 [US4] Update logs HTTP response mapping for action log fields in internal/agentdserver/infra/http/logs_handler.go
-- [ ] T077 [US4] Update logs CLI formatting for timestamp/action/message in internal/agentd/app/logs.go
+- [x] T073 [US4] Emit llm.prompt.send and provider response action events in internal/agentdserver/app/runtime/manager.go
+- [x] T074 [US4] Emit run.result.persisted, run.complete, and run.fail events in internal/agentdserver/app/runtime/manager.go
+- [x] T075 [US4] Update log reader to merge or expose runtime action events by run in internal/agentdserver/infra/logs/reader.go
+- [x] T076 [US4] Update logs HTTP response mapping for action log fields in internal/agentdserver/infra/http/logs_handler.go
+- [x] T077 [US4] Update logs CLI formatting for timestamp/action/message in internal/agentd/app/logs.go
 
 **Checkpoint**: Logs explain what the daemon did for one run and remain scoped to that run.
 
