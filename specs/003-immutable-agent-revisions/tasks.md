@@ -20,7 +20,7 @@ handling, and logs.
 
 ## Phase 2: Foundational
 
-- [ ] T007 [P] Add migration tests for revision metadata and uniqueness constraints in internal/agentdserver/infra/db/migrations_test.go
+- [x] T007 [P] Add migration tests for revision metadata and uniqueness constraints in internal/agentdserver/infra/db/migrations_test.go
 - [ ] T008 [P] Add repository tests for revision create/list/find/latest in internal/agentdserver/infra/db/repository/agent_repository_test.go
 - [ ] T009 [P] Add repository tests for revision environment, artifact files, and corruption marking in internal/agentdserver/infra/db/repository/agent_repository_test.go
 - [ ] T010 Implement revision persistence methods in internal/agentdserver/infra/db/repository/agent_repository.go
