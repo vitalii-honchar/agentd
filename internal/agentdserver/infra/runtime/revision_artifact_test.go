@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,6 +59,78 @@ func TestRevisionArtifactServiceCopiesCustomToolAndDeclaredReadFiles(t *testing.
 	}
 	assertArtifactManifestEntry(t, result.Revision.ArtifactFiles, "tools/fetch.py", sha256Hex([]byte("#!/usr/bin/env python3\nprint('ok')\n")))
 	assertArtifactManifestEntry(t, result.Revision.ArtifactFiles, "fixtures/input.json", sha256Hex([]byte(`{"ok":true}`)))
+}
+
+func TestRevisionArtifactServiceRejectsMissingDeclaredFiles(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	writeArtifactSource(t, sourceDir, "tools/fetch.py", []byte("#!/usr/bin/env python3\n"), 0o755)
+	service, err := NewRevisionArtifactService(filepath.Join(t.TempDir(), "work"))
+	if err != nil {
+		t.Fatalf("NewRevisionArtifactService: %v", err)
+	}
+	definition := artifactTestDefinition(sourceDir)
+
+	_, err = service.Create(context.Background(), RevisionArtifactRequest{
+		Definition: definition,
+		RevisionID: "55555555-5555-4555-8555-555555555555",
+		CreatedAt:  time.Date(2026, 5, 8, 13, 30, 0, 0, time.UTC),
+	})
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("Create error: got %v want ErrInvalidDefinition", err)
+	}
+}
+
+func TestRevisionArtifactServiceRejectsSymlinkToolCommand(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	writeArtifactSource(t, sourceDir, "tools/real.py", []byte("#!/usr/bin/env python3\n"), 0o755)
+	writeArtifactSource(t, sourceDir, "fixtures/input.json", []byte(`{"ok":true}`), 0o644)
+	if err := os.Symlink("real.py", filepath.Join(sourceDir, "tools/fetch.py")); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+	service, err := NewRevisionArtifactService(filepath.Join(t.TempDir(), "work"))
+	if err != nil {
+		t.Fatalf("NewRevisionArtifactService: %v", err)
+	}
+
+	_, err = service.Create(context.Background(), RevisionArtifactRequest{
+		Definition: artifactTestDefinition(sourceDir),
+		RevisionID: "66666666-6666-4666-8666-666666666666",
+		CreatedAt:  time.Date(2026, 5, 8, 14, 0, 0, 0, time.UTC),
+	})
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("Create error: got %v want ErrInvalidDefinition", err)
+	}
+}
+
+func TestRevisionArtifactServiceRejectsPathEscape(t *testing.T) {
+	t.Parallel()
+
+	parent := t.TempDir()
+	sourceDir := filepath.Join(parent, "definition")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll source: %v", err)
+	}
+	writeArtifactSource(t, parent, "outside.py", []byte("#!/usr/bin/env python3\n"), 0o755)
+	writeArtifactSource(t, sourceDir, "fixtures/input.json", []byte(`{"ok":true}`), 0o644)
+	definition := artifactTestDefinition(sourceDir)
+	definition.Tools[0].Command = "../outside.py"
+	service, err := NewRevisionArtifactService(filepath.Join(t.TempDir(), "work"))
+	if err != nil {
+		t.Fatalf("NewRevisionArtifactService: %v", err)
+	}
+
+	_, err = service.Create(context.Background(), RevisionArtifactRequest{
+		Definition: definition,
+		RevisionID: "77777777-7777-4777-8777-777777777777",
+		CreatedAt:  time.Date(2026, 5, 8, 14, 30, 0, 0, time.UTC),
+	})
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("Create error: got %v want ErrInvalidDefinition", err)
+	}
 }
 
 func artifactTestDefinition(sourceDir string) domain.AgentDefinition {
