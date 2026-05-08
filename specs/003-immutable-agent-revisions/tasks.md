@@ -16,7 +16,7 @@ handling, and logs.
 - [x] T003 Add custom_tool and host_tool ToolKind constants in internal/agentdserver/domain/agent.go
 - [x] T004 Extend agent repository ports for revision save/list/lookup/latest/corruption operations in internal/agentdserver/app/ports.go
 - [x] T005 Add revision artifact service file in internal/agentdserver/infra/runtime/revision_artifact.go
-- [ ] T006 Add env parsing helper file in internal/agentdserver/infra/runtime/env_file.go
+- [x] T006 Add env parsing helper file in internal/agentdserver/infra/runtime/env_file.go
 
 ## Phase 2: Foundational
 
