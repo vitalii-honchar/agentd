@@ -8,6 +8,7 @@ import (
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
 	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
 	appscheduling "github.com/vitalii-honchar/agentd/internal/agentdserver/app/scheduling"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/config"
@@ -170,6 +171,20 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 
 		return nil, fmt.Errorf("new logs use case: %w", err)
 	}
+	runListUC, err := appresult.NewListRunsUseCase(agentRepo, runtimeDBs)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new run list use case: %w", err)
+	}
+	resultUC, err := appresult.NewUseCase(agentRepo, runtimeDBs)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new result use case: %w", err)
+	}
 
 	httpServer := daemonhttp.NewServer(daemonhttp.Config{
 		Address:      cfg.Server.Address(),
@@ -179,6 +194,8 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 		daemonhttp.WithApplyUseCase(applyUC),
 		daemonhttp.WithExecuteUseCase(executeUC),
 		daemonhttp.WithStopUseCase(stopUC),
+		daemonhttp.WithRunListUseCase(runListUC),
+		daemonhttp.WithResultUseCase(resultUC),
 		daemonhttp.WithListUseCase(listUC),
 		daemonhttp.WithInspectUseCase(inspectUC),
 		daemonhttp.WithLogsUseCase(logsUC),
