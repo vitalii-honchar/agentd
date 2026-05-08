@@ -210,7 +210,7 @@ contracts, and example smoke verification.
 - [x] T091 [P] Update root README or docs with examples/results overview in README.md
 - [x] T092 [P] Update AGENTS.md context if implementation plan path changes in AGENTS.md
 - [x] T093 [P] Run OpenAPI/schema consistency review against specs/002-agent-examples-results/contracts/openapi.yaml
-- [ ] T094 [P] Run public Go client import smoke test in pkg/agentdclient/client_test.go
+- [x] T094 [P] Run public Go client import smoke test in pkg/agentdclient/client_test.go
 - [ ] T095 Run example catalog smoke tests from specs/002-agent-examples-results/quickstart.md
 - [ ] T096 Run restart recovery verification for persisted run results and active tool interruption in tests/e2e/recovery_results_test.go
 - [ ] T097 Run Linux/macOS parity checklist for tool execution and screenshot dependencies in specs/002-agent-examples-results/quickstart.md
