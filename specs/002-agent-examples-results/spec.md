@@ -7,19 +7,19 @@
 current weak examples and replacing them with specific real-use-case agents
 that demonstrate repeatable automation: cybersecurity subreddit analysis,
 Hacker News daily summaries, customer-pain monitoring, Product Hunt launch
-monitoring, engineering trend monitoring, open-source issue monitoring,
-competitor changelog monitoring, hiring-market signal monitoring, public app
-review monitoring, and website screenshot summaries. Scheduled examples should
-demonstrate daily monitoring; manual examples should be limited to workflows
-that naturally need user input. Add CLI visibility for agent definitions, agent
-runs, completed or failed run results, full run details by run ID, useful
-timestamped action logs, and support for agents to execute declared
-command-line tools stored with their example definition. Result retrieval should
-work from Bash, from another local AI agent, and from Go programs that import
-the agentd client for same-host integrations. Authorization is out of scope for
-now; the daemon should accept only same-host requests. Every example must be
-runnable after cloning the repository with zero service configuration from the
-user; installing documented local dependencies is acceptable."
+monitoring, GitHub engineering trend monitoring, developer dependency release
+monitoring, AI engineering hiring signals, and website screenshot summaries.
+Scheduled examples should demonstrate daily monitoring; manual examples should
+be limited to workflows that naturally need user input. Add CLI visibility for
+agent definitions, agent runs, completed or failed run results, full run details
+by run ID, useful timestamped action logs, and support for agents to execute
+declared command-line tools stored with their example definition. Result
+retrieval should work from Bash, from another local AI agent, and from Go
+programs that import the agentd client for same-host integrations. Authorization
+is out of scope for now; the daemon should accept only same-host requests. Every
+example must be runnable after cloning the repository with zero service
+configuration from the user; installing documented local dependencies is
+acceptable."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -200,7 +200,7 @@ lists, bundled fixture files, or user-provided manual input, but it MUST NOT
 require the user to configure external services, CI systems, SaaS integrations,
 private accounts, private data, or data-source credentials. Optional API keys
 may be documented only as enhancements; they MUST NOT be required for the
-example's default successful run. At least eight examples MUST demonstrate
+example's default successful run. At least seven examples MUST demonstrate
 scheduled repeatable monitoring.
 
 1. **Cybersecurity Reddit Watch**: Daily scheduled security analyst agent that
@@ -225,23 +225,17 @@ scheduled repeatable monitoring.
    repository discovery pages, then summarizes notable developer tools,
    libraries, infrastructure projects, adoption signals, and why engineers might
    care.
-6. **Open Source Issue Pain Monitor**: Daily scheduled software engineer and
-   product agent that reviews public issues from a bundled list of popular
-   repositories and summarizes recurring bugs, confusing user experiences,
-   missing features, support burden, and tool opportunities.
-7. **Competitor Changelog Monitor**: Daily scheduled product manager agent that
-   watches a bundled list of public unauthenticated competitor or product
-   changelog pages and returns detected positioning, packaging, pricing, or
-   feature changes with product implications.
-8. **Hiring Market Signal Monitor**: Daily scheduled strategy agent that reviews
-   public hiring discussion pages or bundled public job-search pages and
-   summarizes recurring roles, required skills, demand signals, and emerging
-   market trends relevant to builders.
-9. **Public App Review Theme Monitor**: Daily scheduled product manager agent
-   that reviews public app review pages when available or bundled public review
-   fixtures by default, then returns recurring complaints, praised features,
-   sentiment shifts, and roadmap opportunities.
-10. **Website Snapshot Analyst**: Manual research agent that accepts a website
+6. **Developer Dependency Release Monitor**: Daily scheduled software engineer
+   agent that watches a bundled list of public release and changelog pages for
+   common developer dependencies, runtimes, databases, and infrastructure tools,
+   then summarizes breaking changes, security-relevant releases, migration
+   impact, and upgrade actions.
+7. **AI Engineering Hiring Signal Monitor**: Daily scheduled strategy agent that
+   reviews public hiring discussion pages or bundled public job-search pages for
+   AI engineering, platform engineering, and developer-tool roles, then
+   summarizes recurring skills, role demand, tooling mentions, and emerging
+   market signals relevant to builders.
+8. **Website Snapshot Analyst**: Manual research agent that accepts a website
    URL, captures the visible page state, and summarizes the product, audience,
    key claims, calls to action, obvious trust signals, and competitive
    positioning.
@@ -270,9 +264,10 @@ scheduled repeatable monitoring.
 - A public-source monitor receives an empty page, changed page structure,
   malformed response, duplicate items, or content that cannot be confidently
   categorized.
-- A product monitoring example receives noisy comments, jokes, advertisements,
-  spam, or off-topic discussion that should not be treated as customer pain.
-- A competitor website changes layout without changing meaningful product
+- A developer or product monitoring example receives noisy comments, jokes,
+  advertisements, spam, or off-topic discussion that should not be treated as
+  actionable pain.
+- A monitored product website changes layout without changing meaningful product
   information.
 - A scheduled example finds no meaningful new items since its previous run.
 - `agentd ps` is run when no active runs exist, and `agentd ps -a` is run when
@@ -331,27 +326,27 @@ scheduled repeatable monitoring.
   data source for its default run and MUST NOT require API credentials.
 - **FR-012**: The website screenshot example MUST require only a user-provided
   URL and documented local browser/tool dependencies for its default run.
-- **FR-013**: The competitor monitoring example MUST ship with a bundled list of
-  public unauthenticated pages so users do not need to configure competitors
-  before the first run.
+- **FR-013**: Product and market monitoring examples MUST ship with bundled
+  public unauthenticated pages so users do not need to configure competitors,
+  products, or markets before the first run.
 - **FR-014**: Product and market monitoring examples MUST ship with bundled
   public-source lists or sample fixtures needed for the default run so users do
   not need to choose sources before first use.
 - **FR-015**: The example catalog MUST include Reddit customer pain monitoring,
   Product Hunt launch monitoring, GitHub engineering trend monitoring,
-  open-source issue pain monitoring, competitor changelog monitoring, hiring
-  market signal monitoring, and public app review theme monitoring.
-- **FR-016**: At least eight examples MUST run automatically on a daily schedule
+  developer dependency release monitoring, and AI engineering hiring signal
+  monitoring.
+- **FR-016**: At least seven examples MUST run automatically on a daily schedule
   by default to demonstrate repeatable agentd automation.
 - **FR-017**: Manual examples MUST be limited to workflows that naturally
   require user-provided input, such as website URL analysis.
 - **FR-018**: The software engineering examples MUST include Hacker News builder
-  brief, GitHub trending engineering radar, and open-source issue pain monitor
-  workflows with concrete source references and output sections.
+  brief, GitHub trending engineering radar, developer dependency release
+  monitor workflows with concrete source references and output sections.
 - **FR-019**: The product manager examples MUST include Reddit customer pain
-  monitor, Product Hunt launch radar, competitor changelog monitor, and public
-  app review theme monitor workflows with concrete source references and
-  decision-oriented output sections.
+  monitor, Product Hunt launch radar, and AI engineering hiring signal monitor
+  workflows with concrete source references and decision-oriented output
+  sections.
 - **FR-020**: System MUST provide a CLI command to list applied agent
   definitions by agent name, schedule mode, enabled state, and current state.
 - **FR-021**: System MUST provide `agentd ps` to list active agent runs only.
@@ -464,7 +459,7 @@ scheduled repeatable monitoring.
 - **SC-001**: A new user can apply all repository examples, list their
   applied definitions, and identify each example's purpose and schedule mode in
   under 15 minutes using repository documentation.
-- **SC-002**: At least eight examples are scheduled monitoring agents that
+- **SC-002**: At least seven examples are scheduled monitoring agents that
   produce stored completed or failed results retrievable from the CLI in 100% of
   local smoke tests.
 - **SC-003**: Each daily monitoring example runs no more than once per scheduled

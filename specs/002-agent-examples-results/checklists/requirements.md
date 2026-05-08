@@ -36,3 +36,5 @@
 - Validation pass 3 completed on 2026-05-08 after clarifying result retrieval for Bash scripts, local AI agents, and Go integrations, with same-host daemon access and no authentication required for this feature.
 - Validation pass 4 completed on 2026-05-08 after requiring every example to run from a fresh clone with no dedicated infrastructure or required API keys, replacing CI triage with a self-contained local test failure example, and requiring a README for each example.
 - Validation pass 5 completed on 2026-05-08 after replacing one-off assistant examples with scheduled monitoring examples that demonstrate repeatable agentd automation over public unauthenticated sources or bundled seed data.
+- Validation pass 6 completed on 2026-05-08 after replacing weak examples with dependency release and AI engineering hiring monitors that better fit agentd's software builder audience.
+- Validation pass 7 completed on 2026-05-08 after removing two lower-fit monitoring examples and adjusting the scheduled-example count to seven.
