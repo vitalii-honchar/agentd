@@ -225,8 +225,8 @@ func TestManagerExecutesHostToolCommand(t *testing.T) {
 	agent.Tools = []domain.ToolPermission{{
 		Name:    "github_api",
 		Kind:    domain.ToolKindHostTool,
-		Command: "gh",
-		Args:    []string{"api", "search/repositories"},
+		Command: "sh",
+		Args:    []string{"-c", "echo ok"},
 	}}
 
 	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
@@ -238,8 +238,8 @@ func TestManagerExecutesHostToolCommand(t *testing.T) {
 
 	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
 	request := toolExecutor.request()
-	if request.Tool.Command != "gh" {
-		t.Fatalf("tool command: got %q want gh", request.Tool.Command)
+	if request.Tool.Command != "sh" {
+		t.Fatalf("tool command: got %q want sh", request.Tool.Command)
 	}
 	if request.Tool.Kind != domain.ToolKindHostTool {
 		t.Fatalf("tool kind: got %q", request.Tool.Kind)

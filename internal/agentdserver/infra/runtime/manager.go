@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -409,6 +410,11 @@ func (m *Manager) executeDeclaredTools(
 
 			return "", err
 		}
+		if err := validateHostToolExecutable(toolForRun); err != nil {
+			m.appendRunEvent(run, domain.RunActionToolExecuteFail, domain.EventLevelError, err.Error())
+
+			return "", err
+		}
 		result, err := m.tools.Execute(ctx, appruntime.ToolRequest{
 			RunID:   run.ID,
 			Agent:   agent,
@@ -502,6 +508,27 @@ func validateCustomToolArtifact(revision domain.AgentRevision, tool domain.ToolP
 	}
 	if _, err := os.Stat(tool.Command); err != nil {
 		return fmt.Errorf("custom tool artifact %q is not executable from revision %s: %w", tool.Command, revision.RevisionID, err)
+	}
+
+	return nil
+}
+
+func validateHostToolExecutable(tool domain.ToolPermission) error {
+	if tool.Kind != domain.ToolKindHostTool {
+		return nil
+	}
+	if strings.TrimSpace(tool.Command) == "" {
+		return fmt.Errorf("host tool executable is required for %s", tool.Name)
+	}
+	if filepath.IsAbs(tool.Command) {
+		if _, err := os.Stat(tool.Command); err != nil {
+			return fmt.Errorf("host tool executable %q is not available: %w", tool.Command, err)
+		}
+
+		return nil
+	}
+	if _, err := exec.LookPath(tool.Command); err != nil {
+		return fmt.Errorf("host tool executable %q is not available: %w", tool.Command, err)
 	}
 
 	return nil
