@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_hacker_news
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_hacker_news.py
     args: ["--limit", "30"]
     timeout: 45s

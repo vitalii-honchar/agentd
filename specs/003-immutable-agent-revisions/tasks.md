@@ -34,7 +34,7 @@ handling, and logs.
 - [x] T018 [P] Add .env parsing tests for comments, quotes, duplicate keys, invalid lines, and precedence in internal/agentdserver/infra/runtime/env_file_test.go
 - [x] T019 Implement .env parsing, environment merge precedence, and masking helpers in internal/agentdserver/infra/runtime/env_file.go
 - [x] T020 Update Cybersecurity Reddit Watch definition from local_tool to custom_tool in examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md
-- [ ] T021 Update Hacker News Builder Brief definition from local_tool to custom_tool in examples/hacker-news-builder-brief/hacker-news-builder-brief.md
+- [x] T021 Update Hacker News Builder Brief definition from local_tool to custom_tool in examples/hacker-news-builder-brief/hacker-news-builder-brief.md
 - [ ] T022 Update Reddit Customer Pain Monitor definition from local_tool to custom_tool in examples/reddit-customer-pain-monitor/reddit-customer-pain-monitor.md
 - [ ] T023 Update Product Hunt Launch Radar definition from local_tool to custom_tool in examples/product-hunt-launch-radar/product-hunt-launch-radar.md
 - [ ] T024 Update GitHub Trending Engineering Radar definition from local_tool to custom_tool in examples/github-trending-engineering-radar/github-trending-engineering-radar.md
