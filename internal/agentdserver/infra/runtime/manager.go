@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -444,6 +445,7 @@ func (m *Manager) executeDeclaredTools(
 			_ = repo.CreateToolExecution(context.Background(), execution)
 		}
 		if err != nil {
+			emitToolExecutionLog(run, tool, result, err)
 			m.appendRunEvent(
 				run,
 				domain.RunActionToolExecuteFail,
@@ -453,6 +455,7 @@ func (m *Manager) executeDeclaredTools(
 
 			return strings.Join(outputs, "\n"), err
 		}
+		emitToolExecutionLog(run, tool, result, nil)
 		m.appendRunEvent(
 			run,
 			domain.RunActionToolExecuteComplete,
@@ -490,6 +493,36 @@ func toolLogMessage(prefix string, toolName string, result appruntime.ToolResult
 	}
 
 	return strings.Join(parts, " | ")
+}
+
+func emitToolExecutionLog(
+	run domain.AgentRun,
+	tool domain.ToolPermission,
+	result appruntime.ToolResult,
+	err error,
+) {
+	event := domain.RunActionToolExecuteComplete
+	level := slog.LevelInfo
+	attrs := []any{
+		"event", event,
+		"agent", run.AgentName,
+		"run_id", run.ID,
+		"revision", run.AgentRevision,
+		"tool", tool.Name,
+		"tool_kind", string(tool.Kind),
+		"stdout", result.StdoutSummary,
+		"stderr", result.StderrSummary,
+		"result", result.ResultSummary,
+		"exit_code", result.ExitCode,
+		"timed_out", result.TimedOut,
+	}
+	if err != nil {
+		event = domain.RunActionToolExecuteFail
+		level = slog.LevelError
+		attrs[1] = event
+		attrs = append(attrs, "error", err.Error())
+	}
+	slog.Log(context.Background(), level, event, attrs...)
 }
 
 func resolveToolCommand(sourcePath, command string) string {

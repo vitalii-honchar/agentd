@@ -84,7 +84,7 @@ handling, and logs.
 - [x] T056 [P] [US4] Add AI Agent log tests for tool timeout state and error message in internal/agentdserver/infra/runtime/manager_test.go
 - [x] T057 [US4] Include tool stdout, stderr, result summaries, exit code, timeout state, and error message in runtime action logs in internal/agentdserver/infra/runtime/manager.go
 - [x] T058 [P] [US4] Add agentdserver structured log tests for stdout, stderr, result summaries, exit state, timeout state, and errors in internal/agentdserver/infra/runtime/manager_test.go
-- [ ] T059 [US4] Emit tool execution evidence to agentdserver structured logs in internal/agentdserver/infra/runtime/manager.go
+- [x] T059 [US4] Emit tool execution evidence to agentdserver structured logs in internal/agentdserver/infra/runtime/manager.go
 - [ ] T060 [US4] Update logs CLI formatting for tool result, exit, timeout, and error fields in internal/agentd/app/logs.go
 
 ## Phase 7: User Story 5 - Audit and Retain Revisions (P3)
