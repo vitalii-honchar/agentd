@@ -84,7 +84,7 @@ contracts, and example smoke verification.
 - [x] T038 [P] [US1] Add local fetch/screenshot tool scripts in examples/*/tools/
 - [x] T039 [US1] Update Markdown definition parser for inputs/tool timeout/network metadata in internal/agentdserver/infra/definition/parser.go
 - [x] T040 [US1] Update definition validation for example-local tool paths and no required secrets in internal/agentdserver/app/agent/definition_validator.go
-- [ ] T041 [US1] Document example catalog usage in specs/002-agent-examples-results/quickstart.md
+- [x] T041 [US1] Document example catalog usage in specs/002-agent-examples-results/quickstart.md
 
 **Checkpoint**: The new examples are present, self-contained, parseable, and smoke-testable.
 

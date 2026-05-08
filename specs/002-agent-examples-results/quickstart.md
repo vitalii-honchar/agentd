@@ -16,8 +16,13 @@ The daemon listens on `127.0.0.1` by default and rejects non-same-host requests.
 ## 2. Apply examples
 
 ```bash
-agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
 agentd apply examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md
+agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
+agentd apply examples/reddit-customer-pain-monitor/reddit-customer-pain-monitor.md
+agentd apply examples/product-hunt-launch-radar/product-hunt-launch-radar.md
+agentd apply examples/github-trending-engineering-radar/github-trending-engineering-radar.md
+agentd apply examples/developer-dependency-release-monitor/developer-dependency-release-monitor.md
+agentd apply examples/ai-engineering-hiring-signal-monitor/ai-engineering-hiring-signal-monitor.md
 agentd apply examples/website-snapshot-analyst/website-snapshot-analyst.md
 agentd list
 ```
@@ -103,3 +108,22 @@ Expected:
 - No external account setup.
 - No CI/SaaS/private data setup.
 - README documents any local dependencies and optional enhancements.
+
+## 9. Example catalog dependency notes
+
+- `cybersecurity-reddit-watch`: Python 3.10+ and optional `praw`; default
+  public JSON fallback requires no Reddit credentials.
+- `hacker-news-builder-brief`: Python 3.10+ only; uses the public Hacker News
+  Firebase API.
+- `reddit-customer-pain-monitor`: Python 3.10+ only; uses bundled subreddit
+  sources and public Reddit JSON.
+- `product-hunt-launch-radar`: Python 3.10+ only; default smoke path uses a
+  bundled Product Hunt fixture.
+- `github-trending-engineering-radar`: Python 3.10+ only; optional
+  `GITHUB_TOKEN` can raise public API rate limits.
+- `developer-dependency-release-monitor`: Python 3.10+ only; uses public npm,
+  PyPI, and GitHub release endpoints with fixtures as fallback.
+- `ai-engineering-hiring-signal-monitor`: Python 3.10+ only; default smoke path
+  uses bundled public-source fixtures.
+- `website-snapshot-analyst`: Node.js 20+ and `npm install puppeteer` for live
+  screenshots; fixture fallback supports parser/catalog smoke tests.
