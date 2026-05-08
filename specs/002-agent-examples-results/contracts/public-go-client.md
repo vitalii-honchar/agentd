@@ -85,9 +85,18 @@ Required codes:
 - `run_not_found`
 - `run_not_terminal`
 - `agent_run_failed`
+- `run_already_active`
+- `agent_disabled`
+- `invalid_state`
+- `invalid_query`
 - `validation_failed`
 - `daemon_unavailable`
 - `remote_client_forbidden`
+
+The package exposes matching `ErrorCode...` constants and returns
+`*agentdclient.Error` for daemon error responses and local daemon communication
+failures. Callers should use `errors.As` and compare `Error.Code`; they should
+not parse `Error()` strings.
 
 ## Compatibility Rules
 
