@@ -23,16 +23,17 @@ type Config struct {
 }
 
 type Server struct {
-	server         *stdhttp.Server
-	mux            *stdhttp.ServeMux
-	applyUseCase   ApplyUseCase
-	executeUseCase ExecuteUseCase
-	stopUseCase    StopUseCase
-	runListUseCase RunListUseCase
-	resultUseCase  ResultUseCase
-	listUseCase    ListUseCase
-	inspectUseCase InspectUseCase
-	logsUseCase    LogsUseCase
+	server          *stdhttp.Server
+	mux             *stdhttp.ServeMux
+	applyUseCase    ApplyUseCase
+	executeUseCase  ExecuteUseCase
+	stopUseCase     StopUseCase
+	runListUseCase  RunListUseCase
+	resultUseCase   ResultUseCase
+	listUseCase     ListUseCase
+	inspectUseCase  InspectUseCase
+	revisionUseCase RevisionUseCase
+	logsUseCase     LogsUseCase
 }
 
 type ApplyUseCase interface {
@@ -62,6 +63,11 @@ type ListUseCase interface {
 
 type InspectUseCase interface {
 	Inspect(context.Context, string) (domain.Agent, error)
+}
+
+type RevisionUseCase interface {
+	ListRevisions(context.Context, string) ([]domain.AgentRevision, error)
+	InspectRevision(context.Context, string, string) (domain.AgentRevision, error)
 }
 
 type LogsUseCase interface {
@@ -109,6 +115,12 @@ func WithListUseCase(useCase ListUseCase) Option {
 func WithInspectUseCase(useCase InspectUseCase) Option {
 	return func(s *Server) {
 		s.inspectUseCase = useCase
+	}
+}
+
+func WithRevisionUseCase(useCase RevisionUseCase) Option {
+	return func(s *Server) {
+		s.revisionUseCase = useCase
 	}
 }
 
@@ -167,6 +179,10 @@ func (s *Server) registerRoutes() {
 	}
 	if s.inspectUseCase != nil {
 		s.mux.HandleFunc("GET /v1/agents/{name}", s.handleInspect)
+	}
+	if s.revisionUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents/{name}/revisions", s.handleListRevisions)
+		s.mux.HandleFunc("GET /v1/agents/{name}/revisions/{revision_id}", s.handleInspectRevision)
 	}
 	if s.executeUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs", s.handleExecute)
