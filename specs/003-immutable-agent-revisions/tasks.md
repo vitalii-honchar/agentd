@@ -106,7 +106,7 @@ handling, and logs.
 - [x] T072 [P] Add e2e test proving declared .env values survive source deletion and undeclared host env secrets are absent in tests/e2e/runtime_test.go
 - [x] T073 Update OpenAPI revision tool kinds and revision fields in specs/003-immutable-agent-revisions/contracts/openapi.yaml
 - [x] T074 Update CLI contract and agent definition contract docs in specs/003-immutable-agent-revisions/contracts/cli.md and specs/003-immutable-agent-revisions/contracts/agent-definition.md
-- [ ] T075 Update example README docs for custom_tool terminology in examples/github-trending-engineering-radar/README.md
+- [x] T075 Update example README docs for custom_tool terminology in examples/github-trending-engineering-radar/README.md
 - [ ] T076 Run `go test ./...` and record any failures in specs/003-immutable-agent-revisions/quickstart.md
 - [ ] T077 Manually verify with Codex by applying and running GitHub Trending Engineering Radar and record results in specs/003-immutable-agent-revisions/quickstart.md
 - [ ] T078 Manually launch agentdserver, use agentd to apply and execute examples/github-trending-engineering-radar/github-trending-engineering-radar.md, verify the run result is present, verify tool stdout/stderr logs are present, verify agentdserver logs contain tool execution evidence, and record that the flow works without errors in specs/003-immutable-agent-revisions/quickstart.md
