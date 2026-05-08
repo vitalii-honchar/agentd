@@ -162,3 +162,7 @@ func (r *resultRunRepo) ListTerminal(context.Context) ([]domain.AgentRun, error)
 
 	return terminal, nil
 }
+
+func (r *resultRunRepo) CreateToolExecution(context.Context, domain.ToolExecution) error {
+	return nil
+}

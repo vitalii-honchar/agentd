@@ -151,6 +151,10 @@ func (r *memoryRunRepo) ListTerminal(context.Context) ([]domain.AgentRun, error)
 	return nil, nil
 }
 
+func (r *memoryRunRepo) CreateToolExecution(context.Context, domain.ToolExecution) error {
+	return nil
+}
+
 func testRuntimeAgent(name string) domain.Agent {
 	return domain.Agent{
 		Name:     name,

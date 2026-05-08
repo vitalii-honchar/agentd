@@ -275,6 +275,10 @@ func (r *memoryRunRepository) ListTerminal(context.Context) ([]domain.AgentRun, 
 	return nil, nil
 }
 
+func (r *memoryRunRepository) CreateToolExecution(context.Context, domain.ToolExecution) error {
+	return nil
+}
+
 type memoryEventRepository struct {
 	events []domain.RuntimeEvent
 }

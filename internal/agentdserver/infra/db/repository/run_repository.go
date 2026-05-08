@@ -198,6 +198,35 @@ func (r *AgentRunRepository) ListTerminal(ctx context.Context) ([]domain.AgentRu
 	return scanRuns(rows)
 }
 
+func (r *AgentRunRepository) CreateToolExecution(ctx context.Context, execution domain.ToolExecution) error {
+	if execution.ID == "" {
+		return fmt.Errorf("tool execution id is required")
+	}
+	const query = `INSERT INTO tool_executions (
+	           id, run_id, agent_name, tool_name, command_summary,
+	           started_at, completed_at, exit_code, timed_out,
+	           stdout_summary, stderr_summary, error_message
+	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	if _, err := r.db.ExecContext(ctx, query,
+		execution.ID,
+		execution.RunID,
+		execution.AgentName,
+		execution.ToolName,
+		execution.CommandSummary,
+		formatTime(execution.StartedAt),
+		nullTime(execution.CompletedAt),
+		execution.ExitCode,
+		boolToInt(execution.TimedOut),
+		execution.StdoutSummary,
+		execution.StderrSummary,
+		nullString(execution.ErrorMessage),
+	); err != nil {
+		return fmt.Errorf("insert tool execution: %w", err)
+	}
+
+	return nil
+}
+
 type RuntimeEventRepository struct {
 	db *sql.DB
 }

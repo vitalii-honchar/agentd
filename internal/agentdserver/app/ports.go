@@ -30,6 +30,7 @@ type AgentRunRepository interface {
 	List(ctx context.Context) ([]domain.AgentRun, error)
 	ListActive(ctx context.Context) ([]domain.AgentRun, error)
 	ListTerminal(ctx context.Context) ([]domain.AgentRun, error)
+	CreateToolExecution(ctx context.Context, execution domain.ToolExecution) error
 }
 
 type RuntimeEventRepository interface {
