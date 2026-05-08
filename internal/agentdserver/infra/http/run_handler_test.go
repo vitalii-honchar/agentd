@@ -67,6 +67,33 @@ func TestExecuteHandlerPassesInputs(t *testing.T) {
 	}
 }
 
+func TestExecuteHandlerPassesExplicitRevisionSelector(t *testing.T) {
+	t.Parallel()
+
+	execute := &fakeExecuteUseCase{run: domain.AgentRun{
+		ID:            "run-1",
+		AgentName:     "release-notes-helper",
+		AgentRevision: "11111111-1111-4111-8111-111111111111",
+		Status:        domain.AgentRunStatusRunning,
+	}}
+	server := NewServer(Config{}, WithExecuteUseCase(execute))
+	response := httptest.NewRecorder()
+	request := localRequest(
+		stdhttp.MethodPost,
+		"/v1/agents/release-notes-helper:11111111-1111-4111-8111-111111111111/runs",
+		nil,
+	)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusAccepted {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusAccepted, response.Body.String())
+	}
+	if execute.agentName != "release-notes-helper:11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("agent selector: got %q", execute.agentName)
+	}
+}
+
 func TestExecuteHandlerRejectsInvalidJSON(t *testing.T) {
 	t.Parallel()
 
