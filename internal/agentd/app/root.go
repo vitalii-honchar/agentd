@@ -57,7 +57,9 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 		cmd.AddCommand(NewApplyCommand(opts.Client, NewOutput(cfg.OutputFormat, out)))
 	}
 	if opts.ExecuteClient != nil {
-		cmd.AddCommand(NewExecuteCommand(opts.ExecuteClient, NewOutput(cfg.OutputFormat, out)))
+		executeOutput := NewOutput(cfg.OutputFormat, out)
+		cmd.AddCommand(NewExecuteCommand(opts.ExecuteClient, executeOutput))
+		cmd.AddCommand(NewRunCommand(opts.ExecuteClient, executeOutput))
 	}
 	if opts.StopClient != nil {
 		cmd.AddCommand(NewStopCommand(opts.StopClient, NewOutput(cfg.OutputFormat, out)))

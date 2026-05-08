@@ -103,6 +103,7 @@ func TestRootCommandWiresRuntimeCommands(t *testing.T) {
 	})
 
 	requireCommand(t, cmd, "execute")
+	requireCommand(t, cmd, "run")
 	requireCommand(t, cmd, "stop")
 }
 

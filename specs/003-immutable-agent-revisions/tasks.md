@@ -61,7 +61,7 @@ handling, and logs.
 - [x] T039 [P] [US2] Add execute use case tests for missing revision, corrupt revision, and run record revision ID in internal/agentdserver/app/runtime/execute_test.go
 - [x] T040 [US2] Extend execute request model and use case with revision selector and resolved revision artifact in internal/agentdserver/app/runtime/execute.go
 - [x] T041 [US2] Add agentd run command or compatibility alias in internal/agentd/app/execute.go
-- [ ] T042 [US2] Register agentd run command or compatibility alias in internal/agentd/app/root.go
+- [x] T042 [US2] Register agentd run command or compatibility alias in internal/agentd/app/root.go
 - [ ] T043 [US2] Add HTTP run handler tests for latest and explicit revision execution in internal/agentdserver/infra/http/run_handler_test.go
 - [ ] T044 [US2] Update run handler request mapping for latest and explicit revision execution in internal/agentdserver/infra/http/run_handler.go
 - [ ] T045 [US2] Update public client run request types for revision selectors in pkg/agentdclient/runs.go
