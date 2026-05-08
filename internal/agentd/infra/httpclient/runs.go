@@ -36,3 +36,28 @@ func (c *Client) ListRuns(ctx context.Context, includeAll bool) (app.RunListResp
 
 	return response, nil
 }
+
+func (c *Client) ResultsByAgent(ctx context.Context, agentName string) (app.AgentResultsResponse, error) {
+	results, err := c.client.ResultsByAgent(ctx, agentName)
+	if err != nil {
+		return app.AgentResultsResponse{}, err
+	}
+	response := app.AgentResultsResponse{
+		AgentName: agentName,
+		Results:   make([]app.RunResult, 0, len(results)),
+	}
+	for _, result := range results {
+		response.Results = append(response.Results, toAppRunResult(result))
+	}
+
+	return response, nil
+}
+
+func (c *Client) ResultByRunID(ctx context.Context, runID string) (app.RunResult, error) {
+	result, err := c.client.ResultByRunID(ctx, runID)
+	if err != nil {
+		return app.RunResult{}, err
+	}
+
+	return toAppRunResult(result), nil
+}

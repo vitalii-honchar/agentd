@@ -109,12 +109,16 @@ type fakeQueryClient struct {
 	inspectAgent       string
 	logsRequest        LogsRequest
 	listRunsIncludeAll bool
+	resultAgentName    string
+	resultRunID        string
 
-	listResponse ListResponse
-	runsResponse RunListResponse
-	agent        AgentDetail
-	logsResponse LogsResponse
-	err          error
+	listResponse         ListResponse
+	runsResponse         RunListResponse
+	agentResultsResponse AgentResultsResponse
+	runResult            RunResult
+	agent                AgentDetail
+	logsResponse         LogsResponse
+	err                  error
 }
 
 func (f *fakeQueryClient) List(ctx context.Context) (ListResponse, error) {
@@ -142,6 +146,24 @@ func (f *fakeQueryClient) ListRuns(_ context.Context, includeAll bool) (RunListR
 	}
 
 	return f.runsResponse, nil
+}
+
+func (f *fakeQueryClient) ResultsByAgent(_ context.Context, agentName string) (AgentResultsResponse, error) {
+	f.resultAgentName = agentName
+	if f.err != nil {
+		return AgentResultsResponse{}, f.err
+	}
+
+	return f.agentResultsResponse, nil
+}
+
+func (f *fakeQueryClient) ResultByRunID(_ context.Context, runID string) (RunResult, error) {
+	f.resultRunID = runID
+	if f.err != nil {
+		return RunResult{}, f.err
+	}
+
+	return f.runResult, nil
 }
 
 func (f *fakeQueryClient) Logs(_ context.Context, request LogsRequest) (LogsResponse, error) {

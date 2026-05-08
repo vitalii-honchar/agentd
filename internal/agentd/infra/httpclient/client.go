@@ -78,3 +78,19 @@ func toAppRunSummary(run agentdclient.RunSummary) app.RunSummary {
 		CompletedAt: run.CompletedAt,
 	}
 }
+
+func toAppRunResult(result agentdclient.RunResult) app.RunResult {
+	mapped := app.RunResult{
+		RunSummary:    toAppRunSummary(result.RunSummary),
+		Result:        result.Result,
+		ResultSummary: result.ResultSummary,
+	}
+	if result.Failure != nil {
+		mapped.Failure = &app.Failure{
+			Code:    result.Failure.Code,
+			Message: result.Failure.Message,
+		}
+	}
+
+	return mapped
+}

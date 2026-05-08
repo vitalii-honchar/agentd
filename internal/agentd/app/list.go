@@ -12,6 +12,8 @@ type QueryClient interface {
 	List(context.Context) (ListResponse, error)
 	Inspect(context.Context, string) (AgentDetail, error)
 	ListRuns(context.Context, bool) (RunListResponse, error)
+	ResultsByAgent(context.Context, string) (AgentResultsResponse, error)
+	ResultByRunID(context.Context, string) (RunResult, error)
 	Logs(context.Context, LogsRequest) (LogsResponse, error)
 }
 
@@ -38,6 +40,23 @@ type RunSummary struct {
 
 type RunListResponse struct {
 	Runs []RunSummary `json:"runs"`
+}
+
+type AgentResultsResponse struct {
+	AgentName string      `json:"agent_name"`
+	Results   []RunResult `json:"results"`
+}
+
+type RunResult struct {
+	RunSummary
+	Result        string   `json:"result,omitempty"`
+	ResultSummary string   `json:"result_summary,omitempty"`
+	Failure       *Failure `json:"failure,omitempty"`
+}
+
+type Failure struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 func NewListCommand(client QueryClient, output Output) *cobra.Command {
