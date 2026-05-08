@@ -42,6 +42,30 @@ const (
 	AgentRunStatusInterrupted AgentRunStatus = "interrupted"
 )
 
+type AgentRevisionStatus string
+
+const (
+	AgentRevisionStatusPending   AgentRevisionStatus = "pending"
+	AgentRevisionStatusFinalized AgentRevisionStatus = "finalized"
+	AgentRevisionStatusCorrupt   AgentRevisionStatus = "corrupt"
+)
+
+type RevisionEnvironmentSource string
+
+const (
+	RevisionEnvironmentSourceLiteral RevisionEnvironmentSource = "literal"
+	RevisionEnvironmentSourceEnvFile RevisionEnvironmentSource = "env_file"
+	RevisionEnvironmentSourceToolEnv RevisionEnvironmentSource = "tool_env"
+)
+
+type ToolExecutionEventType string
+
+const (
+	ToolExecutionEventStart    ToolExecutionEventType = "tool.execute.start"
+	ToolExecutionEventComplete ToolExecutionEventType = "tool.execute.complete"
+	ToolExecutionEventFail     ToolExecutionEventType = "tool.execute.fail"
+)
+
 type ToolKind string
 
 const (
@@ -219,6 +243,91 @@ type ToolExecution struct {
 	StdoutSummary  string
 	StderrSummary  string
 	ErrorMessage   string
+}
+
+type AgentRevision struct {
+	AgentName          string
+	RevisionID         string
+	ContentDigest      string
+	SourcePath         string
+	ArtifactPath       string
+	EnvironmentJSON    string
+	Prompt             string
+	Vendor             Vendor
+	Schedule           Schedule
+	Status             AgentRevisionStatus
+	CreatedAt          time.Time
+	FinalizedAt        *time.Time
+	ErrorMessage       string
+	Tools              []RevisionTool
+	ArtifactFiles      []RevisionArtifactFile
+	Environment        []RevisionEnvironment
+	IsLatestFinalized   bool
+}
+
+type RevisionTool struct {
+	AgentName        string
+	RevisionID       string
+	Name             string
+	Kind             ToolKind
+	OriginalCommand  string
+	RewrittenCommand string
+	HostCommand      string
+	Args             []string
+	Env              []string
+	Timeout          string
+	ReadPaths        []string
+	WritePaths       []string
+	NetworkAllow     []string
+	CopiedFiles      []string
+	CreatedAt        time.Time
+}
+
+type RevisionArtifactFile struct {
+	AgentName            string
+	RevisionID           string
+	ArtifactRelativePath string
+	SourcePath           string
+	SHA256               string
+	Mode                 int64
+	SizeBytes            int64
+	CopiedAt             time.Time
+}
+
+type RevisionEnvironment struct {
+	AgentName            string
+	RevisionID           string
+	Key                  string
+	Value                string
+	Source               RevisionEnvironmentSource
+	SourcePath           string
+	ArtifactRelativePath string
+	Masked               bool
+	CreatedAt            time.Time
+}
+
+type ExecutionWorkDir struct {
+	AgentName   string
+	ExecutionID string
+	Path        string
+	RevisionID  string
+	CreatedAt   time.Time
+}
+
+type ToolExecutionLog struct {
+	AgentName     string
+	RunID         string
+	RevisionID    string
+	ToolName      string
+	ToolKind      ToolKind
+	EventType     ToolExecutionEventType
+	StdoutSummary string
+	StderrSummary string
+	ResultSummary string
+	ExitCode      int
+	TimedOut      bool
+	ErrorMessage  string
+	CreatedAt     time.Time
 }
 
 func (r AgentRun) IsActive() bool {
