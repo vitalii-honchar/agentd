@@ -27,7 +27,11 @@ func (s *Server) handleApply(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	}
 
 	writeJSON(w, stdhttp.StatusOK, model.ApplyResponse{
-		Outcome: string(result.Outcome),
-		Agent:   toAgentDetail(result.Agent),
+		Outcome:        string(result.Outcome),
+		Agent:          toAgentDetail(result.Agent),
+		RevisionID:     result.RevisionID,
+		ArtifactPath:   result.ArtifactPath,
+		RevisionStatus: string(result.RevisionStatus),
+		RevisionReused: result.RevisionReused,
 	})
 }
