@@ -163,6 +163,55 @@ func TestManagerExecutesDeclaredLocalToolsBeforeProvider(t *testing.T) {
 	assertEventMessageContains(t, events, domain.RunActionToolExecuteComplete, "stdout: snapshot title: Example")
 }
 
+func TestManagerExecutesCustomToolFromRevisionArtifact(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	artifactDir := t.TempDir()
+	artifactCommand := filepath.Join(artifactDir, "tools", "fetch.sh")
+	if err := os.MkdirAll(filepath.Dir(artifactCommand), 0o755); err != nil {
+		t.Fatalf("MkdirAll artifact tools: %v", err)
+	}
+	if err := os.WriteFile(artifactCommand, []byte("#!/bin/sh\necho ok\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile artifact command: %v", err)
+	}
+	toolExecutor := &recordingToolExecutor{
+		result: appruntime.ToolResult{StdoutSummary: "artifact output"},
+	}
+	manager.SetToolExecutor(toolExecutor)
+	agent := testAgent("artifact-agent")
+	agent.Revision = "revision-1"
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "fetch",
+		Kind:    domain.ToolKindCustomTool,
+		Command: artifactCommand,
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent,
+		Revision: domain.AgentRevision{
+			AgentName:    agent.Name,
+			RevisionID:   "revision-1",
+			ArtifactPath: artifactDir,
+			Status:       domain.AgentRevisionStatusFinalized,
+		},
+		Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	request := toolExecutor.request()
+	if request.Tool.Command != artifactCommand {
+		t.Fatalf("tool command: got %q want %q", request.Tool.Command, artifactCommand)
+	}
+	if request.WorkDir != run.WorkDir {
+		t.Fatalf("work dir: got %q want %q", request.WorkDir, run.WorkDir)
+	}
+}
+
 func TestManagerLogsDeclaredToolStderrOnFailure(t *testing.T) {
 	t.Parallel()
 

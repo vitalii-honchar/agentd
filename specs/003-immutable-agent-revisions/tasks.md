@@ -68,7 +68,7 @@ handling, and logs.
 
 ## Phase 5: User Story 3 - Execute Custom and Host Tools (P2)
 
-- [ ] T046 [P] [US3] Add runtime manager tests proving custom_tool commands execute copied artifact files from execution workdirs in internal/agentdserver/infra/runtime/manager_test.go
+- [x] T046 [P] [US3] Add runtime manager tests proving custom_tool commands execute copied artifact files from execution workdirs in internal/agentdserver/infra/runtime/manager_test.go
 - [ ] T047 [P] [US3] Add runtime manager tests proving host_tool commands invoke host-installed executables without artifact copying in internal/agentdserver/infra/runtime/manager_test.go
 - [ ] T048 [P] [US3] Add runtime manager tests for missing host_tool executable errors in internal/agentdserver/infra/runtime/manager_test.go
 - [ ] T049 [US3] Update runtime manager command resolution for custom_tool artifact paths in internal/agentdserver/infra/runtime/manager.go
