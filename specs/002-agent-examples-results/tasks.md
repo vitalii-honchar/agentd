@@ -49,7 +49,7 @@ contracts, and example smoke verification.
 - [x] T019 Define public client request/response/error types in pkg/agentdclient/types.go
 - [x] T020 [P] Add public client unit tests for error decoding in pkg/agentdclient/client_test.go
 - [x] T021 Extend CLI output support for table trimming and JSON stability in internal/agentd/app/output.go
-- [ ] T022 [P] Add CLI output tests for trimmed result table formatting in internal/agentd/app/output_test.go
+- [x] T022 [P] Add CLI output tests for trimmed result table formatting in internal/agentd/app/output_test.go
 
 **Checkpoint**: Persistence, same-host boundary, public client base, and output primitives are ready.
 
