@@ -75,7 +75,7 @@ contracts, and example smoke verification.
 - [x] T029 [P] [US1] Create hacker-news-builder-brief definition and README in examples/hacker-news-builder-brief/
 - [x] T030 [P] [US1] Create reddit-customer-pain-monitor definition and README in examples/reddit-customer-pain-monitor/
 - [x] T031 [P] [US1] Create product-hunt-launch-radar definition and README in examples/product-hunt-launch-radar/
-- [ ] T032 [P] [US1] Create github-trending-engineering-radar definition and README in examples/github-trending-engineering-radar/
+- [x] T032 [P] [US1] Create github-trending-engineering-radar definition and README in examples/github-trending-engineering-radar/
 - [ ] T033 [P] [US1] Create developer-dependency-release-monitor definition and README in examples/developer-dependency-release-monitor/
 - [ ] T034 [P] [US1] Create ai-engineering-hiring-signal-monitor definition and README in examples/ai-engineering-hiring-signal-monitor/
 - [ ] T035 [P] [US1] Create website-snapshot-analyst definition and README in examples/website-snapshot-analyst/
