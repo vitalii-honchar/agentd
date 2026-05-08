@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_dependency_releases
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_dependency_releases.py
     args: ["--sources", "sources/dependencies.json"]
     timeout: 60s
