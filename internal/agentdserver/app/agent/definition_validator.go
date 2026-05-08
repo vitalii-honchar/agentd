@@ -33,7 +33,10 @@ func NormalizeDefinition(definition domain.AgentDefinition) (NormalizedDefinitio
 	if err := validateInputNames(definition.Inputs); err != nil {
 		return NormalizedDefinition{}, err
 	}
-	if err := validateExampleLocalTools(definition); err != nil {
+	if err := validateToolDefinitions(definition.Tools); err != nil {
+		return NormalizedDefinition{}, err
+	}
+	if err := validateExampleToolPolicies(definition); err != nil {
 		return NormalizedDefinition{}, err
 	}
 
@@ -88,22 +91,42 @@ func validateInputNames(inputs []domain.InputDefinition) error {
 	return nil
 }
 
-func validateExampleLocalTools(definition domain.AgentDefinition) error {
+func validateToolDefinitions(tools []domain.ToolPermission) error {
+	for _, tool := range tools {
+		command := filepath.ToSlash(strings.TrimSpace(tool.Command))
+		switch tool.Kind {
+		case domain.ToolKindCustomTool, domain.ToolKindLocalTool:
+			if command == "" {
+				return fmt.Errorf("%w: tools.command is required", domain.ErrInvalidDefinition)
+			}
+			if filepath.IsAbs(command) || strings.HasPrefix(command, "../") || strings.Contains(command, "/../") {
+				return fmt.Errorf("%w: custom_tool command must stay inside the definition folder", domain.ErrInvalidDefinition)
+			}
+		case domain.ToolKindHostTool:
+			if command == "" {
+				return fmt.Errorf("%w: tools.command is required", domain.ErrInvalidDefinition)
+			}
+			if !filepath.IsAbs(command) && strings.Contains(command, "/") {
+				return fmt.Errorf("%w: host_tool command must be a host executable name or absolute path", domain.ErrInvalidDefinition)
+			}
+		default:
+			return fmt.Errorf("%w: tools.kind %q is not supported", domain.ErrInvalidDefinition, tool.Kind)
+		}
+	}
+
+	return nil
+}
+
+func validateExampleToolPolicies(definition domain.AgentDefinition) error {
 	sourcePath := filepath.ToSlash(strings.TrimSpace(definition.SourcePath))
 	if !strings.HasPrefix(sourcePath, "examples/") {
 		return nil
 	}
 	for _, tool := range definition.Tools {
-		if tool.Kind != domain.ToolKindLocalTool {
+		if tool.Kind != domain.ToolKindCustomTool && tool.Kind != domain.ToolKindLocalTool {
 			continue
 		}
 		command := filepath.ToSlash(strings.TrimSpace(tool.Command))
-		if command == "" {
-			return fmt.Errorf("%w: tools.command is required", domain.ErrInvalidDefinition)
-		}
-		if filepath.IsAbs(command) || strings.HasPrefix(command, "../") || strings.Contains(command, "/../") {
-			return fmt.Errorf("%w: tools.command must stay inside the example folder", domain.ErrInvalidDefinition)
-		}
 		if !strings.HasPrefix(command, "tools/") {
 			return fmt.Errorf("%w: tools.command must reference tools/", domain.ErrInvalidDefinition)
 		}

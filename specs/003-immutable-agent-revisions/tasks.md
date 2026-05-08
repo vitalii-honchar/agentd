@@ -27,7 +27,7 @@ handling, and logs.
 - [x] T011 [P] Add parser tests for custom_tool, host_tool, legacy local_tool, environment.variables, and environment.files in internal/agentdserver/infra/definition/parser_test.go
 - [x] T012 [P] Add validator tests for custom_tool copy paths and host_tool host commands in internal/agentdserver/app/agent/definition_validator_test.go
 - [x] T013 Update definition parser for custom_tool, host_tool, legacy local_tool, and environment metadata in internal/agentdserver/infra/definition/parser.go
-- [ ] T014 Update definition validator for path-bearing metadata and tool kind validation in internal/agentdserver/app/agent/definition_validator.go
+- [x] T014 Update definition validator for path-bearing metadata and tool kind validation in internal/agentdserver/app/agent/definition_validator.go
 - [ ] T015 [P] Add artifact copy tests for custom_tool scripts, declared read files, executable mode, and checksums in internal/agentdserver/infra/runtime/revision_artifact_test.go
 - [ ] T016 [P] Add artifact validation tests for missing files, symlink policy, and path escape rejection in internal/agentdserver/infra/runtime/revision_artifact_test.go
 - [ ] T017 Implement artifact staging, copy, manifest, checksum, command rewrite, and finalize behavior in internal/agentdserver/infra/runtime/revision_artifact.go
