@@ -2,14 +2,21 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+
+	"github.com/google/uuid"
 )
 
 type ApplyOutcome string
@@ -33,6 +40,7 @@ func (f ParserFunc) ParseMarkdown(sourcePath string, markdown string) (domain.Ag
 type ApplyUseCase struct {
 	parser     DefinitionParser
 	agents     app.AgentRepository
+	revisions  app.AgentRevisionRepository
 	runtimeDBs app.RuntimeDBManager
 	logger     *slog.Logger
 	now        func() time.Time
@@ -73,10 +81,15 @@ func NewApplyUseCase(
 	if runtimeDBs == nil {
 		return nil, fmt.Errorf("runtime db manager is required")
 	}
+	revisions, ok := agents.(app.AgentRevisionRepository)
+	if !ok {
+		return nil, fmt.Errorf("agent repository must support revisions")
+	}
 
 	useCase := &ApplyUseCase{
 		parser:     parser,
 		agents:     agents,
+		revisions:  revisions,
 		runtimeDBs: runtimeDBs,
 		logger:     slog.Default(),
 		now:        func() time.Time { return time.Now().UTC() },
@@ -132,6 +145,24 @@ func (u *ApplyUseCase) Apply(
 		u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
 
 		return ApplyResult{}, err
+	}
+	if _, err := u.revisions.FindRevisionByDigest(ctx, agent.Name, normalized.Revision); err != nil {
+		if !errors.Is(err, domain.ErrNotFound) {
+			u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
+
+			return ApplyResult{}, err
+		}
+		revision, err := revisionFromDefinition(normalized.Definition, uuid.NewString(), normalized.Revision, u.now())
+		if err != nil {
+			u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
+
+			return ApplyResult{}, err
+		}
+		if err := u.revisions.SaveRevision(ctx, revision); err != nil {
+			u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
+
+			return ApplyResult{}, err
+		}
 	}
 	if err := u.runtimeDBs.EnsureAgent(ctx, agent.Name); err != nil {
 		u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
@@ -225,4 +256,170 @@ func agentFromDefinition(
 		UpdatedAt:          now,
 		AppliedAt:          now,
 	}
+}
+
+func revisionFromDefinition(
+	definition domain.AgentDefinition,
+	revisionID string,
+	contentDigest string,
+	now time.Time,
+) (domain.AgentRevision, error) {
+	finalizedAt := now
+	environment, artifactFiles, err := captureDefinitionEnvironment(definition, revisionID, now)
+	if err != nil {
+		return domain.AgentRevision{}, err
+	}
+
+	return domain.AgentRevision{
+		AgentName:       definition.Name,
+		RevisionID:      revisionID,
+		ContentDigest:   contentDigest,
+		SourcePath:      definition.SourcePath,
+		ArtifactPath:    filepath.Join("data", "work", definition.Name, revisionID),
+		EnvironmentJSON: "[]",
+		Prompt:          definition.Prompt,
+		Vendor:          definition.Vendor,
+		Schedule:        definition.Schedule,
+		Status:          domain.AgentRevisionStatusFinalized,
+		CreatedAt:       now,
+		FinalizedAt:     &finalizedAt,
+		Tools:           revisionToolsFromDefinition(definition, revisionID, now),
+		ArtifactFiles:   artifactFiles,
+		Environment:     environment,
+	}, nil
+}
+
+func revisionToolsFromDefinition(
+	definition domain.AgentDefinition,
+	revisionID string,
+	now time.Time,
+) []domain.RevisionTool {
+	tools := make([]domain.RevisionTool, 0, len(definition.Tools))
+	for _, tool := range definition.Tools {
+		kind := tool.Kind
+		if kind == domain.ToolKindLocalTool {
+			kind = domain.ToolKindCustomTool
+		}
+		revisionTool := domain.RevisionTool{
+			AgentName:       definition.Name,
+			RevisionID:      revisionID,
+			Name:            tool.Name,
+			Kind:            kind,
+			OriginalCommand: tool.Command,
+			Args:            append([]string(nil), tool.Args...),
+			Env:             append([]string(nil), tool.Env...),
+			Timeout:         tool.Timeout,
+			ReadPaths:       append([]string(nil), tool.ReadPaths...),
+			WritePaths:      append([]string(nil), tool.WritePaths...),
+			NetworkAllow:    append([]string(nil), tool.NetworkAllow...),
+			CreatedAt:       now,
+		}
+		if kind == domain.ToolKindHostTool {
+			revisionTool.HostCommand = tool.Command
+		}
+		tools = append(tools, revisionTool)
+	}
+
+	return tools
+}
+
+func captureDefinitionEnvironment(
+	definition domain.AgentDefinition,
+	revisionID string,
+	now time.Time,
+) ([]domain.RevisionEnvironment, []domain.RevisionArtifactFile, error) {
+	sourceDir := filepath.Dir(definition.SourcePath)
+	values := make(map[string]domain.RevisionEnvironment)
+	var artifactFiles []domain.RevisionArtifactFile
+	for _, envFile := range definition.Environment.Files {
+		relative := filepath.Clean(strings.TrimSpace(envFile))
+		if relative == "" || relative == "." || filepath.IsAbs(relative) || strings.HasPrefix(relative, "..") {
+			return nil, nil, fmt.Errorf("%w: environment.files path %q must stay inside the definition folder", domain.ErrInvalidDefinition, envFile)
+		}
+		sourcePath := filepath.Join(sourceDir, relative)
+		body, err := os.ReadFile(sourcePath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%w: read environment file %q: %v", domain.ErrInvalidDefinition, envFile, err)
+		}
+		for _, entry := range parseSimpleEnvFile(string(body)) {
+			values[entry.Key] = domain.RevisionEnvironment{
+				AgentName:            definition.Name,
+				RevisionID:           revisionID,
+				Key:                  entry.Key,
+				Value:                entry.Value,
+				Source:               domain.RevisionEnvironmentSourceEnvFile,
+				SourcePath:           sourcePath,
+				ArtifactRelativePath: filepath.ToSlash(relative),
+				Masked:               true,
+				CreatedAt:            now,
+			}
+		}
+		sum := sha256.Sum256(body)
+		artifactFiles = append(artifactFiles, domain.RevisionArtifactFile{
+			AgentName:            definition.Name,
+			RevisionID:           revisionID,
+			ArtifactRelativePath: filepath.ToSlash(relative),
+			SourcePath:           sourcePath,
+			SHA256:               hex.EncodeToString(sum[:]),
+			SizeBytes:            int64(len(body)),
+			CopiedAt:             now,
+		})
+	}
+	keys := make([]string, 0, len(definition.Environment.Variables))
+	for key := range definition.Environment.Variables {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		values[key] = domain.RevisionEnvironment{
+			AgentName:  definition.Name,
+			RevisionID: revisionID,
+			Key:        key,
+			Value:      definition.Environment.Variables[key],
+			Source:     domain.RevisionEnvironmentSourceLiteral,
+			Masked:     true,
+			CreatedAt:  now,
+		}
+	}
+
+	environment := make([]domain.RevisionEnvironment, 0, len(values))
+	keys = keys[:0]
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		environment = append(environment, values[key])
+	}
+	sort.Slice(artifactFiles, func(i, j int) bool {
+		return artifactFiles[i].ArtifactRelativePath < artifactFiles[j].ArtifactRelativePath
+	})
+
+	return environment, artifactFiles, nil
+}
+
+type simpleEnvEntry struct {
+	Key   string
+	Value string
+}
+
+func parseSimpleEnvFile(body string) []simpleEnvEntry {
+	lines := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")
+	entries := make([]simpleEnvEntry, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(trimmed, "=")
+		if !ok {
+			continue
+		}
+		entries = append(entries, simpleEnvEntry{
+			Key:   strings.TrimSpace(key),
+			Value: strings.Trim(strings.TrimSpace(value), `"'`),
+		})
+	}
+
+	return entries
 }
