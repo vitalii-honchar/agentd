@@ -29,14 +29,15 @@ func ParseMarkdown(sourcePath string, markdown string) (domain.AgentDefinition, 
 }
 
 type definitionFrontMatter struct {
-	Name       string              `yaml:"name"`
-	Enabled    *bool               `yaml:"enabled"`
-	Schedule   scheduleFrontMatter `yaml:"schedule"`
-	Vendor     vendorFrontMatter   `yaml:"vendor"`
-	Inputs     []inputFrontMatter  `yaml:"inputs"`
-	Tools      []toolFrontMatter   `yaml:"tools"`
-	MCPServers []toolFrontMatter   `yaml:"mcp_servers"`
-	Access     accessFrontMatter   `yaml:"access"`
+	Name        string                 `yaml:"name"`
+	Enabled     *bool                  `yaml:"enabled"`
+	Schedule    scheduleFrontMatter    `yaml:"schedule"`
+	Vendor      vendorFrontMatter      `yaml:"vendor"`
+	Environment environmentFrontMatter `yaml:"environment"`
+	Inputs      []inputFrontMatter     `yaml:"inputs"`
+	Tools       []toolFrontMatter      `yaml:"tools"`
+	MCPServers  []toolFrontMatter      `yaml:"mcp_servers"`
+	Access      accessFrontMatter      `yaml:"access"`
 }
 
 type scheduleFrontMatter struct {
@@ -47,6 +48,11 @@ type scheduleFrontMatter struct {
 type vendorFrontMatter struct {
 	Name  string `yaml:"name"`
 	Model string `yaml:"model"`
+}
+
+type environmentFrontMatter struct {
+	Variables map[string]string `yaml:"variables"`
+	Files     []string          `yaml:"files"`
 }
 
 type inputFrontMatter struct {
@@ -103,6 +109,10 @@ func (f definitionFrontMatter) toDomain(
 			Name:  strings.TrimSpace(f.Vendor.Name),
 			Model: strings.TrimSpace(f.Vendor.Model),
 		},
+		Environment: domain.DefinitionEnvironment{
+			Variables: copyStringMap(f.Environment.Variables),
+			Files:     copyStrings(f.Environment.Files),
+		},
 		Inputs:     make([]domain.InputDefinition, 0, len(f.Inputs)),
 		Tools:      make([]domain.ToolPermission, 0, len(f.Tools)),
 		MCPServers: make([]domain.ToolPermission, 0, len(f.MCPServers)),
@@ -123,7 +133,7 @@ func (f definitionFrontMatter) toDomain(
 		definition.Inputs = append(definition.Inputs, input.toDomain())
 	}
 	for _, tool := range f.Tools {
-		definition.Tools = append(definition.Tools, tool.toDomain(definition.Name, domain.ToolKind(tool.Kind)))
+		definition.Tools = append(definition.Tools, tool.toDomain(definition.Name, normalizeToolKind(tool.Kind)))
 	}
 	for _, server := range f.MCPServers {
 		definition.MCPServers = append(
@@ -133,6 +143,15 @@ func (f definitionFrontMatter) toDomain(
 	}
 
 	return definition
+}
+
+func normalizeToolKind(kind string) domain.ToolKind {
+	normalized := domain.ToolKind(strings.TrimSpace(kind))
+	if normalized == domain.ToolKindLocalTool {
+		return domain.ToolKindCustomTool
+	}
+
+	return normalized
 }
 
 func (i inputFrontMatter) toDomain() domain.InputDefinition {
@@ -185,6 +204,18 @@ func copyStrings(values []string) []string {
 	}
 	copied := make([]string, len(values))
 	copy(copied, values)
+
+	return copied
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	if values == nil {
+		return nil
+	}
+	copied := make(map[string]string, len(values))
+	for key, value := range values {
+		copied[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
 
 	return copied
 }

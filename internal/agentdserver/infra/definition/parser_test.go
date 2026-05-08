@@ -106,7 +106,7 @@ Review open pull requests and identify issues that need attention.`)
 		t.Fatalf("tools: got %d want 1", len(definition.Tools))
 	}
 	tool := definition.Tools[0]
-	if tool.Name != "git" || tool.Kind != domain.ToolKindLocalTool || tool.Command != "git" {
+	if tool.Name != "git" || tool.Kind != domain.ToolKindCustomTool || tool.Command != "git" {
 		t.Fatalf("tool: %#v", tool)
 	}
 	if len(tool.Args) != 2 || tool.Args[0] != "status" || tool.Args[1] != "--short" {

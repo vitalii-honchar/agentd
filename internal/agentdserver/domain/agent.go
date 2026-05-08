@@ -71,8 +71,8 @@ type ToolKind string
 const (
 	ToolKindCustomTool ToolKind = "custom_tool"
 	ToolKindHostTool   ToolKind = "host_tool"
-	ToolKindLocalTool ToolKind = "local_tool"
-	ToolKindMCPServer ToolKind = "mcp_server"
+	ToolKindLocalTool  ToolKind = "local_tool"
+	ToolKindMCPServer  ToolKind = "mcp_server"
 )
 
 type EventLevel string
@@ -102,6 +102,7 @@ type AgentDefinition struct {
 	Enabled     bool
 	Schedule    Schedule
 	Vendor      Vendor
+	Environment DefinitionEnvironment
 	Inputs      []InputDefinition
 	Tools       []ToolPermission
 	MCPServers  []ToolPermission
@@ -160,6 +161,11 @@ type Schedule struct {
 type Vendor struct {
 	Name  string
 	Model string
+}
+
+type DefinitionEnvironment struct {
+	Variables map[string]string
+	Files     []string
 }
 
 type AccessPolicy struct {
@@ -248,23 +254,23 @@ type ToolExecution struct {
 }
 
 type AgentRevision struct {
-	AgentName          string
-	RevisionID         string
-	ContentDigest      string
-	SourcePath         string
-	ArtifactPath       string
-	EnvironmentJSON    string
-	Prompt             string
-	Vendor             Vendor
-	Schedule           Schedule
-	Status             AgentRevisionStatus
-	CreatedAt          time.Time
-	FinalizedAt        *time.Time
-	ErrorMessage       string
-	Tools              []RevisionTool
-	ArtifactFiles      []RevisionArtifactFile
-	Environment        []RevisionEnvironment
-	IsLatestFinalized   bool
+	AgentName         string
+	RevisionID        string
+	ContentDigest     string
+	SourcePath        string
+	ArtifactPath      string
+	EnvironmentJSON   string
+	Prompt            string
+	Vendor            Vendor
+	Schedule          Schedule
+	Status            AgentRevisionStatus
+	CreatedAt         time.Time
+	FinalizedAt       *time.Time
+	ErrorMessage      string
+	Tools             []RevisionTool
+	ArtifactFiles     []RevisionArtifactFile
+	Environment       []RevisionEnvironment
+	IsLatestFinalized bool
 }
 
 type RevisionTool struct {
