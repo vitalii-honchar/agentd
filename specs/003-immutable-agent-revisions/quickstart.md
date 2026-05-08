@@ -115,6 +115,30 @@ Codex verification on 2026-05-08:
   run ID, revision ID, tool name, `tool_kind=custom_tool`, stdout, result,
   stderr, exit code, and timeout state.
 
+Daemon and CLI launch verification on 2026-05-08:
+
+- Started `agentdserver` manually with an isolated data directory under `/tmp`
+  and port `18081`.
+- Used real `agentd` CLI commands with
+  `AGENTD_SERVER_URL=http://127.0.0.1:18081`.
+- Command sequence:
+
+  ```bash
+  agentd apply examples/github-trending-engineering-radar/github-trending-engineering-radar.md
+  agentd run github-trending-engineering-radar:e578b123-9140-45d1-921f-903c750526f1
+  agentd result b1a88c07-2d7a-4b30-84b1-f3fa125850d3
+  agentd logs github-trending-engineering-radar --run b1a88c07-2d7a-4b30-84b1-f3fa125850d3 --tail 20
+  agentd inspect github-trending-engineering-radar:e578b123-9140-45d1-921f-903c750526f1
+  ```
+
+- Apply created artifact
+  `/tmp/agentd-manual-1778253768/work/github-trending-engineering-radar/e578b123-9140-45d1-921f-903c750526f1`.
+- Inspect showed the immutable prompt, `custom_tool` metadata, rewritten command,
+  and copied `fixtures/`, `sources/`, and `tools/` files.
+- The run completed without errors, returned a GitHub-derived result, and
+  agent/server logs contained tool stdout, stderr, result, exit code, timeout
+  state, agent name, run ID, revision ID, and tool name.
+
 ## Automated Verification
 
 Run:
