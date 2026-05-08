@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_github_trending
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_github_trending.py
     args: ["--languages", "sources/languages.txt"]
     timeout: 60s
