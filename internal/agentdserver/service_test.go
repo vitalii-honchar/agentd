@@ -87,6 +87,30 @@ func TestRecoverRevisionArtifactsMarksPendingAndMissingArtifactsCorrupt(t *testi
 	}
 }
 
+func TestCleanupStaleExecutionDirsRemovesExecutionsOnly(t *testing.T) {
+	t.Parallel()
+
+	workRoot := t.TempDir()
+	executionDir := filepath.Join(workRoot, "release-notes-helper", "executions", "run-1")
+	revisionDir := filepath.Join(workRoot, "release-notes-helper", "revision-1")
+	if err := os.MkdirAll(executionDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll execution: %v", err)
+	}
+	if err := os.MkdirAll(revisionDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll revision: %v", err)
+	}
+
+	if err := cleanupStaleExecutionDirs(workRoot); err != nil {
+		t.Fatalf("cleanupStaleExecutionDirs: %v", err)
+	}
+	if _, err := os.Stat(executionDir); !os.IsNotExist(err) {
+		t.Fatalf("execution dir still exists or unexpected error: %v", err)
+	}
+	if _, err := os.Stat(revisionDir); err != nil {
+		t.Fatalf("revision artifact dir was removed: %v", err)
+	}
+}
+
 func testConfig(t *testing.T) *config.Config {
 	t.Helper()
 

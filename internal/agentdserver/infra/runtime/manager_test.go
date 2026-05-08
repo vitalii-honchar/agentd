@@ -654,6 +654,9 @@ func TestIsolationBuilderCreatesPerRunDirectory(t *testing.T) {
 	if _, err := os.Stat(env.WorkDir); err != nil {
 		t.Fatalf("work dir was not created: %v", err)
 	}
+	if !strings.Contains(env.WorkDir, filepath.Join("agent-a", "executions", "run-1")) {
+		t.Fatalf("work dir: got %q", env.WorkDir)
+	}
 }
 
 func TestRunLogFactoryCreatesIsolatedLog(t *testing.T) {

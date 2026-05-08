@@ -222,6 +222,9 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 			{name: "revision-artifact-recovery", start: func(ctx context.Context) error {
 				return recoverRevisionArtifacts(ctx, agentRepo, workRoot)
 			}},
+			{name: "execution-dir-cleanup", start: func(context.Context) error {
+				return cleanupStaleExecutionDirs(workRoot)
+			}},
 			{name: "recovery", start: func(ctx context.Context) error {
 				_, err := recoveryUC.Recover(ctx)
 
@@ -359,6 +362,43 @@ func revisionFileCorruption(artifactPath string, relativePath string) string {
 	}
 
 	return ""
+}
+
+func cleanupStaleExecutionDirs(workRoot string) error {
+	agentEntries, err := os.ReadDir(workRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("read work root for execution cleanup: %w", err)
+	}
+	for _, agentEntry := range agentEntries {
+		if !agentEntry.IsDir() {
+			continue
+		}
+		executionsPath := filepath.Join(workRoot, agentEntry.Name(), "executions")
+		executionEntries, err := os.ReadDir(executionsPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+
+			return fmt.Errorf("read executions dir %s: %w", executionsPath, err)
+		}
+		for _, executionEntry := range executionEntries {
+			if !executionEntry.IsDir() {
+				continue
+			}
+			path := filepath.Join(executionsPath, executionEntry.Name())
+			if err := os.RemoveAll(path); err != nil {
+				return fmt.Errorf("remove stale execution dir %s: %w", path, err)
+			}
+			slog.Info("Removed stale execution directory", "path", path)
+		}
+	}
+
+	return nil
 }
 
 func startHTTP(server *daemonhttp.Server) func(context.Context) error {
