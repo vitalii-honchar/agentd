@@ -33,6 +33,7 @@ type definitionFrontMatter struct {
 	Enabled    *bool               `yaml:"enabled"`
 	Schedule   scheduleFrontMatter `yaml:"schedule"`
 	Vendor     vendorFrontMatter   `yaml:"vendor"`
+	Inputs     []inputFrontMatter  `yaml:"inputs"`
 	Tools      []toolFrontMatter   `yaml:"tools"`
 	MCPServers []toolFrontMatter   `yaml:"mcp_servers"`
 	Access     accessFrontMatter   `yaml:"access"`
@@ -48,15 +49,23 @@ type vendorFrontMatter struct {
 	Model string `yaml:"model"`
 }
 
+type inputFrontMatter struct {
+	Name        string `yaml:"name"`
+	Required    bool   `yaml:"required"`
+	Description string `yaml:"description"`
+}
+
 type toolFrontMatter struct {
-	Name         string   `yaml:"name"`
-	Kind         string   `yaml:"kind"`
-	Command      string   `yaml:"command"`
-	Args         []string `yaml:"args"`
-	Env          []string `yaml:"env"`
-	ReadPaths    []string `yaml:"read_paths"`
-	WritePaths   []string `yaml:"write_paths"`
-	NetworkAllow []string `yaml:"network_allow"`
+	Name         string             `yaml:"name"`
+	Kind         string             `yaml:"kind"`
+	Command      string             `yaml:"command"`
+	Args         []string           `yaml:"args"`
+	Env          []string           `yaml:"env"`
+	Timeout      string             `yaml:"timeout"`
+	ReadPaths    []string           `yaml:"read_paths"`
+	WritePaths   []string           `yaml:"write_paths"`
+	NetworkAllow []string           `yaml:"network_allow"`
+	Network      networkFrontMatter `yaml:"network"`
 }
 
 type accessFrontMatter struct {
@@ -94,6 +103,7 @@ func (f definitionFrontMatter) toDomain(
 			Name:  strings.TrimSpace(f.Vendor.Name),
 			Model: strings.TrimSpace(f.Vendor.Model),
 		},
+		Inputs:     make([]domain.InputDefinition, 0, len(f.Inputs)),
 		Tools:      make([]domain.ToolPermission, 0, len(f.Tools)),
 		MCPServers: make([]domain.ToolPermission, 0, len(f.MCPServers)),
 		Access: domain.AccessPolicy{
@@ -109,6 +119,9 @@ func (f definitionFrontMatter) toDomain(
 		SourcePath:  sourcePath,
 		RawMarkdown: rawMarkdown,
 	}
+	for _, input := range f.Inputs {
+		definition.Inputs = append(definition.Inputs, input.toDomain())
+	}
 	for _, tool := range f.Tools {
 		definition.Tools = append(definition.Tools, tool.toDomain(definition.Name, domain.ToolKind(tool.Kind)))
 	}
@@ -122,7 +135,20 @@ func (f definitionFrontMatter) toDomain(
 	return definition
 }
 
+func (i inputFrontMatter) toDomain() domain.InputDefinition {
+	return domain.InputDefinition{
+		Name:        strings.TrimSpace(i.Name),
+		Required:    i.Required,
+		Description: strings.TrimSpace(i.Description),
+	}
+}
+
 func (t toolFrontMatter) toDomain(agentName string, kind domain.ToolKind) domain.ToolPermission {
+	networkAllow := copyStrings(t.NetworkAllow)
+	if len(networkAllow) == 0 {
+		networkAllow = copyStrings(t.Network.Allow)
+	}
+
 	return domain.ToolPermission{
 		AgentName:    agentName,
 		Kind:         kind,
@@ -130,9 +156,10 @@ func (t toolFrontMatter) toDomain(agentName string, kind domain.ToolKind) domain
 		Command:      strings.TrimSpace(t.Command),
 		Args:         copyStrings(t.Args),
 		Env:          copyStrings(t.Env),
+		Timeout:      strings.TrimSpace(t.Timeout),
 		ReadPaths:    copyStrings(t.ReadPaths),
 		WritePaths:   copyStrings(t.WritePaths),
-		NetworkAllow: copyStrings(t.NetworkAllow),
+		NetworkAllow: networkAllow,
 	}
 }
 

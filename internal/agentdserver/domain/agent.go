@@ -65,6 +65,7 @@ type AgentDefinition struct {
 	Enabled     bool
 	Schedule    Schedule
 	Vendor      Vendor
+	Inputs      []InputDefinition
 	Tools       []ToolPermission
 	MCPServers  []ToolPermission
 	Access      AccessPolicy
@@ -136,6 +137,12 @@ type FilesystemAccess struct {
 
 type NetworkAccess struct {
 	Allow []string
+}
+
+type InputDefinition struct {
+	Name        string
+	Required    bool
+	Description string
 }
 
 type Agent struct {
@@ -248,6 +255,7 @@ type ToolPermission struct {
 	Command      string
 	Args         []string
 	Env          []string
+	Timeout      string
 	ReadPaths    []string
 	WritePaths   []string
 	NetworkAllow []string

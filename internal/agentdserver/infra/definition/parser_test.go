@@ -206,28 +206,31 @@ func TestParseMarkdownRejectsMissingFrontMatter(t *testing.T) {
 	}
 }
 
-func TestParseAIProductResearchExample(t *testing.T) {
+func TestParseCybersecurityRedditWatchExample(t *testing.T) {
 	t.Parallel()
 
-	body, err := os.ReadFile("../../../../examples/ai-product-research.md")
+	body, err := os.ReadFile("../../../../examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md")
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
 
-	definition, err := ParseMarkdown("examples/ai-product-research.md", string(body))
+	definition, err := ParseMarkdown(
+		"examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md",
+		string(body),
+	)
 	if err != nil {
 		t.Fatalf("ParseMarkdown: %v", err)
 	}
-	if definition.Name != "ai-product-research" {
+	if definition.Name != "cybersecurity-reddit-watch" {
 		t.Fatalf("name: got %q", definition.Name)
 	}
-	if len(definition.Tools) != 2 {
-		t.Fatalf("tools length: got %d want 2", len(definition.Tools))
+	if len(definition.Tools) != 1 {
+		t.Fatalf("tools length: got %d want 1", len(definition.Tools))
 	}
-	if definition.Tools[0].Command != "uv" {
+	if definition.Tools[0].Command != "tools/fetch_reddit_cybersecurity.py" {
 		t.Fatalf("tool command: got %q", definition.Tools[0].Command)
 	}
-	if len(definition.Tools[0].Env) != 5 {
-		t.Fatalf("tool env allow-list: %#v", definition.Tools[0].Env)
+	if definition.Tools[0].Timeout != "60s" {
+		t.Fatalf("tool timeout: got %q", definition.Tools[0].Timeout)
 	}
 }
