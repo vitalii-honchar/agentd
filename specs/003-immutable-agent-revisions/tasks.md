@@ -45,7 +45,7 @@ handling, and logs.
 
 ## Phase 3: User Story 1 - Apply Creates Self-Contained Revision (P1)
 
-- [ ] T029 [P] [US1] Add apply use case tests for new revision creation and unchanged idempotency in internal/agentdserver/app/agent/apply_test.go
+- [x] T029 [P] [US1] Add apply use case tests for new revision creation and unchanged idempotency in internal/agentdserver/app/agent/apply_test.go
 - [ ] T030 [P] [US1] Add apply use case tests for source prompt mutation, source tool mutation, and source deletion isolation in internal/agentdserver/app/agent/apply_test.go
 - [ ] T031 [P] [US1] Add apply use case tests for environment.variables and environment.files capture in internal/agentdserver/app/agent/apply_test.go
 - [ ] T032 [US1] Update apply use case to create or reuse immutable revisions in internal/agentdserver/app/agent/apply.go

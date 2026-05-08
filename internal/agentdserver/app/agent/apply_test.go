@@ -60,6 +60,52 @@ func TestApplyUseCaseCreatedUpdatedUnchanged(t *testing.T) {
 	}
 }
 
+func TestApplyUseCaseCreatesRevisionAndReusesUnchangedRevision(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	created, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   manualDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply created: %v", err)
+	}
+	if created.Outcome != ApplyOutcomeCreated {
+		t.Fatalf("created outcome: got %q want %q", created.Outcome, ApplyOutcomeCreated)
+	}
+	if len(repo.revisions) != 1 {
+		t.Fatalf("created revisions: got %d want 1", len(repo.revisions))
+	}
+	firstRevisionID := repo.revisions[0].RevisionID
+	if firstRevisionID == "" {
+		t.Fatal("created revision id is empty")
+	}
+	if repo.revisions[0].Status != domain.AgentRevisionStatusFinalized {
+		t.Fatalf("created revision status: got %q", repo.revisions[0].Status)
+	}
+
+	unchanged, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   manualDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply unchanged: %v", err)
+	}
+	if unchanged.Outcome != ApplyOutcomeUnchanged {
+		t.Fatalf("unchanged outcome: got %q want %q", unchanged.Outcome, ApplyOutcomeUnchanged)
+	}
+	if len(repo.revisions) != 1 {
+		t.Fatalf("unchanged revisions: got %d want 1", len(repo.revisions))
+	}
+	if repo.revisions[0].RevisionID != firstRevisionID {
+		t.Fatalf("unchanged revision id: got %q want %q", repo.revisions[0].RevisionID, firstRevisionID)
+	}
+}
+
 func TestApplyUseCaseRejectsInvalidDefinitionWithoutMutation(t *testing.T) {
 	t.Parallel()
 
@@ -220,7 +266,8 @@ func parseLogRecords(t *testing.T, logs []byte) []map[string]any {
 }
 
 type memoryAgentRepository struct {
-	agents map[string]domain.Agent
+	agents    map[string]domain.Agent
+	revisions []domain.AgentRevision
 }
 
 func newMemoryAgentRepository() *memoryAgentRepository {
@@ -254,6 +301,83 @@ func (r *memoryAgentRepository) List(context.Context) ([]domain.Agent, error) {
 	}
 
 	return agents, nil
+}
+
+func (r *memoryAgentRepository) SaveRevision(_ context.Context, revision domain.AgentRevision) error {
+	r.revisions = append(r.revisions, revision)
+
+	return nil
+}
+
+func (r *memoryAgentRepository) ListRevisions(_ context.Context, agentName string) ([]domain.AgentRevision, error) {
+	var revisions []domain.AgentRevision
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName {
+			revisions = append(revisions, revision)
+		}
+	}
+
+	return revisions, nil
+}
+
+func (r *memoryAgentRepository) FindRevisionByID(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+) (domain.AgentRevision, error) {
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.RevisionID == revisionID {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *memoryAgentRepository) FindRevisionByDigest(
+	_ context.Context,
+	agentName string,
+	contentDigest string,
+) (domain.AgentRevision, error) {
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.ContentDigest == contentDigest {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *memoryAgentRepository) FindLatestFinalizedRevision(
+	_ context.Context,
+	agentName string,
+) (domain.AgentRevision, error) {
+	for i := len(r.revisions) - 1; i >= 0; i-- {
+		revision := r.revisions[i]
+		if revision.AgentName == agentName && revision.Status == domain.AgentRevisionStatusFinalized {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *memoryAgentRepository) MarkRevisionCorrupt(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+	errorMessage string,
+) error {
+	for index, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.RevisionID == revisionID {
+			r.revisions[index].Status = domain.AgentRevisionStatusCorrupt
+			r.revisions[index].ErrorMessage = errorMessage
+
+			return nil
+		}
+	}
+
+	return domain.ErrNotFound
 }
 
 type memoryRuntimeDBManager struct {
