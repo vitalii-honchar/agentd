@@ -40,8 +40,9 @@ func (r *AgentRunRepository) Create(ctx context.Context, run domain.AgentRun) er
 	const query = `INSERT INTO agent_runs (
 	           id, agent_name, agent_revision, trigger, status, due_at,
 	           started_at, completed_at, work_dir, log_path, provider_request_id,
-	           error_code, error_message, stop_requested_at, created_at, updated_at
-	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	           result, result_summary, error_code, error_message, stop_requested_at,
+	           created_at, updated_at
+	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	if _, err := r.db.ExecContext(ctx, query,
 		run.ID,
 		run.AgentName,
@@ -54,6 +55,8 @@ func (r *AgentRunRepository) Create(ctx context.Context, run domain.AgentRun) er
 		run.WorkDir,
 		run.LogPath,
 		nullString(run.ProviderRequestID),
+		run.Result,
+		run.ResultSummary,
 		nullString(run.ErrorCode),
 		nullString(run.ErrorMessage),
 		nullTime(run.StopRequestedAt),
@@ -77,6 +80,8 @@ func (r *AgentRunRepository) Update(ctx context.Context, run domain.AgentRun) er
 	           work_dir = ?,
 	           log_path = ?,
 	           provider_request_id = ?,
+	           result = ?,
+	           result_summary = ?,
 	           error_code = ?,
 	           error_message = ?,
 	           stop_requested_at = ?,
@@ -92,6 +97,8 @@ func (r *AgentRunRepository) Update(ctx context.Context, run domain.AgentRun) er
 		run.WorkDir,
 		run.LogPath,
 		nullString(run.ProviderRequestID),
+		run.Result,
+		run.ResultSummary,
 		nullString(run.ErrorCode),
 		nullString(run.ErrorMessage),
 		nullTime(run.StopRequestedAt),
@@ -115,7 +122,7 @@ func (r *AgentRunRepository) Update(ctx context.Context, run domain.AgentRun) er
 func (r *AgentRunRepository) FindByID(ctx context.Context, runID string) (domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
-	       error_code, error_message, stop_requested_at
+	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs WHERE id = ?`
 
 	return scanRun(r.db.QueryRowContext(ctx, query, runID))
@@ -124,7 +131,7 @@ func (r *AgentRunRepository) FindByID(ctx context.Context, runID string) (domain
 func (r *AgentRunRepository) FindLatest(ctx context.Context) (domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
-	       error_code, error_message, stop_requested_at
+	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs ORDER BY created_at DESC LIMIT 1`
 
 	return scanRun(r.db.QueryRowContext(ctx, query))
@@ -133,7 +140,7 @@ func (r *AgentRunRepository) FindLatest(ctx context.Context) (domain.AgentRun, e
 func (r *AgentRunRepository) FindActive(ctx context.Context) (domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
-	       error_code, error_message, stop_requested_at
+	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       WHERE status IN ('queued', 'running', 'stopping')
 	       ORDER BY created_at ASC LIMIT 1`
@@ -144,7 +151,7 @@ func (r *AgentRunRepository) FindActive(ctx context.Context) (domain.AgentRun, e
 func (r *AgentRunRepository) ListActive(ctx context.Context) ([]domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
-	       error_code, error_message, stop_requested_at
+	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       WHERE status IN ('queued', 'running', 'stopping')
 	       ORDER BY created_at ASC`
@@ -161,7 +168,7 @@ func (r *AgentRunRepository) ListActive(ctx context.Context) ([]domain.AgentRun,
 func (r *AgentRunRepository) List(ctx context.Context) ([]domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
-	       error_code, error_message, stop_requested_at
+	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       ORDER BY created_at DESC`
 
@@ -177,7 +184,7 @@ func (r *AgentRunRepository) List(ctx context.Context) ([]domain.AgentRun, error
 func (r *AgentRunRepository) ListTerminal(ctx context.Context) ([]domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
-	       error_code, error_message, stop_requested_at
+	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       WHERE status IN ('completed', 'failed', 'stopped', 'interrupted')
 	       ORDER BY completed_at DESC, created_at DESC`
@@ -296,6 +303,8 @@ func scanRun(scanner runScanner) (domain.AgentRun, error) {
 		&run.WorkDir,
 		&run.LogPath,
 		&providerRequestID,
+		&run.Result,
+		&run.ResultSummary,
 		&errorCode,
 		&errorMessage,
 		&stoppedAt,
