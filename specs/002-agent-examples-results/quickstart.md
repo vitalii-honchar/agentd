@@ -127,3 +127,24 @@ Expected:
   uses bundled public-source fixtures.
 - `website-snapshot-analyst`: Node.js 20+ and `npm install puppeteer` for live
   screenshots; fixture fallback supports parser/catalog smoke tests.
+
+## 10. Linux/macOS parity checklist
+
+Run this checklist on Linux and macOS before release:
+
+```bash
+go test ./internal/agentdserver/infra/runtime -run TestProcessToolExecutorCancelsProcessGroupOnUnix
+go test ./tests/e2e -run TestManagerRecoveryInterruptsActiveToolProcess
+node --check examples/website-snapshot-analyst/tools/capture_website.js
+python3 -m py_compile examples/*/tools/*.py
+```
+
+Expected:
+- Tool timeout or recovery cancels the full process group, including child
+  processes spawned by shell scripts.
+- Tool stdout is captured as result context and stderr is captured as diagnostic
+  context without mixing with the final LLM result.
+- Website screenshot tooling is optional for parser/catalog smoke tests, but a
+  live screenshot run requires Node.js 20+ and local Puppeteer dependencies.
+- Python examples use only Python 3 standard library on the default path, except
+  optional `praw` for authenticated Reddit reads.

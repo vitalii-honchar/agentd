@@ -213,7 +213,7 @@ contracts, and example smoke verification.
 - [x] T094 [P] Run public Go client import smoke test in pkg/agentdclient/client_test.go
 - [x] T095 Run example catalog smoke tests from specs/002-agent-examples-results/quickstart.md
 - [x] T096 Run restart recovery verification for persisted run results and active tool interruption in tests/e2e/recovery_results_test.go
-- [ ] T097 Run Linux/macOS parity checklist for tool execution and screenshot dependencies in specs/002-agent-examples-results/quickstart.md
+- [x] T097 Run Linux/macOS parity checklist for tool execution and screenshot dependencies in specs/002-agent-examples-results/quickstart.md
 - [ ] T098 Run full `go test ./...`
 
 ---
