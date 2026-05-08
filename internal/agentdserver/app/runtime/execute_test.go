@@ -62,6 +62,65 @@ func TestExecuteUseCasePassesDeclaredToolsToManager(t *testing.T) {
 	}
 }
 
+func TestExecuteUseCaseResolvesLatestFinalizedRevision(t *testing.T) {
+	t.Parallel()
+
+	agent := testRuntimeAgent("release-notes-helper")
+	agent.Revision = "latest-rev"
+	repo := newRuntimeAgentRepo(agent)
+	repo.revisions = []domain.AgentRevision{
+		testRuntimeRevision(agent.Name, "older-rev", "Older prompt"),
+		testRuntimeRevision(agent.Name, "latest-rev", "Frozen latest prompt"),
+	}
+	manager := &fakeManager{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: agent.Name,
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	useCase := NewExecuteUseCase(repo, manager)
+
+	if _, err := useCase.Execute(context.Background(), agent.Name, nil); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if manager.executeRequest.Agent.Revision != "latest-rev" {
+		t.Fatalf("revision: got %q", manager.executeRequest.Agent.Revision)
+	}
+	if manager.executeRequest.Agent.Prompt != "Frozen latest prompt" {
+		t.Fatalf("prompt: got %q", manager.executeRequest.Agent.Prompt)
+	}
+	if len(manager.executeRequest.Agent.Tools) != 1 || manager.executeRequest.Agent.Tools[0].Command != "artifact/tools/fetch.py" {
+		t.Fatalf("tools: %#v", manager.executeRequest.Agent.Tools)
+	}
+}
+
+func TestExecuteUseCaseResolvesExplicitRevision(t *testing.T) {
+	t.Parallel()
+
+	agent := testRuntimeAgent("release-notes-helper")
+	agent.Revision = "latest-rev"
+	repo := newRuntimeAgentRepo(agent)
+	repo.revisions = []domain.AgentRevision{
+		testRuntimeRevision(agent.Name, "older-rev", "Older prompt"),
+		testRuntimeRevision(agent.Name, "latest-rev", "Frozen latest prompt"),
+	}
+	manager := &fakeManager{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: agent.Name,
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	useCase := NewExecuteUseCase(repo, manager)
+
+	if _, err := useCase.Execute(context.Background(), agent.Name+":older-rev", nil); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if manager.executeRequest.Agent.Revision != "older-rev" {
+		t.Fatalf("revision: got %q", manager.executeRequest.Agent.Revision)
+	}
+	if manager.executeRequest.Agent.Prompt != "Older prompt" {
+		t.Fatalf("prompt: got %q", manager.executeRequest.Agent.Prompt)
+	}
+}
+
 func TestExecuteUseCaseRejectsDisabledAgent(t *testing.T) {
 	t.Parallel()
 
