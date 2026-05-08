@@ -31,6 +31,34 @@ func TestExecuteUseCaseStartsManualRun(t *testing.T) {
 	}
 }
 
+func TestExecuteUseCasePassesDeclaredToolsToManager(t *testing.T) {
+	t.Parallel()
+
+	agent := testRuntimeAgent("website-snapshot-analyst")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "snapshot",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "tools/snapshot.js",
+	}}
+	repo := newRuntimeAgentRepo(agent)
+	manager := &fakeManager{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: agent.Name,
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	useCase := NewExecuteUseCase(repo, manager)
+
+	if _, err := useCase.Execute(context.Background(), agent.Name); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if len(manager.executeRequest.Agent.Tools) != 1 {
+		t.Fatalf("tools: got %#v", manager.executeRequest.Agent.Tools)
+	}
+	if manager.executeRequest.Agent.Tools[0].Command != "tools/snapshot.js" {
+		t.Fatalf("tool command: got %q", manager.executeRequest.Agent.Tools[0].Command)
+	}
+}
+
 func TestExecuteUseCaseRejectsDisabledAgent(t *testing.T) {
 	t.Parallel()
 

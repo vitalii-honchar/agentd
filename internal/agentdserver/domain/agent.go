@@ -165,6 +165,8 @@ type Agent struct {
 	Enabled            bool
 	Vendor             Vendor
 	Schedule           Schedule
+	Tools              []ToolPermission
+	MCPServers         []ToolPermission
 	NextRunAt          *time.Time
 	Status             AgentStatus
 	LastRunID          string
