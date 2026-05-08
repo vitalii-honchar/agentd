@@ -40,7 +40,7 @@ contracts, and example smoke verification.
 - [x] T010 Update migration coverage for result/tool tables in internal/agentdserver/infra/db/migrations_test.go
 - [x] T011 Extend run repository interfaces for run listing, result persistence, and result lookup in internal/agentdserver/app/ports.go
 - [x] T012 Implement run result and run listing repository methods in internal/agentdserver/infra/db/repository/run_repository.go
-- [ ] T013 [P] Add repository tests for terminal run result persistence in internal/agentdserver/infra/db/repository/run_repository_test.go
+- [x] T013 [P] Add repository tests for terminal run result persistence in internal/agentdserver/infra/db/repository/run_repository_test.go
 - [ ] T014 [P] Add repository tests for active/all run listing in internal/agentdserver/infra/db/repository/run_repository_test.go
 - [ ] T015 Add same-host request middleware in internal/agentdserver/infra/http/server.go
 - [ ] T016 [P] Add same-host middleware tests in internal/agentdserver/infra/http/server_test.go

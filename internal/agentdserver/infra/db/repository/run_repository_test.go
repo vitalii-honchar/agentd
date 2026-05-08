@@ -62,6 +62,59 @@ func TestAgentRunRepositoryCreateUpdateQuery(t *testing.T) {
 	}
 }
 
+func TestAgentRunRepositoryPersistsTerminalResults(t *testing.T) {
+	t.Parallel()
+
+	fixture := newRuntimeRepositoryFixture(t, "cybersecurity-reddit-watch")
+	now := time.Date(2026, 5, 7, 12, 0, 0, 0, time.UTC)
+	completedAt := now.Add(time.Minute)
+	run := domain.AgentRun{
+		ID:            "run-result-1",
+		AgentName:     "cybersecurity-reddit-watch",
+		AgentRevision: "rev-1",
+		Trigger:       domain.RunTriggerManual,
+		Status:        domain.AgentRunStatusRunning,
+		StartedAt:     &now,
+		WorkDir:       "/tmp/run-result-1",
+		LogPath:       "/tmp/run-result-1/run.log",
+	}
+	if err := fixture.Runs.Create(context.Background(), run); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	run.Status = domain.AgentRunStatusFailed
+	run.CompletedAt = &completedAt
+	run.Result = "found likely credential exposure in one post"
+	run.ResultSummary = "likely credential exposure"
+	run.ErrorCode = "agent_failed"
+	run.ErrorMessage = "analysis failed after tool output"
+	if err := fixture.Runs.Update(context.Background(), run); err != nil {
+		t.Fatalf("Update failed result: %v", err)
+	}
+
+	found, err := fixture.Runs.FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if found.Result != run.Result {
+		t.Fatalf("result: got %q want %q", found.Result, run.Result)
+	}
+	if found.ResultSummary != run.ResultSummary {
+		t.Fatalf("result summary: got %q want %q", found.ResultSummary, run.ResultSummary)
+	}
+	if found.ErrorCode != run.ErrorCode || found.ErrorMessage != run.ErrorMessage {
+		t.Fatalf("failure fields: %#v", found)
+	}
+
+	terminal, err := fixture.Runs.ListTerminal(context.Background())
+	if err != nil {
+		t.Fatalf("ListTerminal: %v", err)
+	}
+	if len(terminal) != 1 || terminal[0].ID != run.ID || terminal[0].Result != run.Result {
+		t.Fatalf("terminal results: %#v", terminal)
+	}
+}
+
 func TestRuntimeEventRepositoryAppendAndQuery(t *testing.T) {
 	t.Parallel()
 
