@@ -100,6 +100,7 @@ func TestRootCommandWiresQueryCommands(t *testing.T) {
 
 	requireCommand(t, cmd, "list")
 	requireCommand(t, cmd, "inspect")
+	requireCommand(t, cmd, "ps")
 	requireCommand(t, cmd, "logs")
 }
 

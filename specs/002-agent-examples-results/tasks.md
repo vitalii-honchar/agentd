@@ -110,7 +110,7 @@ contracts, and example smoke verification.
 - [x] T048 [US2] Implement ListRuns in pkg/agentdclient/runs.go
 - [x] T049 [US2] Wire CLI QueryClient to public client run listing in internal/agentd/infra/httpclient/runs.go
 - [x] T050 [US2] Implement agentd ps command and -a flag in internal/agentd/app/ps.go
-- [ ] T051 [US2] Register ps command in internal/agentd/app/root.go
+- [x] T051 [US2] Register ps command in internal/agentd/app/root.go
 - [ ] T052 [US2] Update CLI contract documentation in specs/002-agent-examples-results/contracts/cli.md
 
 **Checkpoint**: Users can discover active and finished runs independently of result retrieval.
