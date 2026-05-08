@@ -51,6 +51,9 @@ func TestEmbeddedRuntimeMigrations(t *testing.T) {
 	assertObjectExists(t, database, "table", "runtime_events")
 	assertObjectExists(t, database, "index", "idx_agent_runs_agent_due")
 	assertObjectExists(t, database, "index", "idx_agent_runs_latest_logs")
+	assertObjectExists(t, database, "index", "idx_agent_runs_terminal_results")
+	assertObjectExists(t, database, "table", "tool_executions")
+	assertObjectExists(t, database, "index", "idx_tool_executions_run_started")
 	assertObjectExists(t, database, "index", "idx_runtime_events_run_created")
 	assertObjectExists(t, database, "index", "idx_runtime_events_type_created")
 }
