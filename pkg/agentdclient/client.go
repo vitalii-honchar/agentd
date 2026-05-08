@@ -46,6 +46,20 @@ func New(cfg Config) (*Client, error) {
 	return &Client{baseURL: baseURL, http: httpClient}, nil
 }
 
+func (c *Client) Health(ctx context.Context) error {
+	var response struct {
+		Status string `json:"status"`
+	}
+	if err := c.doJSON(ctx, http.MethodGet, "/health", nil, &response); err != nil {
+		return err
+	}
+	if response.Status != "ok" {
+		return fmt.Errorf("daemon health status %q", response.Status)
+	}
+
+	return nil
+}
+
 func (c *Client) doJSON(ctx context.Context, method string, path string, body any, out any) error {
 	request, err := c.newRequest(ctx, method, path, body)
 	if err != nil {

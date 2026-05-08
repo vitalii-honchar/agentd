@@ -16,7 +16,7 @@ func (c *Client) Logs(ctx context.Context, query LogsQuery) (LogsResult, error) 
 	if query.Tail > 0 {
 		values.Set("tail", strconv.Itoa(query.Tail))
 	}
-	path := fmt.Sprintf("/v1/agents/%s/logs", query.AgentName)
+	path := fmt.Sprintf("/v1/agents/%s/logs", url.PathEscape(query.AgentName))
 	if encoded := values.Encode(); encoded != "" {
 		path += "?" + encoded
 	}

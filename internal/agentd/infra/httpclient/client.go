@@ -1,21 +1,16 @@
 package httpclient
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	stdhttp "net/http"
-	"net/url"
-	"strings"
 
+	"github.com/vitalii-honchar/agentd/internal/agentd/app"
 	"github.com/vitalii-honchar/agentd/internal/agentd/config"
+	"github.com/vitalii-honchar/agentd/pkg/agentdclient"
 )
 
 type Client struct {
-	baseURL *url.URL
-	http    *stdhttp.Client
+	client *agentdclient.Client
 }
 
 func New(cfg *config.Config) (*Client, error) {
@@ -26,115 +21,49 @@ func New(cfg *config.Config) (*Client, error) {
 		return nil, err
 	}
 
-	baseURL, err := url.Parse(cfg.ServerURL)
+	client, err := agentdclient.New(agentdclient.Config{
+		ServerURL: cfg.ServerURL,
+		Timeout:   cfg.RequestTimeout,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("parse server url: %w", err)
+		return nil, err
 	}
 
-	return &Client{
-		baseURL: baseURL,
-		http: &stdhttp.Client{
-			Timeout: cfg.RequestTimeout,
-		},
-	}, nil
+	return &Client{client: client}, nil
 }
 
 func (c *Client) Health(ctx context.Context) error {
-	var response struct {
-		Status string `json:"status"`
-	}
-	if err := c.doJSON(ctx, stdhttp.MethodGet, "/health", nil, &response); err != nil {
-		return err
-	}
-	if response.Status != "ok" {
-		return fmt.Errorf("daemon health status %q", response.Status)
-	}
-
-	return nil
+	return c.client.Health(ctx)
 }
 
-func (c *Client) doJSON(
-	ctx context.Context,
-	method string,
-	path string,
-	body any,
-	out any,
-) error {
-	request, err := c.newRequest(ctx, method, path, body)
-	if err != nil {
-		return err
+func toAppAgentDetail(agent agentdclient.AgentDetail) app.AgentDetail {
+	return app.AgentDetail{
+		Name:         agent.Name,
+		Enabled:      agent.Enabled,
+		Status:       agent.Status,
+		ScheduleType: agent.ScheduleType,
+		Revision:     agent.Revision,
+		VendorName:   agent.VendorName,
+		VendorModel:  agent.VendorModel,
+		LastRunID:    agent.LastRunID,
+		RecentError:  agent.RecentError,
 	}
-
-	response, err := c.http.Do(request)
-	if err != nil {
-		return fmt.Errorf("daemon request %s %s: %w", method, path, err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return decodeError(response)
-	}
-	if out == nil {
-		_, _ = io.Copy(io.Discard, response.Body)
-
-		return nil
-	}
-	if err := json.NewDecoder(response.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode daemon response: %w", err)
-	}
-
-	return nil
 }
 
-func (c *Client) newRequest(
-	ctx context.Context,
-	method string,
-	path string,
-	body any,
-) (*stdhttp.Request, error) {
-	relative, err := url.Parse(strings.TrimPrefix(path, "/"))
-	if err != nil {
-		return nil, fmt.Errorf("parse daemon request path: %w", err)
+func toAppAgentSummary(agent agentdclient.AgentSummary) app.AgentSummary {
+	return app.AgentSummary{
+		Name:          agent.Name,
+		Enabled:       agent.Enabled,
+		Status:        agent.Status,
+		ScheduleType:  agent.ScheduleType,
+		LastRunStatus: agent.LastRunStatus,
 	}
-	target := c.baseURL.ResolveReference(relative)
-
-	var reader io.Reader
-	if body != nil {
-		payload, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("encode daemon request: %w", err)
-		}
-		reader = bytes.NewReader(payload)
-	}
-
-	request, err := stdhttp.NewRequestWithContext(ctx, method, target.String(), reader)
-	if err != nil {
-		return nil, fmt.Errorf("new daemon request: %w", err)
-	}
-	request.Header.Set("Accept", "application/json")
-	if body != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
-
-	return request, nil
 }
 
-func decodeError(response *stdhttp.Response) error {
-	var payload struct {
-		Error struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+func toAppRunResponse(run agentdclient.RunSummary) app.RunResponse {
+	return app.RunResponse{
+		RunID:     run.RunID,
+		AgentName: run.AgentName,
+		Status:    run.Status,
 	}
-	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
-		return fmt.Errorf("daemon returned %s", response.Status)
-	}
-	if payload.Error.Message == "" {
-		return fmt.Errorf("daemon returned %s", response.Status)
-	}
-	if payload.Error.Code == "" {
-		return fmt.Errorf("daemon error: %s", payload.Error.Message)
-	}
-
-	return fmt.Errorf("daemon error %s: %s", payload.Error.Code, payload.Error.Message)
 }

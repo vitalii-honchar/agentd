@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 func (c *Client) Apply(ctx context.Context, request ApplyRequest) (ApplyResponse, error) {
@@ -26,7 +27,7 @@ func (c *Client) ListAgents(ctx context.Context) ([]AgentSummary, error) {
 
 func (c *Client) InspectAgent(ctx context.Context, name string) (AgentDetail, error) {
 	var response AgentDetail
-	if err := c.doJSON(ctx, http.MethodGet, fmt.Sprintf("/v1/agents/%s", name), nil, &response); err != nil {
+	if err := c.doJSON(ctx, http.MethodGet, fmt.Sprintf("/v1/agents/%s", url.PathEscape(name)), nil, &response); err != nil {
 		return AgentDetail{}, err
 	}
 

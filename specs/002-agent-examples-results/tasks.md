@@ -45,7 +45,7 @@ contracts, and example smoke verification.
 - [x] T015 Add same-host request middleware in internal/agentdserver/infra/http/server.go
 - [x] T016 [P] Add same-host middleware tests in internal/agentdserver/infra/http/server_test.go
 - [x] T017 Implement stable daemon error code mapping for result/run errors in internal/agentdserver/infra/http/errors.go
-- [ ] T018 Move or wrap internal HTTP client primitives into pkg/agentdclient/client.go
+- [x] T018 Move or wrap internal HTTP client primitives into pkg/agentdclient/client.go
 - [ ] T019 Define public client request/response/error types in pkg/agentdclient/types.go
 - [ ] T020 [P] Add public client unit tests for error decoding in pkg/agentdclient/client_test.go
 - [ ] T021 Extend CLI output support for table trimming and JSON stability in internal/agentd/app/output.go
