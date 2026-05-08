@@ -69,6 +69,8 @@ const (
 type ToolKind string
 
 const (
+	ToolKindCustomTool ToolKind = "custom_tool"
+	ToolKindHostTool   ToolKind = "host_tool"
 	ToolKindLocalTool ToolKind = "local_tool"
 	ToolKindMCPServer ToolKind = "mcp_server"
 )
