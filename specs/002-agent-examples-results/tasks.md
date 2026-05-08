@@ -186,7 +186,7 @@ contracts, and example smoke verification.
 - [x] T079 [P] [US5] Add process tool adapter tests for success, non-zero exit, timeout, and env scoping in internal/agentdserver/infra/runtime/tool_process_test.go
 - [x] T080 [P] [US5] Add runtime manager tests for declared tool execution in internal/agentdserver/app/runtime/execute_test.go
 - [x] T081 [P] [US5] Add isolation test for undeclared tool denial in internal/agentdserver/infra/runtime/manager_test.go
-- [ ] T082 [P] [US5] Add Linux/macOS platform verification tests for process cancellation in internal/agentdserver/infra/runtime/platform_test.go
+- [x] T082 [P] [US5] Add Linux/macOS platform verification tests for process cancellation in internal/agentdserver/infra/runtime/platform_test.go
 
 ### Implementation for User Story 5
 

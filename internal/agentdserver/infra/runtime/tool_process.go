@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"syscall"
 	"time"
 
 	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
@@ -43,6 +44,14 @@ func (e *ProcessToolExecutor) Execute(
 	cmd := exec.CommandContext(ctx, request.Tool.Command, request.Tool.Args...)
 	cmd.Dir = request.WorkDir
 	cmd.Env = append([]string{}, request.Tool.Env...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			return nil
+		}
+
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
