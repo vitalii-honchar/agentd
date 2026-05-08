@@ -60,6 +60,46 @@ func TestListUseCaseReturnsAgents(t *testing.T) {
 	}
 }
 
+func TestRevisionUseCaseListsRevisionsWithLatestMarker(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	repo.agents["release-notes-helper"] = testAgent("release-notes-helper")
+	repo.revisions = []domain.AgentRevision{
+		{
+			AgentName:         "release-notes-helper",
+			RevisionID:        "older-rev",
+			Status:            domain.AgentRevisionStatusFinalized,
+			SourcePath:        "agent.md",
+			ArtifactPath:      "data/work/release-notes-helper/older-rev",
+			IsLatestFinalized: false,
+		},
+		{
+			AgentName:         "release-notes-helper",
+			RevisionID:        "latest-rev",
+			Status:            domain.AgentRevisionStatusFinalized,
+			SourcePath:        "agent.md",
+			ArtifactPath:      "data/work/release-notes-helper/latest-rev",
+			IsLatestFinalized: true,
+		},
+	}
+	useCase, err := NewRevisionUseCase(repo)
+	if err != nil {
+		t.Fatalf("NewRevisionUseCase: %v", err)
+	}
+
+	revisions, err := useCase.ListRevisions(context.Background(), "release-notes-helper")
+	if err != nil {
+		t.Fatalf("ListRevisions: %v", err)
+	}
+	if len(revisions) != 2 {
+		t.Fatalf("revisions length: got %d want 2", len(revisions))
+	}
+	if revisions[1].RevisionID != "latest-rev" || !revisions[1].IsLatestFinalized {
+		t.Fatalf("latest revision marker: %#v", revisions)
+	}
+}
+
 func testAgent(name string) domain.Agent {
 	return domain.Agent{
 		Name:     name,

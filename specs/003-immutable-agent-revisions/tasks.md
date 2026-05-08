@@ -89,7 +89,7 @@ handling, and logs.
 
 ## Phase 7: User Story 5 - Audit and Retain Revisions (P3)
 
-- [ ] T061 [P] [US5] Add revision list use case tests for revision metadata and latest marker in internal/agentdserver/app/agent/inspect_test.go
+- [x] T061 [P] [US5] Add revision list use case tests for revision metadata and latest marker in internal/agentdserver/app/agent/inspect_test.go
 - [ ] T062 [P] [US5] Add revision inspect use case tests for tool kinds, rewritten commands, host commands, copied files, and masked env in internal/agentdserver/app/agent/inspect_test.go
 - [ ] T063 [US5] Implement revision list and inspect use cases in internal/agentdserver/app/agent/revision.go
 - [ ] T064 [P] [US5] Add HTTP contract tests for revision list and inspect in internal/agentdserver/infra/http/inspect_handler_test.go
