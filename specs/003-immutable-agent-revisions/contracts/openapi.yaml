@@ -3,6 +3,45 @@ info:
   title: agentd Immutable Agent Revisions API
   version: 0.1.0
 paths:
+  /v1/agents/apply:
+    post:
+      summary: Apply an AI Agent definition and create or reuse an immutable revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_path, markdown]
+              properties:
+                source_path:
+                  type: string
+                markdown:
+                  type: string
+      responses:
+        "200":
+          description: Applied agent and revision metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outcome, agent, revision_id, artifact_path, revision_status, revision_reused]
+                properties:
+                  outcome:
+                    type: string
+                    enum: [created, updated, unchanged]
+                  agent:
+                    $ref: "#/components/schemas/AgentDetail"
+                  revision_id:
+                    type: string
+                    format: uuid
+                  artifact_path:
+                    type: string
+                  revision_status:
+                    type: string
+                    enum: [pending, finalized, corrupt]
+                  revision_reused:
+                    type: boolean
   /v1/agents/{name}/revisions:
     get:
       summary: List immutable revisions for an agent
@@ -19,10 +58,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [agent_name, revisions]
+                required: [revisions]
                 properties:
-                  agent_name:
-                    type: string
                   revisions:
                     type: array
                     items:
@@ -48,21 +85,28 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AgentRevisionDetail"
-  /v1/runs:
+                type: object
+                required: [revision]
+                properties:
+                  revision:
+                    $ref: "#/components/schemas/AgentRevisionDetail"
+  /v1/agents/{name}/runs:
     post:
       summary: Start a run for latest or explicit agent revision
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Agent name or agent-name:revision-id selector
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
               type: object
-              required: [agent]
               properties:
-                agent:
-                  type: string
-                  description: Agent name or agent-name:revision-id selector
                 inputs:
                   type: object
                   additionalProperties:
@@ -70,14 +114,52 @@ paths:
       responses:
         "202":
           description: Run accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
 components:
   schemas:
-    AgentRevision:
+    AgentDetail:
       type: object
-      required: [agent_name, revision_id, status, created_at, artifact_path]
+      required: [name, enabled, status, schedule_type, revision, vendor_name, vendor_model]
       properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        status:
+          type: string
+        schedule_type:
+          type: string
+        revision:
+          type: string
+        vendor_name:
+          type: string
+        vendor_model:
+          type: string
+        last_run_id:
+          type: string
+        recent_error:
+          type: string
+    RunResponse:
+      type: object
+      required: [run_id, agent_name, status]
+      properties:
+        run_id:
+          type: string
+          format: uuid
         agent_name:
           type: string
+        agent_revision:
+          type: string
+          format: uuid
+        status:
+          type: string
+    AgentRevision:
+      type: object
+      required: [revision_id, status, created_at, latest]
+      properties:
         revision_id:
           type: string
           format: uuid
@@ -96,6 +178,8 @@ components:
           type: string
         latest:
           type: boolean
+        error_message:
+          type: string
     AgentRevisionDetail:
       allOf:
         - $ref: "#/components/schemas/AgentRevision"
@@ -108,13 +192,17 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/RevisionTool"
-            copied_files:
+            artifact_files:
               type: array
               items:
                 $ref: "#/components/schemas/RevisionArtifactFile"
+            environment:
+              type: array
+              items:
+                $ref: "#/components/schemas/RevisionEnvironment"
     RevisionTool:
       type: object
-      required: [name, kind, command]
+      required: [name, kind]
       properties:
         name:
           type: string
@@ -132,15 +220,10 @@ components:
         host_command:
           type: string
           description: Host executable command for host_tool.
-        args:
+        copied_files:
           type: array
           items:
             type: string
-        env:
-          type: array
-          items:
-            type: string
-            description: Masked KEY=**** values
     RevisionArtifactFile:
       type: object
       required: [path, sha256, size_bytes]
@@ -155,3 +238,17 @@ components:
           type: string
         size_bytes:
           type: integer
+    RevisionEnvironment:
+      type: object
+      required: [key, masked]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+          description: Masked by default for secret-bearing values.
+        source:
+          type: string
+          enum: [literal, env_file]
+        masked:
+          type: boolean
