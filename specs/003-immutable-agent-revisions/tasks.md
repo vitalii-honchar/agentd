@@ -47,7 +47,7 @@ handling, and logs.
 
 - [x] T029 [P] [US1] Add apply use case tests for new revision creation and unchanged idempotency in internal/agentdserver/app/agent/apply_test.go
 - [x] T030 [P] [US1] Add apply use case tests for source prompt mutation, source tool mutation, and source deletion isolation in internal/agentdserver/app/agent/apply_test.go
-- [ ] T031 [P] [US1] Add apply use case tests for environment.variables and environment.files capture in internal/agentdserver/app/agent/apply_test.go
+- [x] T031 [P] [US1] Add apply use case tests for environment.variables and environment.files capture in internal/agentdserver/app/agent/apply_test.go
 - [ ] T032 [US1] Update apply use case to create or reuse immutable revisions in internal/agentdserver/app/agent/apply.go
 - [ ] T033 [US1] Return revision ID, artifact path, revision status, and unchanged reuse outcome from apply in internal/agentdserver/app/agent/apply.go
 - [ ] T034 [US1] Persist latest finalized revision metadata on agent save in internal/agentdserver/infra/db/repository/agent_repository.go

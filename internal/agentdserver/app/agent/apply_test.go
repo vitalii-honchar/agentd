@@ -176,6 +176,43 @@ func TestApplyUseCaseRevisionRetainsPromptAndToolsAfterSourceDeletion(t *testing
 	}
 }
 
+func TestApplyUseCaseCapturesEnvironmentVariablesAndFiles(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	sourcePath := filepath.Join(sourceDir, "env-agent.md")
+	if err := os.WriteFile(filepath.Join(sourceDir, ".env"), []byte("TOKEN=from-file\nSHARED=from-file\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile .env: %v", err)
+	}
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: sourcePath,
+		Markdown:   environmentDefinition("Use captured environment."),
+	}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	if len(repo.revisions) != 1 {
+		t.Fatalf("revisions: got %d want 1", len(repo.revisions))
+	}
+	values := revisionEnvironmentToMap(repo.revisions[0].Environment)
+	if values["TOKEN"] != "from-file" {
+		t.Fatalf("TOKEN: got %q", values["TOKEN"])
+	}
+	if values["SHARED"] != "from-literal" {
+		t.Fatalf("SHARED: got %q", values["SHARED"])
+	}
+	if values["REPORT_LIMIT"] != "10" {
+		t.Fatalf("REPORT_LIMIT: got %q", values["REPORT_LIMIT"])
+	}
+	if len(repo.revisions[0].ArtifactFiles) != 1 || repo.revisions[0].ArtifactFiles[0].ArtifactRelativePath != ".env" {
+		t.Fatalf("artifact env files: %#v", repo.revisions[0].ArtifactFiles)
+	}
+}
+
 func TestApplyUseCaseRejectsInvalidDefinitionWithoutMutation(t *testing.T) {
 	t.Parallel()
 
@@ -518,4 +555,40 @@ access:
     allow: ["api.github.com"]
 ---
 ` + prompt
+}
+
+func environmentDefinition(prompt string) string {
+	return `---
+name: env-agent
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+environment:
+  variables:
+    SHARED: from-literal
+    REPORT_LIMIT: "10"
+  files:
+    - .env
+tools: []
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+` + prompt
+}
+
+func revisionEnvironmentToMap(environment []domain.RevisionEnvironment) map[string]string {
+	values := make(map[string]string, len(environment))
+	for _, entry := range environment {
+		values[entry.Key] = entry.Value
+	}
+
+	return values
 }
