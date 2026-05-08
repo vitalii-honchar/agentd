@@ -5,9 +5,12 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentd/config"
 )
+
+var testLogTime = time.Date(2026, 5, 8, 10, 0, 0, 0, time.UTC)
 
 func TestListCommandCallsClient(t *testing.T) {
 	t.Parallel()
@@ -79,6 +82,31 @@ func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
 		t.Fatalf("logs request: %#v", client.logsRequest)
 	}
 	if !strings.Contains(out.String(), "completed") {
+		t.Fatalf("output: %q", out.String())
+	}
+}
+
+func TestLogsCommandFormatsActionLogs(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{logsResponse: LogsResponse{
+		AgentName: "release-notes-helper",
+		RunID:     "run-1",
+		Entries: []LogEntry{{
+			Timestamp: testLogTime,
+			RunID:     "run-1",
+			Action:    "llm.prompt.send",
+			Message:   "sent prompt",
+		}},
+	}}
+	var out bytes.Buffer
+	cmd := NewLogsCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper", "--run", "run-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out.String(), "2026-05-08T10:00:00Z llm.prompt.send sent prompt") {
 		t.Fatalf("output: %q", out.String())
 	}
 }
