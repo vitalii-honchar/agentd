@@ -182,7 +182,7 @@ contracts, and example smoke verification.
 
 ### Tests for User Story 5
 
-- [ ] T078 [P] [US5] Add tool declaration validation tests in internal/agentdserver/app/agent/definition_validator_test.go
+- [x] T078 [P] [US5] Add tool declaration validation tests in internal/agentdserver/app/agent/definition_validator_test.go
 - [ ] T079 [P] [US5] Add process tool adapter tests for success, non-zero exit, timeout, and env scoping in internal/agentdserver/infra/runtime/tool_process_test.go
 - [ ] T080 [P] [US5] Add runtime manager tests for declared tool execution in internal/agentdserver/app/runtime/execute_test.go
 - [ ] T081 [P] [US5] Add isolation test for undeclared tool denial in internal/agentdserver/infra/runtime/manager_test.go
