@@ -177,6 +177,100 @@ Capture a screenshot and summarize the supplied website.`)
 	}
 }
 
+func TestParseMarkdownDefinitionWithCustomHostToolsAndEnvironment(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("examples/github-radar/github-radar.md", `---
+name: github-radar
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+environment:
+  variables:
+    GITHUB_TOKEN: literal-token
+    REPORT_LIMIT: "10"
+  files:
+    - .env
+    - secrets/github.env
+tools:
+  - name: fetch_trending
+    kind: custom_tool
+    command: tools/fetch_github_trending.py
+    args: ["--languages", "sources/languages.txt"]
+    read_paths: ["sources/languages.txt"]
+  - name: github_api
+    kind: host_tool
+    command: gh
+    args: ["api", "search/repositories"]
+access:
+  filesystem:
+    read: ["sources/languages.txt"]
+    write: []
+  network:
+    allow: ["api.github.com"]
+---
+Find engineering trends on GitHub.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if len(definition.Tools) != 2 {
+		t.Fatalf("tools: got %d want 2", len(definition.Tools))
+	}
+	if definition.Tools[0].Kind != domain.ToolKindCustomTool {
+		t.Fatalf("custom tool kind: got %q", definition.Tools[0].Kind)
+	}
+	if definition.Tools[1].Kind != domain.ToolKindHostTool {
+		t.Fatalf("host tool kind: got %q", definition.Tools[1].Kind)
+	}
+	if got := definition.Environment.Variables["GITHUB_TOKEN"]; got != "literal-token" {
+		t.Fatalf("GITHUB_TOKEN: got %q", got)
+	}
+	if got := definition.Environment.Variables["REPORT_LIMIT"]; got != "10" {
+		t.Fatalf("REPORT_LIMIT: got %q", got)
+	}
+	if len(definition.Environment.Files) != 2 || definition.Environment.Files[0] != ".env" || definition.Environment.Files[1] != "secrets/github.env" {
+		t.Fatalf("environment files: %#v", definition.Environment.Files)
+	}
+}
+
+func TestParseMarkdownMapsLegacyLocalToolToCustomTool(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("legacy.md", `---
+name: legacy-agent
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+tools:
+  - name: legacy_fetch
+    kind: local_tool
+    command: tools/fetch.py
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+Run a legacy local tool.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if len(definition.Tools) != 1 {
+		t.Fatalf("tools: got %d want 1", len(definition.Tools))
+	}
+	if definition.Tools[0].Kind != domain.ToolKindCustomTool {
+		t.Fatalf("legacy tool kind: got %q want %q", definition.Tools[0].Kind, domain.ToolKindCustomTool)
+	}
+}
+
 func TestParseMarkdownRejectsInvalidDefinition(t *testing.T) {
 	t.Parallel()
 

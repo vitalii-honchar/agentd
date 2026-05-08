@@ -24,7 +24,7 @@ handling, and logs.
 - [x] T008 [P] Add repository tests for revision create/list/find/latest in internal/agentdserver/infra/db/repository/agent_repository_test.go
 - [x] T009 [P] Add repository tests for revision environment, artifact files, and corruption marking in internal/agentdserver/infra/db/repository/agent_repository_test.go
 - [x] T010 Implement revision persistence methods in internal/agentdserver/infra/db/repository/agent_repository.go
-- [ ] T011 [P] Add parser tests for custom_tool, host_tool, legacy local_tool, environment.variables, and environment.files in internal/agentdserver/infra/definition/parser_test.go
+- [x] T011 [P] Add parser tests for custom_tool, host_tool, legacy local_tool, environment.variables, and environment.files in internal/agentdserver/infra/definition/parser_test.go
 - [ ] T012 [P] Add validator tests for custom_tool copy paths and host_tool host commands in internal/agentdserver/app/agent/definition_validator_test.go
 - [ ] T013 Update definition parser for custom_tool, host_tool, legacy local_tool, and environment metadata in internal/agentdserver/infra/definition/parser.go
 - [ ] T014 Update definition validator for path-bearing metadata and tool kind validation in internal/agentdserver/app/agent/definition_validator.go
