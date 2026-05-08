@@ -39,6 +39,63 @@ func TestNormalizeDefinitionAcceptsExampleLocalTool(t *testing.T) {
 	}
 }
 
+func TestNormalizeDefinitionRejectsCustomToolPathEscape(t *testing.T) {
+	t.Parallel()
+
+	definition := validExampleDefinition()
+	definition.Tools[0].Kind = domain.ToolKindCustomTool
+	definition.Tools[0].Command = "../fetch.py"
+
+	_, err := NormalizeDefinition(definition)
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("NormalizeDefinition error: got %v want ErrInvalidDefinition", err)
+	}
+}
+
+func TestNormalizeDefinitionAcceptsHostToolCommand(t *testing.T) {
+	t.Parallel()
+
+	definition := validExampleDefinition()
+	definition.Tools[0] = domain.ToolPermission{
+		Kind:    domain.ToolKindHostTool,
+		Name:    "github_api",
+		Command: "gh",
+		Args:    []string{"api", "search/repositories"},
+	}
+
+	if _, err := NormalizeDefinition(definition); err != nil {
+		t.Fatalf("NormalizeDefinition: %v", err)
+	}
+}
+
+func TestNormalizeDefinitionRejectsHostToolRelativeLocalCommand(t *testing.T) {
+	t.Parallel()
+
+	definition := validExampleDefinition()
+	definition.Tools[0] = domain.ToolPermission{
+		Kind:    domain.ToolKindHostTool,
+		Name:    "github_api",
+		Command: "tools/gh-wrapper.sh",
+	}
+
+	_, err := NormalizeDefinition(definition)
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("NormalizeDefinition error: got %v want ErrInvalidDefinition", err)
+	}
+}
+
+func TestNormalizeDefinitionRejectsUnknownToolKind(t *testing.T) {
+	t.Parallel()
+
+	definition := validExampleDefinition()
+	definition.Tools[0].Kind = domain.ToolKind("process_tool")
+
+	_, err := NormalizeDefinition(definition)
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("NormalizeDefinition error: got %v want ErrInvalidDefinition", err)
+	}
+}
+
 func validExampleDefinition() domain.AgentDefinition {
 	return domain.AgentDefinition{
 		Name:    "cybersecurity-reddit-watch",
