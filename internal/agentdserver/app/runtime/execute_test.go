@@ -121,6 +121,47 @@ func TestExecuteUseCaseResolvesExplicitRevision(t *testing.T) {
 	}
 }
 
+func TestExecuteUseCaseRejectsMissingExplicitRevision(t *testing.T) {
+	t.Parallel()
+
+	agent := testRuntimeAgent("release-notes-helper")
+	repo := newRuntimeAgentRepo(agent)
+	repo.revisions = []domain.AgentRevision{
+		testRuntimeRevision(agent.Name, "latest-rev", "Frozen latest prompt"),
+	}
+	manager := &fakeManager{}
+	useCase := NewExecuteUseCase(repo, manager)
+
+	_, err := useCase.Execute(context.Background(), agent.Name+":missing-rev", nil)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("Execute error: got %v want ErrNotFound", err)
+	}
+	if manager.executeRequest.Agent.Name != "" {
+		t.Fatalf("manager was called for missing revision: %#v", manager.executeRequest)
+	}
+}
+
+func TestExecuteUseCaseRejectsCorruptExplicitRevision(t *testing.T) {
+	t.Parallel()
+
+	agent := testRuntimeAgent("release-notes-helper")
+	repo := newRuntimeAgentRepo(agent)
+	corrupt := testRuntimeRevision(agent.Name, "corrupt-rev", "Corrupt prompt")
+	corrupt.Status = domain.AgentRevisionStatusCorrupt
+	corrupt.ErrorMessage = "missing tools/fetch.py"
+	repo.revisions = []domain.AgentRevision{corrupt}
+	manager := &fakeManager{}
+	useCase := NewExecuteUseCase(repo, manager)
+
+	_, err := useCase.Execute(context.Background(), agent.Name+":corrupt-rev", nil)
+	if !errors.Is(err, domain.ErrInvalidState) {
+		t.Fatalf("Execute error: got %v want ErrInvalidState", err)
+	}
+	if manager.executeRequest.Agent.Name != "" {
+		t.Fatalf("manager was called for corrupt revision: %#v", manager.executeRequest)
+	}
+}
+
 func TestExecuteUseCaseRejectsDisabledAgent(t *testing.T) {
 	t.Parallel()
 

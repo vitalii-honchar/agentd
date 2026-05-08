@@ -58,7 +58,7 @@ handling, and logs.
 ## Phase 4: User Story 2 - Run a Specific Revision (P1)
 
 - [x] T038 [P] [US2] Add execute use case tests for latest revision resolution and explicit revision resolution in internal/agentdserver/app/runtime/execute_test.go
-- [ ] T039 [P] [US2] Add execute use case tests for missing revision, corrupt revision, and run record revision ID in internal/agentdserver/app/runtime/execute_test.go
+- [x] T039 [P] [US2] Add execute use case tests for missing revision, corrupt revision, and run record revision ID in internal/agentdserver/app/runtime/execute_test.go
 - [ ] T040 [US2] Extend execute request model and use case with revision selector and resolved revision artifact in internal/agentdserver/app/runtime/execute.go
 - [ ] T041 [US2] Add agentd run command or compatibility alias in internal/agentd/app/execute.go
 - [ ] T042 [US2] Register agentd run command or compatibility alias in internal/agentd/app/root.go
