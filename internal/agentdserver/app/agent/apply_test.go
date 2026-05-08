@@ -1,8 +1,11 @@
 package agent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
@@ -90,10 +93,97 @@ vendor:
 	}
 }
 
+func TestApplyUseCaseLogsAppliedAndRejectedOutcomes(t *testing.T) {
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	var logBuffer bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logBuffer, &slog.HandlerOptions{}))
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs, WithLogger(logger))
+
+	_, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "/tmp/release-notes-helper.md",
+		Markdown:   manualDefinition("Do not leak this prompt into service logs."),
+	})
+	if err != nil {
+		t.Fatalf("Apply created: %v", err)
+	}
+	_, err = useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "/tmp/bad.md",
+		Markdown: `---
+name: Bad Name
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: ""
+---
+secret prompt text
+`,
+	})
+	if err == nil {
+		t.Fatal("Apply invalid definition returned nil error")
+	}
+
+	records := parseLogRecords(t, logBuffer.Bytes())
+	if len(records) != 2 {
+		t.Fatalf("log records: got %d want 2: %#v", len(records), records)
+	}
+
+	created := records[0]
+	if created["msg"] != "agent.apply.created" {
+		t.Fatalf("created msg: got %#v", created["msg"])
+	}
+	if created["event"] != "agent.apply.created" {
+		t.Fatalf("created event: got %#v", created["event"])
+	}
+	if created["agent"] != "release-notes-helper" {
+		t.Fatalf("created agent: got %#v", created["agent"])
+	}
+	if created["outcome"] != "created" {
+		t.Fatalf("created outcome: got %#v", created["outcome"])
+	}
+	if created["revision"] == "" {
+		t.Fatal("created revision was not logged")
+	}
+	if created["source_path"] != "/tmp/release-notes-helper.md" {
+		t.Fatalf("created source_path: got %#v", created["source_path"])
+	}
+	if _, ok := created["prompt"]; ok {
+		t.Fatalf("created log leaked prompt attribute: %#v", created)
+	}
+	if _, ok := created["markdown"]; ok {
+		t.Fatalf("created log leaked markdown attribute: %#v", created)
+	}
+
+	rejected := records[1]
+	if rejected["msg"] != "agent.apply.rejected" {
+		t.Fatalf("rejected msg: got %#v", rejected["msg"])
+	}
+	if rejected["event"] != "agent.apply.rejected" {
+		t.Fatalf("rejected event: got %#v", rejected["event"])
+	}
+	if rejected["outcome"] != "rejected" {
+		t.Fatalf("rejected outcome: got %#v", rejected["outcome"])
+	}
+	if rejected["source_path"] != "/tmp/bad.md" {
+		t.Fatalf("rejected source_path: got %#v", rejected["source_path"])
+	}
+	if rejected["error"] == "" {
+		t.Fatalf("rejected error was not logged: %#v", rejected)
+	}
+	if _, ok := rejected["prompt"]; ok {
+		t.Fatalf("rejected log leaked prompt attribute: %#v", rejected)
+	}
+	if _, ok := rejected["markdown"]; ok {
+		t.Fatalf("rejected log leaked markdown attribute: %#v", rejected)
+	}
+}
+
 func newApplyUseCaseForTest(
 	t *testing.T,
 	repo *memoryAgentRepository,
 	runtimeDBs *memoryRuntimeDBManager,
+	options ...ApplyOption,
 ) *ApplyUseCase {
 	t.Helper()
 
@@ -101,12 +191,32 @@ func newApplyUseCaseForTest(
 		ParserFunc(definition.ParseMarkdown),
 		repo,
 		runtimeDBs,
+		options...,
 	)
 	if err != nil {
 		t.Fatalf("NewApplyUseCase: %v", err)
 	}
 
 	return useCase
+}
+
+func parseLogRecords(t *testing.T, logs []byte) []map[string]any {
+	t.Helper()
+
+	lines := bytes.Split(bytes.TrimSpace(logs), []byte("\n"))
+	records := make([]map[string]any, 0, len(lines))
+	for _, line := range lines {
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		var record map[string]any
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatalf("parse log record %q: %v", string(line), err)
+		}
+		records = append(records, record)
+	}
+
+	return records
 }
 
 type memoryAgentRepository struct {

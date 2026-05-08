@@ -18,6 +18,8 @@ Use stable event names in the message or `event` attribute when adding new daemo
 - `agent.apply.created`
 - `agent.apply.updated`
 - `agent.apply.unchanged`
+- `agent.apply.rejected`
+- `agent.apply.failed`
 - `agent.run.started`
 - `agent.run.completed`
 - `agent.run.failed`
@@ -30,6 +32,9 @@ Common attributes:
 - `component`: daemon component name, such as `settings`, `scheduler`, or `http`.
 - `agent`: Agent name.
 - `run_id`: Agent Run ID.
+- `outcome`: apply result such as `created`, `updated`, `unchanged`, `rejected`, or `failed`.
+- `revision`: Agent Definition revision hash.
+- `source_path`: Agent Definition path supplied by the CLI.
 - `status`: Agent or Agent Run status.
 - `trigger`: `manual`, `schedule`, or `recovery`.
 - `error`: sanitized error value. Do not log API keys, `.env` values, prompts containing secrets, or credential material.
