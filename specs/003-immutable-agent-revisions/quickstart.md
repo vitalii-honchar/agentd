@@ -98,6 +98,23 @@ Expected result:
 - The agentdserver logs include the same tool execution entry, result summary,
   stdout/stderr summaries, exit state, timeout state, and any error details.
 
+Codex verification on 2026-05-08:
+
+- Result: passed after increasing the tool process stdout/stderr summary budget
+  to 8000 characters so the LLM receives enough GitHub repository data.
+- Applied revision: `e578b123-9140-45d1-921f-903c750526f1`.
+- Run ID: `b1a88c07-2d7a-4b30-84b1-f3fa125850d3`.
+- Agent result included GitHub-derived repository recommendations including
+  `ollama/ollama`, `rustdesk/rustdesk`, `facebook/react`,
+  `freeCodeCamp/freeCodeCamp`, `openclaw/openclaw`, `public-apis/public-apis`,
+  `golang/go`, and `rust-lang/rust`.
+- `agentd logs github-trending-engineering-radar --run <run-id>` showed
+  `tool.execute.start`, `tool.execute.complete`, captured GitHub JSON stdout,
+  result summary, `exit_code: 0`, and completion events.
+- agentdserver structured logs showed `tool.execute.complete` with agent name,
+  run ID, revision ID, tool name, `tool_kind=custom_tool`, stdout, result,
+  stderr, exit code, and timeout state.
+
 ## Automated Verification
 
 Run:

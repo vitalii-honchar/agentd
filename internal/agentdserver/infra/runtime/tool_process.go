@@ -16,6 +16,8 @@ type ProcessToolExecutor struct {
 	defaultTimeout time.Duration
 }
 
+const toolOutputSummaryLimit = 8000
+
 var _ appruntime.ToolExecutor = (*ProcessToolExecutor)(nil)
 
 func NewProcessToolExecutor(defaultTimeout time.Duration) *ProcessToolExecutor {
@@ -59,8 +61,8 @@ func (e *ProcessToolExecutor) Execute(
 
 	err := cmd.Run()
 	result := appruntime.ToolResult{
-		StdoutSummary: appresult.Summarize(stdout.String(), appresult.DefaultSummaryLimit),
-		StderrSummary: appresult.Summarize(stderr.String(), appresult.DefaultSummaryLimit),
+		StdoutSummary: appresult.Summarize(stdout.String(), toolOutputSummaryLimit),
+		StderrSummary: appresult.Summarize(stderr.String(), toolOutputSummaryLimit),
 	}
 	result.ResultSummary = result.StdoutSummary
 	if cmd.ProcessState != nil {
