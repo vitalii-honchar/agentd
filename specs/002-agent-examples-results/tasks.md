@@ -80,7 +80,7 @@ contracts, and example smoke verification.
 - [x] T034 [P] [US1] Create ai-engineering-hiring-signal-monitor definition and README in examples/ai-engineering-hiring-signal-monitor/
 - [x] T035 [P] [US1] Create website-snapshot-analyst definition and README in examples/website-snapshot-analyst/
 - [x] T036 [P] [US1] Add public source lists for scheduled examples in examples/*/sources/
-- [ ] T037 [P] [US1] Add zero-configuration fixture files where required in examples/*/fixtures/
+- [x] T037 [P] [US1] Add zero-configuration fixture files where required in examples/*/fixtures/
 - [ ] T038 [P] [US1] Add local fetch/screenshot tool scripts in examples/*/tools/
 - [ ] T039 [US1] Update Markdown definition parser for inputs/tool timeout/network metadata in internal/agentdserver/infra/definition/parser.go
 - [ ] T040 [US1] Update definition validation for example-local tool paths and no required secrets in internal/agentdserver/app/agent/definition_validator.go

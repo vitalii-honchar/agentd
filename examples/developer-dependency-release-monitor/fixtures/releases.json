@@ -1,0 +1,8 @@
+[
+  {
+    "name": "next",
+    "version": "16.0.0",
+    "url": "https://github.com/vercel/next.js/releases",
+    "notes": "Breaking routing changes and build performance improvements."
+  }
+]
