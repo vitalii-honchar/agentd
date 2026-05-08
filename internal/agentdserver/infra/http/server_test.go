@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"io"
 	stdhttp "net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +18,7 @@ func TestHealthEndpoint(t *testing.T) {
 		WriteTimeout: time.Second,
 	})
 
-	request := httptest.NewRequest(stdhttp.MethodGet, "/health", nil)
+	request := localRequest(stdhttp.MethodGet, "/health", nil)
 	response := httptest.NewRecorder()
 
 	server.Handler().ServeHTTP(response, request)
@@ -36,4 +37,11 @@ func TestHealthEndpoint(t *testing.T) {
 	if body["status"] != "ok" {
 		t.Fatalf("status body: got %q want ok", body["status"])
 	}
+}
+
+func localRequest(method, target string, body io.Reader) *stdhttp.Request {
+	request := httptest.NewRequest(method, target, body)
+	request.RemoteAddr = "127.0.0.1:12345"
+
+	return request
 }

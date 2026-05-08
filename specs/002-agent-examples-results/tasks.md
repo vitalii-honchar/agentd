@@ -42,7 +42,7 @@ contracts, and example smoke verification.
 - [x] T012 Implement run result and run listing repository methods in internal/agentdserver/infra/db/repository/run_repository.go
 - [x] T013 [P] Add repository tests for terminal run result persistence in internal/agentdserver/infra/db/repository/run_repository_test.go
 - [x] T014 [P] Add repository tests for active/all run listing in internal/agentdserver/infra/db/repository/run_repository_test.go
-- [ ] T015 Add same-host request middleware in internal/agentdserver/infra/http/server.go
+- [x] T015 Add same-host request middleware in internal/agentdserver/infra/http/server.go
 - [ ] T016 [P] Add same-host middleware tests in internal/agentdserver/infra/http/server_test.go
 - [ ] T017 Implement stable daemon error code mapping for result/run errors in internal/agentdserver/infra/http/errors.go
 - [ ] T018 Move or wrap internal HTTP client primitives into pkg/agentdclient/client.go

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	stdhttp "net/http"
+	"strings"
 	"time"
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
@@ -98,7 +100,7 @@ func NewServer(cfg Config, opts ...Option) *Server {
 		mux: mux,
 		server: &stdhttp.Server{
 			Addr:         cfg.Address,
-			Handler:      mux,
+			Handler:      sameHostMiddleware(mux),
 			ReadTimeout:  cfg.ReadTimeout,
 			WriteTimeout: cfg.WriteTimeout,
 		},
@@ -112,7 +114,7 @@ func NewServer(cfg Config, opts ...Option) *Server {
 }
 
 func (s *Server) Handler() stdhttp.Handler {
-	return s.mux
+	return s.server.Handler
 }
 
 func (s *Server) Start() error {
@@ -156,6 +158,43 @@ func (s *Server) registerRoutes() {
 
 func healthHandler(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
 	writeJSON(w, stdhttp.StatusOK, map[string]string{"status": "ok"})
+}
+
+func sameHostMiddleware(next stdhttp.Handler) stdhttp.Handler {
+	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if !isSameHostRemoteAddr(r.RemoteAddr) {
+			writeError(
+				w,
+				stdhttp.StatusForbidden,
+				"forbidden",
+				"requests must originate from the same host",
+				nil,
+			)
+
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isSameHostRemoteAddr(remoteAddr string) bool {
+	host := strings.TrimSpace(remoteAddr)
+	if host == "" {
+		return false
+	}
+	if splitHost, _, err := net.SplitHostPort(host); err == nil {
+		host = splitHost
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+
+	return ip.IsLoopback()
 }
 
 func writeJSON(w stdhttp.ResponseWriter, status int, body any) {

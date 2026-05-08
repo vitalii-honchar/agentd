@@ -91,7 +91,7 @@ func TestApplyHandlerInvalidJSON(t *testing.T) {
 	t.Parallel()
 
 	server := NewServer(Config{}, WithApplyUseCase(&fakeApplyUseCase{}))
-	request := httptest.NewRequest(stdhttp.MethodPost, "/v1/agents/apply", bytes.NewBufferString("{"))
+	request := localRequest(stdhttp.MethodPost, "/v1/agents/apply", bytes.NewBufferString("{"))
 	response := httptest.NewRecorder()
 
 	server.Handler().ServeHTTP(response, request)
@@ -126,7 +126,7 @@ func jsonRequest(t *testing.T, body any) *stdhttp.Request {
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
-	request := httptest.NewRequest(stdhttp.MethodPost, "/v1/agents/apply", bytes.NewReader(payload))
+	request := localRequest(stdhttp.MethodPost, "/v1/agents/apply", bytes.NewReader(payload))
 	request.Header.Set("Content-Type", "application/json")
 
 	return request

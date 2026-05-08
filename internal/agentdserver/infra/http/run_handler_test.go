@@ -21,7 +21,7 @@ func TestExecuteHandlerAccepted(t *testing.T) {
 	}}
 	server := NewServer(Config{}, WithExecuteUseCase(execute))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(stdhttp.MethodPost, "/v1/agents/release-notes-helper/runs", nil)
+	request := localRequest(stdhttp.MethodPost, "/v1/agents/release-notes-helper/runs", nil)
 
 	server.Handler().ServeHTTP(response, request)
 
@@ -45,7 +45,7 @@ func TestExecuteHandlerConflict(t *testing.T) {
 
 	server := NewServer(Config{}, WithExecuteUseCase(&fakeExecuteUseCase{err: domain.ErrRunAlreadyActive}))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(stdhttp.MethodPost, "/v1/agents/release-notes-helper/runs", nil)
+	request := localRequest(stdhttp.MethodPost, "/v1/agents/release-notes-helper/runs", nil)
 
 	server.Handler().ServeHTTP(response, request)
 
@@ -64,7 +64,7 @@ func TestStopHandlerAccepted(t *testing.T) {
 	}}
 	server := NewServer(Config{}, WithStopUseCase(stop))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(
+	request := localRequest(
 		stdhttp.MethodPost,
 		"/v1/agents/release-notes-helper/runs/run-1/stop",
 		nil,
@@ -85,7 +85,7 @@ func TestStopHandlerNotFound(t *testing.T) {
 
 	server := NewServer(Config{}, WithStopUseCase(&fakeStopUseCase{err: domain.ErrNotFound}))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(
+	request := localRequest(
 		stdhttp.MethodPost,
 		"/v1/agents/missing/runs/run-1/stop",
 		nil,

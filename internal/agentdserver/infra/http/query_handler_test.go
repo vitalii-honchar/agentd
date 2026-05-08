@@ -22,7 +22,7 @@ func TestListHandlerReturnsAgents(t *testing.T) {
 		testHTTPAgent("release-notes-helper"),
 	}}))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(stdhttp.MethodGet, "/v1/agents", nil)
+	request := localRequest(stdhttp.MethodGet, "/v1/agents", nil)
 
 	server.Handler().ServeHTTP(response, request)
 
@@ -44,7 +44,7 @@ func TestInspectHandlerReturnsAgent(t *testing.T) {
 	inspect := &fakeInspectUseCase{agent: testHTTPAgent("release-notes-helper")}
 	server := NewServer(Config{}, WithInspectUseCase(inspect))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper", nil)
+	request := localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper", nil)
 
 	server.Handler().ServeHTTP(response, request)
 
@@ -65,7 +65,7 @@ func TestInspectHandlerNotFound(t *testing.T) {
 
 	server := NewServer(Config{}, WithInspectUseCase(&fakeInspectUseCase{err: domain.ErrNotFound}))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(stdhttp.MethodGet, "/v1/agents/missing", nil)
+	request := localRequest(stdhttp.MethodGet, "/v1/agents/missing", nil)
 
 	server.Handler().ServeHTTP(response, request)
 
@@ -93,7 +93,7 @@ func TestLogsHandlerReturnsEntries(t *testing.T) {
 	}}
 	server := NewServer(Config{}, WithLogsUseCase(logsUseCase))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(
+	request := localRequest(
 		stdhttp.MethodGet,
 		"/v1/agents/release-notes-helper/logs?run_id=run-1&tail=20",
 		nil,
@@ -121,7 +121,7 @@ func TestLogsHandlerRejectsInvalidTail(t *testing.T) {
 
 	server := NewServer(Config{}, WithLogsUseCase(&fakeLogsUseCase{}))
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/logs?tail=bad", nil)
+	request := localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/logs?tail=bad", nil)
 
 	server.Handler().ServeHTTP(response, request)
 
