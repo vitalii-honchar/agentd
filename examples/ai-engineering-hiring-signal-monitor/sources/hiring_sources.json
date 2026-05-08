@@ -1,0 +1,14 @@
+[
+  {
+    "name": "hacker-news-who-is-hiring",
+    "url": "https://news.ycombinator.com/submitted?id=whoishiring"
+  },
+  {
+    "name": "reddit-mlops",
+    "url": "https://www.reddit.com/r/mlops/new.json"
+  },
+  {
+    "name": "reddit-localllama",
+    "url": "https://www.reddit.com/r/LocalLLaMA/new.json"
+  }
+]

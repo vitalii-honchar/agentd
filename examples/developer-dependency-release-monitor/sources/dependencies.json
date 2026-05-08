@@ -1,0 +1,22 @@
+[
+  {
+    "name": "react",
+    "kind": "npm",
+    "url": "https://registry.npmjs.org/react/latest"
+  },
+  {
+    "name": "next",
+    "kind": "npm",
+    "url": "https://registry.npmjs.org/next/latest"
+  },
+  {
+    "name": "django",
+    "kind": "pypi",
+    "url": "https://pypi.org/pypi/Django/json"
+  },
+  {
+    "name": "kubernetes",
+    "kind": "github",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/releases/latest"
+  }
+]
