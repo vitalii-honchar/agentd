@@ -30,12 +30,12 @@ Agentd resolves and freezes only these front matter fields as filesystem paths:
   marks as file inputs. Plain strings, URLs, flags, and input placeholders are
   not treated as filesystem paths by guessing.
 - `tools[].read_paths`: copied when they are runtime input files or directories.
-- `tools[].write_paths`: resolved for policy and rewritten to the execution
-  working directory when they are relative run-output paths.
+- `tools[].write_paths`: resolved for policy as run-output paths. Relative
+  writes are expected to target the execution working directory.
 - `access.filesystem.read`: copied when the paths are runtime input files or
   directories.
-- `access.filesystem.write`: resolved for policy and rewritten to the execution
-  working directory when relative.
+- `access.filesystem.write`: resolved for policy as run-output paths. Relative
+  writes are expected to target the execution working directory.
 - `environment.files`: copied and parsed as `.env` files during apply.
 
 Path-like strings in prompt text, input descriptions, network allow lists,
@@ -83,8 +83,7 @@ Rules:
   at apply time.
 - Captured environment entries are supplied to local tools during execution.
 - Declared literal variables override values parsed from declared `.env` files.
-- Undeclared host environment variables are not inherited by default, except
-  minimal OS process variables explicitly allowed by daemon policy.
+- Undeclared host environment variables are not inherited by default.
 - Default inspection and logs show environment variable names and masked values
   only.
 - `.env` files are allowed to contain secrets because they are explicitly
@@ -143,6 +142,13 @@ sets the process working directory to:
 data/work/<agent_name>/executions/<execution_id>
 ```
 
-Local tools load copied scripts and declared read-only runtime inputs from the
-immutable revision artifact. Relative write paths target the execution working
-directory so generated files are per-run outputs rather than revision mutations.
+`custom_tool` commands are rewritten to artifact-local paths under:
+
+```text
+data/work/<agent_name>/<revision_id>
+```
+
+Local tools load copied scripts, declared read-only runtime inputs, and declared
+environment files from that immutable revision artifact. Relative write paths
+target the execution working directory so generated files are per-run outputs
+rather than revision mutations.
