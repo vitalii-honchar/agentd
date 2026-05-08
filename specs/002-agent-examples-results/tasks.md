@@ -19,7 +19,7 @@ contracts, and example smoke verification.
 
 **Purpose**: Prepare package structure, shared fixtures, and baseline contracts.
 
-- [ ] T001 Create public client package skeleton in pkg/agentdclient/{client.go,types.go,agents.go,runs.go,logs.go}
+- [x] T001 Create public client package skeleton in pkg/agentdclient/{client.go,types.go,agents.go,runs.go,logs.go}
 - [ ] T002 Create result app package skeleton in internal/agentdserver/app/result/doc.go
 - [ ] T003 Create CLI command skeleton files in internal/agentd/app/{ps.go,result.go}
 - [ ] T004 Create example directory skeletons under examples/{cybersecurity-reddit-watch,hacker-news-builder-brief,reddit-customer-pain-monitor,product-hunt-launch-radar,github-trending-engineering-radar,developer-dependency-release-monitor,ai-engineering-hiring-signal-monitor,website-snapshot-analyst}/
