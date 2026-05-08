@@ -196,7 +196,7 @@ contracts, and example smoke verification.
 - [x] T086 [US5] Wire ToolExecutor into service construction in internal/agentdserver/service.go
 - [x] T087 [US5] Enforce declared-tool lookup before execution in internal/agentdserver/app/runtime/manager.go
 - [x] T088 [US5] Add timeout, stdout/stderr summary, and non-zero exit handling in internal/agentdserver/infra/runtime/tool_process.go
-- [ ] T089 [US5] Emit tool.execute.start, tool.execute.complete, and tool.execute.fail events in internal/agentdserver/app/runtime/manager.go
+- [x] T089 [US5] Emit tool.execute.start, tool.execute.complete, and tool.execute.fail events in internal/agentdserver/app/runtime/manager.go
 - [ ] T090 [US5] Update example tools to follow CLI stdin/stdout/exit contract in examples/*/tools/
 
 **Checkpoint**: Declared local tools are auditable, bounded, and integrated into run results.
