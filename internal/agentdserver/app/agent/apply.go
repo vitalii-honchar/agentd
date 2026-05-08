@@ -62,8 +62,12 @@ type ApplyRequest struct {
 }
 
 type ApplyResult struct {
-	Outcome ApplyOutcome
-	Agent   domain.Agent
+	Outcome        ApplyOutcome
+	Agent          domain.Agent
+	RevisionID     string
+	ArtifactPath   string
+	RevisionStatus domain.AgentRevisionStatus
+	RevisionReused bool
 }
 
 func NewApplyUseCase(
@@ -127,6 +131,17 @@ func (u *ApplyUseCase) Apply(
 		return ApplyResult{}, err
 	}
 	if err == nil && existing.Revision == normalized.Revision {
+		revision, revisionErr := u.revisions.FindRevisionByDigest(ctx, existing.Name, normalized.Revision)
+		if revisionErr != nil && !errors.Is(revisionErr, domain.ErrNotFound) {
+			u.logApplyFailed(ctx, request.SourcePath, normalized.Definition.Name, revisionErr)
+
+			return ApplyResult{}, revisionErr
+		}
+		if revisionErr == nil {
+			u.logApplyResult(ctx, ApplyOutcomeUnchanged, existing)
+
+			return applyResult(ApplyOutcomeUnchanged, existing, revision, true), nil
+		}
 		u.logApplyResult(ctx, ApplyOutcomeUnchanged, existing)
 
 		return ApplyResult{Outcome: ApplyOutcomeUnchanged, Agent: existing}, nil
@@ -146,13 +161,15 @@ func (u *ApplyUseCase) Apply(
 
 		return ApplyResult{}, err
 	}
-	if _, err := u.revisions.FindRevisionByDigest(ctx, agent.Name, normalized.Revision); err != nil {
+	revision, err := u.revisions.FindRevisionByDigest(ctx, agent.Name, normalized.Revision)
+	reusedRevision := err == nil
+	if err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
 			u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
 
 			return ApplyResult{}, err
 		}
-		revision, err := revisionFromDefinition(normalized.Definition, uuid.NewString(), normalized.Revision, u.now())
+		revision, err = revisionFromDefinition(normalized.Definition, uuid.NewString(), normalized.Revision, u.now())
 		if err != nil {
 			u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
 
@@ -172,7 +189,23 @@ func (u *ApplyUseCase) Apply(
 
 	u.logApplyResult(ctx, outcome, agent)
 
-	return ApplyResult{Outcome: outcome, Agent: agent}, nil
+	return applyResult(outcome, agent, revision, reusedRevision), nil
+}
+
+func applyResult(
+	outcome ApplyOutcome,
+	agent domain.Agent,
+	revision domain.AgentRevision,
+	reused bool,
+) ApplyResult {
+	return ApplyResult{
+		Outcome:        outcome,
+		Agent:          agent,
+		RevisionID:     revision.RevisionID,
+		ArtifactPath:   revision.ArtifactPath,
+		RevisionStatus: revision.Status,
+		RevisionReused: reused,
+	}
 }
 
 func (u *ApplyUseCase) logApplyResult(ctx context.Context, outcome ApplyOutcome, agent domain.Agent) {

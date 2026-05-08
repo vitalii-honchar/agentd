@@ -79,6 +79,9 @@ func TestApplyUseCaseCreatesRevisionAndReusesUnchangedRevision(t *testing.T) {
 	if created.Outcome != ApplyOutcomeCreated {
 		t.Fatalf("created outcome: got %q want %q", created.Outcome, ApplyOutcomeCreated)
 	}
+	if created.RevisionID == "" || created.ArtifactPath == "" || created.RevisionStatus != domain.AgentRevisionStatusFinalized || created.RevisionReused {
+		t.Fatalf("created revision metadata: %#v", created)
+	}
 	if len(repo.revisions) != 1 {
 		t.Fatalf("created revisions: got %d want 1", len(repo.revisions))
 	}
@@ -99,6 +102,9 @@ func TestApplyUseCaseCreatesRevisionAndReusesUnchangedRevision(t *testing.T) {
 	}
 	if unchanged.Outcome != ApplyOutcomeUnchanged {
 		t.Fatalf("unchanged outcome: got %q want %q", unchanged.Outcome, ApplyOutcomeUnchanged)
+	}
+	if unchanged.RevisionID != firstRevisionID || !unchanged.RevisionReused {
+		t.Fatalf("unchanged revision metadata: %#v", unchanged)
 	}
 	if len(repo.revisions) != 1 {
 		t.Fatalf("unchanged revisions: got %d want 1", len(repo.revisions))
