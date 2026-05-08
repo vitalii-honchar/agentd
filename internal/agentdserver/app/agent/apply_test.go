@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
@@ -103,6 +105,74 @@ func TestApplyUseCaseCreatesRevisionAndReusesUnchangedRevision(t *testing.T) {
 	}
 	if repo.revisions[0].RevisionID != firstRevisionID {
 		t.Fatalf("unchanged revision id: got %q want %q", repo.revisions[0].RevisionID, firstRevisionID)
+	}
+}
+
+func TestApplyUseCaseCreatesDistinctRevisionsForPromptAndToolMutation(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "examples/revisioned/revisioned.md",
+		Markdown:   toolDefinition("Summarize public repos.", "tools/fetch.py"),
+	}); err != nil {
+		t.Fatalf("Apply initial: %v", err)
+	}
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "examples/revisioned/revisioned.md",
+		Markdown:   toolDefinition("Summarize public repos with more detail.", "tools/fetch.py"),
+	}); err != nil {
+		t.Fatalf("Apply prompt mutation: %v", err)
+	}
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "examples/revisioned/revisioned.md",
+		Markdown:   toolDefinition("Summarize public repos with more detail.", "tools/fetch_v2.py"),
+	}); err != nil {
+		t.Fatalf("Apply tool mutation: %v", err)
+	}
+
+	if len(repo.revisions) != 3 {
+		t.Fatalf("revisions: got %d want 3", len(repo.revisions))
+	}
+	if repo.revisions[0].Prompt == repo.revisions[1].Prompt {
+		t.Fatalf("prompt mutation was not captured: %#v", repo.revisions)
+	}
+	if len(repo.revisions[2].Tools) != 1 || repo.revisions[2].Tools[0].OriginalCommand != "tools/fetch_v2.py" {
+		t.Fatalf("tool mutation was not captured: %#v", repo.revisions[2].Tools)
+	}
+}
+
+func TestApplyUseCaseRevisionRetainsPromptAndToolsAfterSourceDeletion(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	sourcePath := filepath.Join(sourceDir, "revisioned.md")
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: sourcePath,
+		Markdown:   toolDefinition("Keep this prompt in the revision.", "tools/fetch.py"),
+	}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := os.RemoveAll(sourceDir); err != nil {
+		t.Fatalf("RemoveAll source dir: %v", err)
+	}
+
+	if len(repo.revisions) != 1 {
+		t.Fatalf("revisions: got %d want 1", len(repo.revisions))
+	}
+	revision := repo.revisions[0]
+	if revision.Prompt != "Keep this prompt in the revision." {
+		t.Fatalf("revision prompt: got %q", revision.Prompt)
+	}
+	if len(revision.Tools) != 1 || revision.Tools[0].OriginalCommand != "tools/fetch.py" {
+		t.Fatalf("revision tools: %#v", revision.Tools)
 	}
 }
 
@@ -422,6 +492,30 @@ access:
     write: []
   network:
     allow: ["api.openai.com"]
+---
+` + prompt
+}
+
+func toolDefinition(prompt, command string) string {
+	return `---
+name: revisioned
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+tools:
+  - name: fetch
+    kind: custom_tool
+    command: ` + command + `
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: ["api.github.com"]
 ---
 ` + prompt
 }
