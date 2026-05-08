@@ -19,7 +19,7 @@ tools:
         - https://oauth.reddit.com
 access:
   filesystem:
-    read: ["fixtures/", "sources/", "tools/"]
+    read: ["sources/", "tools/"]
     write: [".agentd-work/"]
   network:
     allow:

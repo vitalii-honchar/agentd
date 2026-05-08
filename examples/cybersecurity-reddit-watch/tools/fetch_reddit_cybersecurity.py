@@ -7,9 +7,18 @@ import sys
 import urllib.request
 
 
-def load_fixture():
-    path = pathlib.Path(__file__).resolve().parents[1] / "fixtures" / "reddit_posts.json"
-    return json.loads(path.read_text())
+def load_local_env():
+    for parent in pathlib.Path(__file__).resolve().parents:
+        env_path = parent / ".env"
+        if not env_path.exists():
+            continue
+        for line in env_path.read_text().splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        return
 
 
 def fetch_public_json(subreddit, limit):
@@ -38,6 +47,7 @@ def fetch_with_praw(subreddit, limit):
         client_secret=os.environ["REDDIT_CLIENT_SECRET"],
         user_agent=os.environ.get("REDDIT_USER_AGENT", "agentd-example/1.0"),
     )
+    reddit.read_only = True
     return [{
         "title": post.title,
         "url": f"https://www.reddit.com{post.permalink}",
@@ -48,6 +58,7 @@ def fetch_with_praw(subreddit, limit):
 
 
 def main():
+    load_local_env()
     parser = argparse.ArgumentParser()
     parser.add_argument("--subreddit", default="cybersecurity")
     parser.add_argument("--limit", type=int, default=25)
@@ -58,8 +69,8 @@ def main():
         else:
             posts = fetch_public_json(args.subreddit, args.limit)
     except Exception as exc:
-        print(f"live reddit fetch failed, using fixture: {exc}", file=sys.stderr)
-        posts = load_fixture()
+        print(f"reddit fetch failed: {exc}", file=sys.stderr)
+        sys.exit(1)
     print(json.dumps({"source": f"r/{args.subreddit}", "posts": posts}, indent=2))
 
 

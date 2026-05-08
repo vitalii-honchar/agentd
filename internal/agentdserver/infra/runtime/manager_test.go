@@ -160,6 +160,55 @@ func TestManagerExecutesDeclaredLocalToolsBeforeProvider(t *testing.T) {
 	}
 	assertEventType(t, events, domain.RunActionToolExecuteStart)
 	assertEventType(t, events, domain.RunActionToolExecuteComplete)
+	assertEventMessageContains(t, events, domain.RunActionToolExecuteComplete, "stdout: snapshot title: Example")
+}
+
+func TestManagerLogsDeclaredToolStderrOnFailure(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	toolExecutor := &recordingToolExecutor{
+		err:    errors.New("tool snapshot failed"),
+		result: appruntime.ToolResult{ExitCode: 2, StderrSummary: "browser failed"},
+	}
+	manager.SetToolExecutor(toolExecutor)
+	agent := testAgent("website-snapshot-analyst")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "snapshot",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "snapshot",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusFailed)
+	events, err := runtimeDBs.Events(agent.Name).ListByRun(context.Background(), run.ID, 20)
+	if err != nil {
+		t.Fatalf("ListByRun: %v", err)
+	}
+	assertEventType(t, events, domain.RunActionToolExecuteFail)
+	assertEventMessageContains(t, events, domain.RunActionToolExecuteFail, "stderr: browser failed")
+}
+
+func TestResolveToolCommandReturnsAbsolutePathForRelativeDefinitionSource(t *testing.T) {
+	t.Parallel()
+
+	command := resolveToolCommand(
+		"examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md",
+		"tools/fetch_reddit_cybersecurity.py",
+	)
+	if !filepath.IsAbs(command) {
+		t.Fatalf("resolved command is not absolute: %q", command)
+	}
+	if filepath.Base(command) != "fetch_reddit_cybersecurity.py" {
+		t.Fatalf("resolved command: %q", command)
+	}
 }
 
 func newManagerFixture(t *testing.T, provider appruntime.Provider) (*Manager, app.RuntimeDBManager) {
@@ -236,6 +285,7 @@ type recordingToolExecutor struct {
 	t             *testing.T
 	failOnExecute bool
 	result        appruntime.ToolResult
+	err           error
 
 	mu          sync.Mutex
 	lastRequest appruntime.ToolRequest
@@ -249,7 +299,7 @@ func (e *recordingToolExecutor) Execute(_ context.Context, request appruntime.To
 		e.t.Fatal("undeclared tool was executed")
 	}
 
-	return e.result, nil
+	return e.result, e.err
 }
 
 func (e *recordingToolExecutor) request() appruntime.ToolRequest {
@@ -307,6 +357,26 @@ func assertEventType(t *testing.T, events []domain.RuntimeEvent, eventType strin
 		if event.EventType == eventType {
 			return
 		}
+	}
+	t.Fatalf("event %q not found in %#v", eventType, events)
+}
+
+func assertEventMessageContains(
+	t *testing.T,
+	events []domain.RuntimeEvent,
+	eventType string,
+	want string,
+) {
+	t.Helper()
+
+	for _, event := range events {
+		if event.EventType != eventType {
+			continue
+		}
+		if strings.Contains(event.Message, want) {
+			return
+		}
+		t.Fatalf("event %q message: got %q want substring %q", eventType, event.Message, want)
 	}
 	t.Fatalf("event %q not found in %#v", eventType, events)
 }

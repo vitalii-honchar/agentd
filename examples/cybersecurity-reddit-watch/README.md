@@ -4,17 +4,27 @@ Daily scheduled agent that reviews public posts from `https://www.reddit.com/r/c
 
 ## Install
 
-Install Python 3.10+ and the local dependency:
+Install Python 3.10+.
+
+```sh
+python3 --version
+```
+
+The default tool reads Reddit's public JSON endpoint and requires no Reddit
+configuration. PRAW is optional if you want Reddit API read-only access through
+an app client:
 
 ```sh
 python3 -m pip install praw
 ```
 
-The default tool can also fall back to Reddit's public JSON endpoint when PRAW credentials are absent.
-
 ## Run
 
-This example is zero configuration for the default public-read path. API keys are optional enhancements only; set Reddit PRAW environment variables if you want authenticated higher-rate reads.
+This example is zero configuration for the default public-read path. API keys
+for a Reddit app are optional enhancements only; they are not Reddit account
+login credentials and the tool forces PRAW read-only mode. Set
+`REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, and optionally `REDDIT_USER_AGENT`
+in your shell or local ignored `.env` file if you want PRAW read-only reads.
 
 ```sh
 agentd apply examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md

@@ -1,0 +1,157 @@
+openapi: 3.1.0
+info:
+  title: agentd Immutable Agent Revisions API
+  version: 0.1.0
+paths:
+  /v1/agents/{name}/revisions:
+    get:
+      summary: List immutable revisions for an agent
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revision list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [agent_name, revisions]
+                properties:
+                  agent_name:
+                    type: string
+                  revisions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgentRevision"
+  /v1/agents/{name}/revisions/{revision_id}:
+    get:
+      summary: Inspect one immutable revision
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: revision_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Revision detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRevisionDetail"
+  /v1/runs:
+    post:
+      summary: Start a run for latest or explicit agent revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent]
+              properties:
+                agent:
+                  type: string
+                  description: Agent name or agent-name:revision-id selector
+                inputs:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "202":
+          description: Run accepted
+components:
+  schemas:
+    AgentRevision:
+      type: object
+      required: [agent_name, revision_id, status, created_at, artifact_path]
+      properties:
+        agent_name:
+          type: string
+        revision_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, finalized, corrupt]
+        created_at:
+          type: string
+          format: date-time
+        finalized_at:
+          type: string
+          format: date-time
+        artifact_path:
+          type: string
+        source_path:
+          type: string
+        latest:
+          type: boolean
+    AgentRevisionDetail:
+      allOf:
+        - $ref: "#/components/schemas/AgentRevision"
+        - type: object
+          required: [prompt, tools]
+          properties:
+            prompt:
+              type: string
+            tools:
+              type: array
+              items:
+                $ref: "#/components/schemas/RevisionTool"
+            copied_files:
+              type: array
+              items:
+                $ref: "#/components/schemas/RevisionArtifactFile"
+    RevisionTool:
+      type: object
+      required: [name, kind, command]
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [custom_tool, host_tool, mcp_server]
+          description: custom_tool is copied into the artifact; host_tool is a host-installed executable.
+        command:
+          type: string
+        original_command:
+          type: string
+        rewritten_command:
+          type: string
+          description: Artifact-local command for custom_tool when rewritten.
+        host_command:
+          type: string
+          description: Host executable command for host_tool.
+        args:
+          type: array
+          items:
+            type: string
+        env:
+          type: array
+          items:
+            type: string
+            description: Masked KEY=**** values
+    RevisionArtifactFile:
+      type: object
+      required: [path, sha256, size_bytes]
+      properties:
+        path:
+          type: string
+        source_path:
+          type: string
+        sha256:
+          type: string
+        mode:
+          type: string
+        size_bytes:
+          type: integer

@@ -422,11 +422,21 @@ func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, 
 			_ = repo.CreateToolExecution(context.Background(), execution)
 		}
 		if err != nil {
-			m.appendRunEvent(run, domain.RunActionToolExecuteFail, domain.EventLevelError, "tool failed "+tool.Name)
+			m.appendRunEvent(
+				run,
+				domain.RunActionToolExecuteFail,
+				domain.EventLevelError,
+				toolLogMessage("tool failed", tool.Name, result),
+			)
 
 			return strings.Join(outputs, "\n"), err
 		}
-		m.appendRunEvent(run, domain.RunActionToolExecuteComplete, domain.EventLevelInfo, "tool completed "+tool.Name)
+		m.appendRunEvent(
+			run,
+			domain.RunActionToolExecuteComplete,
+			domain.EventLevelInfo,
+			toolLogMessage("tool completed", tool.Name, result),
+		)
 		if result.StdoutSummary != "" {
 			outputs = append(outputs, fmt.Sprintf("%s stdout: %s", tool.Name, result.StdoutSummary))
 		}
@@ -438,12 +448,30 @@ func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, 
 	return strings.Join(outputs, "\n"), nil
 }
 
+func toolLogMessage(prefix string, toolName string, result appruntime.ToolResult) string {
+	parts := []string{prefix + " " + toolName}
+	if result.StdoutSummary != "" {
+		parts = append(parts, "stdout: "+result.StdoutSummary)
+	}
+	if result.StderrSummary != "" {
+		parts = append(parts, "stderr: "+result.StderrSummary)
+	}
+
+	return strings.Join(parts, " | ")
+}
+
 func resolveToolCommand(sourcePath, command string) string {
-	if filepath.IsAbs(command) || sourcePath == "" {
+	if filepath.IsAbs(command) || sourcePath == "" || filepath.Base(command) == command {
 		return command
 	}
 
-	return filepath.Join(filepath.Dir(sourcePath), command)
+	resolved := filepath.Join(filepath.Dir(sourcePath), command)
+	absolute, err := filepath.Abs(resolved)
+	if err != nil {
+		return resolved
+	}
+
+	return absolute
 }
 
 func (m *Manager) appendRunEvent(

@@ -78,6 +78,21 @@ func TestProcessToolExecutorScopedEnv(t *testing.T) {
 	}
 }
 
+func TestProcessToolExecutorInheritsEnvironment(t *testing.T) {
+	t.Setenv("AGENTD_TOOL_INHERITED_ENV", "available")
+	workDir := t.TempDir()
+	script := writeToolScript(t, workDir, "inherit-env.sh", "echo ${AGENTD_TOOL_INHERITED_ENV:-missing}")
+	executor := NewProcessToolExecutor(2 * time.Second)
+
+	result, err := executor.Execute(context.Background(), toolRequest(workDir, script))
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(result.StdoutSummary, "available") {
+		t.Fatalf("stdout: %q", result.StdoutSummary)
+	}
+}
+
 func writeToolScript(t *testing.T, dir, name, body string) string {
 	t.Helper()
 
