@@ -31,7 +31,7 @@ handling, and logs.
 - [x] T015 [P] Add artifact copy tests for custom_tool scripts, declared read files, executable mode, and checksums in internal/agentdserver/infra/runtime/revision_artifact_test.go
 - [x] T016 [P] Add artifact validation tests for missing files, symlink policy, and path escape rejection in internal/agentdserver/infra/runtime/revision_artifact_test.go
 - [x] T017 Implement artifact staging, copy, manifest, checksum, command rewrite, and finalize behavior in internal/agentdserver/infra/runtime/revision_artifact.go
-- [ ] T018 [P] Add .env parsing tests for comments, quotes, duplicate keys, invalid lines, and precedence in internal/agentdserver/infra/runtime/env_file_test.go
+- [x] T018 [P] Add .env parsing tests for comments, quotes, duplicate keys, invalid lines, and precedence in internal/agentdserver/infra/runtime/env_file_test.go
 - [ ] T019 Implement .env parsing, environment merge precedence, and masking helpers in internal/agentdserver/infra/runtime/env_file.go
 - [ ] T020 Update Cybersecurity Reddit Watch definition from local_tool to custom_tool in examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md
 - [ ] T021 Update Hacker News Builder Brief definition from local_tool to custom_tool in examples/hacker-news-builder-brief/hacker-news-builder-brief.md
