@@ -89,6 +89,13 @@ func TestExecuteHandlerPassesExplicitRevisionSelector(t *testing.T) {
 	if response.Code != stdhttp.StatusAccepted {
 		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusAccepted, response.Body.String())
 	}
+	var body model.RunResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.AgentRevision != "11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("agent revision: got %q", body.AgentRevision)
+	}
 	if execute.agentName != "release-notes-helper:11111111-1111-4111-8111-111111111111" {
 		t.Fatalf("agent selector: got %q", execute.agentName)
 	}

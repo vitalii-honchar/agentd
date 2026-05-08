@@ -53,8 +53,9 @@ func (s *Server) handleStopActive(w stdhttp.ResponseWriter, r *stdhttp.Request) 
 
 func toRunResponse(run domain.AgentRun) model.RunResponse {
 	return model.RunResponse{
-		RunID:     run.ID,
-		AgentName: run.AgentName,
-		Status:    string(run.Status),
+		RunID:         run.ID,
+		AgentName:     run.AgentName,
+		AgentRevision: run.AgentRevision,
+		Status:        string(run.Status),
 	}
 }

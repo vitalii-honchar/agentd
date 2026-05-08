@@ -21,9 +21,10 @@ type ExecuteRequest struct {
 }
 
 type RunResponse struct {
-	RunID     string `json:"run_id"`
-	AgentName string `json:"agent_name"`
-	Status    string `json:"status"`
+	RunID         string `json:"run_id"`
+	AgentName     string `json:"agent_name"`
+	AgentRevision string `json:"agent_revision,omitempty"`
+	Status        string `json:"status"`
 }
 
 type RunListResponse struct {
