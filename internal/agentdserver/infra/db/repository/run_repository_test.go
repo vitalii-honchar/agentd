@@ -115,6 +115,70 @@ func TestAgentRunRepositoryPersistsTerminalResults(t *testing.T) {
 	}
 }
 
+func TestAgentRunRepositoryListsActiveAndAllRuns(t *testing.T) {
+	t.Parallel()
+
+	fixture := newRuntimeRepositoryFixture(t, "hacker-news-builder-brief")
+	now := time.Date(2026, 5, 7, 12, 0, 0, 0, time.UTC)
+	completedAt := now.Add(2 * time.Minute)
+	runs := []domain.AgentRun{
+		{
+			ID:            "run-queued",
+			AgentName:     "hacker-news-builder-brief",
+			AgentRevision: "rev-1",
+			Trigger:       domain.RunTriggerSchedule,
+			Status:        domain.AgentRunStatusQueued,
+			DueAt:         &now,
+			WorkDir:       "/tmp/run-queued",
+			LogPath:       "/tmp/run-queued/run.log",
+		},
+		{
+			ID:            "run-running",
+			AgentName:     "hacker-news-builder-brief",
+			AgentRevision: "rev-1",
+			Trigger:       domain.RunTriggerManual,
+			Status:        domain.AgentRunStatusRunning,
+			StartedAt:     &now,
+			WorkDir:       "/tmp/run-running",
+			LogPath:       "/tmp/run-running/run.log",
+		},
+		{
+			ID:            "run-completed",
+			AgentName:     "hacker-news-builder-brief",
+			AgentRevision: "rev-1",
+			Trigger:       domain.RunTriggerSchedule,
+			Status:        domain.AgentRunStatusCompleted,
+			StartedAt:     &now,
+			CompletedAt:   &completedAt,
+			WorkDir:       "/tmp/run-completed",
+			LogPath:       "/tmp/run-completed/run.log",
+			Result:        "HN builder brief",
+			ResultSummary: "HN brief",
+		},
+	}
+	for _, run := range runs {
+		if err := fixture.Runs.Create(context.Background(), run); err != nil {
+			t.Fatalf("Create %s: %v", run.ID, err)
+		}
+	}
+
+	active, err := fixture.Runs.ListActive(context.Background())
+	if err != nil {
+		t.Fatalf("ListActive: %v", err)
+	}
+	if got := runIDs(active); !sameStringSet(got, []string{"run-queued", "run-running"}) {
+		t.Fatalf("active run ids: got %#v", got)
+	}
+
+	all, err := fixture.Runs.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got := runIDs(all); !sameStringSet(got, []string{"run-queued", "run-running", "run-completed"}) {
+		t.Fatalf("all run ids: got %#v", got)
+	}
+}
+
 func TestRuntimeEventRepositoryAppendAndQuery(t *testing.T) {
 	t.Parallel()
 
@@ -161,4 +225,31 @@ func TestRuntimeEventRepositoryAppendAndQuery(t *testing.T) {
 	if len(recent) != 1 || recent[0].ID != "event-1" {
 		t.Fatalf("recent events: %#v", recent)
 	}
+}
+
+func runIDs(runs []domain.AgentRun) []string {
+	ids := make([]string, 0, len(runs))
+	for _, run := range runs {
+		ids = append(ids, run.ID)
+	}
+
+	return ids
+}
+
+func sameStringSet(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	counts := make(map[string]int, len(want))
+	for _, value := range want {
+		counts[value]++
+	}
+	for _, value := range got {
+		counts[value]--
+		if counts[value] < 0 {
+			return false
+		}
+	}
+
+	return true
 }
