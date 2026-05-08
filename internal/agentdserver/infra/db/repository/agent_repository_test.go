@@ -202,6 +202,78 @@ func TestAgentRepositorySaveFindListAndLatestRevisions(t *testing.T) {
 	}
 }
 
+func TestAgentRepositoryPersistsRevisionEnvironmentArtifactFilesAndCorruption(t *testing.T) {
+	t.Parallel()
+
+	fixture := newSettingsRepositoryFixture(t)
+	agent := testRepositoryAgent("artifact-agent")
+	if err := fixture.Agents.Save(context.Background(), agent, nil, nil); err != nil {
+		t.Fatalf("Save agent: %v", err)
+	}
+	createdAt := time.Date(2026, 5, 8, 12, 0, 0, 0, time.UTC)
+	revision := testRepositoryRevision(agent.Name, "33333333-3333-4333-8333-333333333333", "sha256:artifact", createdAt)
+	revision.Environment = []domain.RevisionEnvironment{
+		{
+			Key:                  "GITHUB_TOKEN",
+			Value:                "from-file",
+			Source:               domain.RevisionEnvironmentSourceEnvFile,
+			SourcePath:           "/tmp/artifact-agent/.env",
+			ArtifactRelativePath: "env/.env",
+			Masked:               true,
+			CreatedAt:            createdAt,
+		},
+		{
+			Key:       "REPORT_LIMIT",
+			Value:     "10",
+			Source:    domain.RevisionEnvironmentSourceLiteral,
+			Masked:    false,
+			CreatedAt: createdAt,
+		},
+	}
+	revision.ArtifactFiles = []domain.RevisionArtifactFile{
+		{
+			ArtifactRelativePath: "tools/collect.py",
+			SourcePath:           "/tmp/artifact-agent/tools/collect.py",
+			SHA256:               "abc123",
+			Mode:                 0o755,
+			SizeBytes:            1024,
+			CopiedAt:             createdAt,
+		},
+	}
+
+	if err := fixture.Agents.SaveRevision(context.Background(), revision); err != nil {
+		t.Fatalf("SaveRevision: %v", err)
+	}
+
+	found, err := fixture.Agents.FindRevisionByID(context.Background(), agent.Name, revision.RevisionID)
+	if err != nil {
+		t.Fatalf("FindRevisionByID: %v", err)
+	}
+	if len(found.Environment) != 2 {
+		t.Fatalf("environment count: got %d want 2", len(found.Environment))
+	}
+	if found.Environment[0].Key != "GITHUB_TOKEN" || found.Environment[0].ArtifactRelativePath != "env/.env" || !found.Environment[0].Masked {
+		t.Fatalf("first environment entry: %#v", found.Environment[0])
+	}
+	if len(found.ArtifactFiles) != 1 {
+		t.Fatalf("artifact file count: got %d want 1", len(found.ArtifactFiles))
+	}
+	if found.ArtifactFiles[0].ArtifactRelativePath != "tools/collect.py" || found.ArtifactFiles[0].Mode != 0o755 {
+		t.Fatalf("artifact file: %#v", found.ArtifactFiles[0])
+	}
+
+	if err := fixture.Agents.MarkRevisionCorrupt(context.Background(), agent.Name, revision.RevisionID, "missing tools/collect.py"); err != nil {
+		t.Fatalf("MarkRevisionCorrupt: %v", err)
+	}
+	corrupt, err := fixture.Agents.FindRevisionByID(context.Background(), agent.Name, revision.RevisionID)
+	if err != nil {
+		t.Fatalf("FindRevisionByID corrupt: %v", err)
+	}
+	if corrupt.Status != domain.AgentRevisionStatusCorrupt || corrupt.ErrorMessage != "missing tools/collect.py" {
+		t.Fatalf("corrupt revision: %#v", corrupt)
+	}
+}
+
 func testRepositoryAgent(name string) domain.Agent {
 	now := time.Date(2026, 5, 8, 9, 0, 0, 0, time.UTC)
 
