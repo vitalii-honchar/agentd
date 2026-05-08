@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_reddit_pain_posts
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_reddit_pain_posts.py
     args: ["--sources", "sources/subreddits.txt", "--limit", "40"]
     timeout: 75s
