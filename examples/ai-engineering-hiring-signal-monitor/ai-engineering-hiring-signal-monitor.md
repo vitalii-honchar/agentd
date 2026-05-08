@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_ai_hiring_signals
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_ai_hiring_signals.py
     args: ["--sources", "sources/hiring_sources.json"]
     timeout: 60s
