@@ -308,6 +308,42 @@ func TestManagerLogsDeclaredToolStderrOnFailure(t *testing.T) {
 	assertEventMessageContains(t, events, domain.RunActionToolExecuteFail, "stderr: browser failed")
 }
 
+func TestManagerLogsToolCompleteEvidence(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{
+		result: appruntime.ToolResult{
+			StdoutSummary: "stdout summary",
+			StderrSummary: "stderr summary",
+			ExitCode:      0,
+		},
+	})
+	agent := testAgent("tool-evidence-agent")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "snapshot",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "snapshot",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	events, err := runtimeDBs.Events(agent.Name).ListByRun(context.Background(), run.ID, 20)
+	if err != nil {
+		t.Fatalf("ListByRun: %v", err)
+	}
+	assertEventMessageContains(t, events, domain.RunActionToolExecuteComplete, "stdout: stdout summary")
+	assertEventMessageContains(t, events, domain.RunActionToolExecuteComplete, "stderr: stderr summary")
+	assertEventMessageContains(t, events, domain.RunActionToolExecuteComplete, "exit_code: 0")
+}
+
 func TestResolveToolCommandReturnsAbsolutePathForRelativeDefinitionSource(t *testing.T) {
 	t.Parallel()
 
