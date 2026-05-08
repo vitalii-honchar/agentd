@@ -27,7 +27,9 @@ type AgentRunRepository interface {
 	FindByID(ctx context.Context, runID string) (domain.AgentRun, error)
 	FindLatest(ctx context.Context) (domain.AgentRun, error)
 	FindActive(ctx context.Context) (domain.AgentRun, error)
+	List(ctx context.Context) ([]domain.AgentRun, error)
 	ListActive(ctx context.Context) ([]domain.AgentRun, error)
+	ListTerminal(ctx context.Context) ([]domain.AgentRun, error)
 }
 
 type RuntimeEventRepository interface {

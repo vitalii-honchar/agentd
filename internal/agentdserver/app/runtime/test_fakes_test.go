@@ -139,8 +139,16 @@ func (r *memoryRunRepo) FindActive(context.Context) (domain.AgentRun, error) {
 	return r.active[0], nil
 }
 
+func (r *memoryRunRepo) List(context.Context) ([]domain.AgentRun, error) {
+	return r.active, nil
+}
+
 func (r *memoryRunRepo) ListActive(context.Context) ([]domain.AgentRun, error) {
 	return r.active, nil
+}
+
+func (r *memoryRunRepo) ListTerminal(context.Context) ([]domain.AgentRun, error) {
+	return nil, nil
 }
 
 func testRuntimeAgent(name string) domain.Agent {

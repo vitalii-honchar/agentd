@@ -158,6 +158,39 @@ func (r *AgentRunRepository) ListActive(ctx context.Context) ([]domain.AgentRun,
 	return scanRuns(rows)
 }
 
+func (r *AgentRunRepository) List(ctx context.Context) ([]domain.AgentRun, error) {
+	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
+	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       error_code, error_message, stop_requested_at
+	       FROM agent_runs
+	       ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query agent runs: %w", err)
+	}
+	defer rows.Close()
+
+	return scanRuns(rows)
+}
+
+func (r *AgentRunRepository) ListTerminal(ctx context.Context) ([]domain.AgentRun, error) {
+	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
+	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       error_code, error_message, stop_requested_at
+	       FROM agent_runs
+	       WHERE status IN ('completed', 'failed', 'stopped', 'interrupted')
+	       ORDER BY completed_at DESC, created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query terminal agent runs: %w", err)
+	}
+	defer rows.Close()
+
+	return scanRuns(rows)
+}
+
 type RuntimeEventRepository struct {
 	db *sql.DB
 }

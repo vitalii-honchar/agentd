@@ -215,7 +215,15 @@ func (r *memoryRunRepository) FindActive(context.Context) (domain.AgentRun, erro
 	return domain.AgentRun{}, domain.ErrNotFound
 }
 
+func (r *memoryRunRepository) List(context.Context) ([]domain.AgentRun, error) {
+	return r.runs, nil
+}
+
 func (r *memoryRunRepository) ListActive(context.Context) ([]domain.AgentRun, error) {
+	return nil, nil
+}
+
+func (r *memoryRunRepository) ListTerminal(context.Context) ([]domain.AgentRun, error) {
 	return nil, nil
 }
 

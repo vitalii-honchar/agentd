@@ -38,7 +38,7 @@ contracts, and example smoke verification.
 - [x] T008 Add runtime migration for run result columns in internal/agentdserver/infra/db/migrations/runtime/004_run_results.sql
 - [x] T009 Add runtime migration for tool executions in internal/agentdserver/infra/db/migrations/runtime/005_tool_executions.sql
 - [x] T010 Update migration coverage for result/tool tables in internal/agentdserver/infra/db/migrations_test.go
-- [ ] T011 Extend run repository interfaces for run listing, result persistence, and result lookup in internal/agentdserver/app/ports.go
+- [x] T011 Extend run repository interfaces for run listing, result persistence, and result lookup in internal/agentdserver/app/ports.go
 - [ ] T012 Implement run result and run listing repository methods in internal/agentdserver/infra/db/repository/run_repository.go
 - [ ] T013 [P] Add repository tests for terminal run result persistence in internal/agentdserver/infra/db/repository/run_repository_test.go
 - [ ] T014 [P] Add repository tests for active/all run listing in internal/agentdserver/infra/db/repository/run_repository_test.go
