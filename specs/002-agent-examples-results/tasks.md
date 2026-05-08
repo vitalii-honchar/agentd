@@ -72,7 +72,7 @@ contracts, and example smoke verification.
 
 - [x] T027 [US1] Delete old flat examples in examples/{ai-product-research.md,daily-pr-review.md,release-notes-helper.md}
 - [x] T028 [P] [US1] Create cybersecurity-reddit-watch definition and README in examples/cybersecurity-reddit-watch/
-- [ ] T029 [P] [US1] Create hacker-news-builder-brief definition and README in examples/hacker-news-builder-brief/
+- [x] T029 [P] [US1] Create hacker-news-builder-brief definition and README in examples/hacker-news-builder-brief/
 - [ ] T030 [P] [US1] Create reddit-customer-pain-monitor definition and README in examples/reddit-customer-pain-monitor/
 - [ ] T031 [P] [US1] Create product-hunt-launch-radar definition and README in examples/product-hunt-launch-radar/
 - [ ] T032 [P] [US1] Create github-trending-engineering-radar definition and README in examples/github-trending-engineering-radar/
