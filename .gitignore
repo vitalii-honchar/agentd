@@ -1,0 +1,29 @@
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+
+# Go build and test artifacts
+*.exe
+*.test
+*.out
+coverage.out
+vendor/
+
+# Local runtime state
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+/data/
+/logs/
+/tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
