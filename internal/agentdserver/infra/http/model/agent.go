@@ -22,6 +22,23 @@ type RunListResponse struct {
 	Runs []RunSummary `json:"runs"`
 }
 
+type AgentResultsResponse struct {
+	AgentName string      `json:"agent_name"`
+	Results   []RunResult `json:"results"`
+}
+
+type RunResult struct {
+	RunSummary
+	Result        string   `json:"result,omitempty"`
+	ResultSummary string   `json:"result_summary,omitempty"`
+	Failure       *Failure `json:"failure,omitempty"`
+}
+
+type Failure struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type RunSummary struct {
 	RunID       string     `json:"run_id"`
 	AgentName   string     `json:"agent_name"`

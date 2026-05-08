@@ -12,6 +12,7 @@ import (
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
 	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
@@ -28,6 +29,7 @@ type Server struct {
 	executeUseCase ExecuteUseCase
 	stopUseCase    StopUseCase
 	runListUseCase RunListUseCase
+	resultUseCase  ResultUseCase
 	listUseCase    ListUseCase
 	inspectUseCase InspectUseCase
 	logsUseCase    LogsUseCase
@@ -47,6 +49,11 @@ type StopUseCase interface {
 
 type RunListUseCase interface {
 	ListRuns(context.Context, bool) ([]domain.AgentRun, error)
+}
+
+type ResultUseCase interface {
+	ResultsByAgent(context.Context, string) ([]appresult.RunResult, error)
+	ResultByRunID(context.Context, string) (appresult.RunResult, error)
 }
 
 type ListUseCase interface {
@@ -84,6 +91,12 @@ func WithStopUseCase(useCase StopUseCase) Option {
 func WithRunListUseCase(useCase RunListUseCase) Option {
 	return func(s *Server) {
 		s.runListUseCase = useCase
+	}
+}
+
+func WithResultUseCase(useCase ResultUseCase) Option {
+	return func(s *Server) {
+		s.resultUseCase = useCase
 	}
 }
 

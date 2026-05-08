@@ -137,7 +137,7 @@ contracts, and example smoke verification.
 - [ ] T059 [US3] Persist successful and failed run results from runtime completion in internal/agentdserver/app/runtime/manager.go
 - [x] T060 [US3] Implement result summary generation in internal/agentdserver/app/result/summary.go
 - [x] T061 [US3] Implement ResultsByAgent and ResultByRunID use cases in internal/agentdserver/app/result/result.go
-- [ ] T062 [US3] Add result HTTP handlers in internal/agentdserver/infra/http/result_handler.go
+- [x] T062 [US3] Add result HTTP handlers in internal/agentdserver/infra/http/result_handler.go
 - [ ] T063 [US3] Register result routes in internal/agentdserver/infra/http/server.go
 - [ ] T064 [US3] Implement ResultsByAgent and ResultByRunID in pkg/agentdclient/runs.go
 - [ ] T065 [US3] Implement agentd result command dispatch for agent name vs UUID in internal/agentd/app/result.go
