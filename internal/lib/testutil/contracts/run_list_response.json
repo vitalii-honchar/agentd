@@ -1,0 +1,12 @@
+{
+  "runs": [
+    {
+      "run_id": "3c8590e6-7eb5-4db8-a90f-4e0df9f72b05",
+      "agent_name": "hacker-news-builder-brief",
+      "status": "completed",
+      "trigger": "schedule",
+      "started_at": "2026-05-08T08:00:00Z",
+      "completed_at": "2026-05-08T08:01:12Z"
+    }
+  ]
+}

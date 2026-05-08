@@ -24,7 +24,7 @@ contracts, and example smoke verification.
 - [x] T003 Create CLI command skeleton files in internal/agentd/app/{ps.go,result.go}
 - [x] T004 Create example directory skeletons under examples/{cybersecurity-reddit-watch,hacker-news-builder-brief,reddit-customer-pain-monitor,product-hunt-launch-radar,github-trending-engineering-radar,developer-dependency-release-monitor,ai-engineering-hiring-signal-monitor,website-snapshot-analyst}/
 - [x] T005 [P] Create example shared test fixture directory in internal/lib/testutil/examples/
-- [ ] T006 [P] Add contract fixture JSON files for run list and result responses in internal/lib/testutil/contracts/
+- [x] T006 [P] Add contract fixture JSON files for run list and result responses in internal/lib/testutil/contracts/
 
 ---
 
