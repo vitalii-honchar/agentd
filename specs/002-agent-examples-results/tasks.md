@@ -76,7 +76,7 @@ contracts, and example smoke verification.
 - [x] T030 [P] [US1] Create reddit-customer-pain-monitor definition and README in examples/reddit-customer-pain-monitor/
 - [x] T031 [P] [US1] Create product-hunt-launch-radar definition and README in examples/product-hunt-launch-radar/
 - [x] T032 [P] [US1] Create github-trending-engineering-radar definition and README in examples/github-trending-engineering-radar/
-- [ ] T033 [P] [US1] Create developer-dependency-release-monitor definition and README in examples/developer-dependency-release-monitor/
+- [x] T033 [P] [US1] Create developer-dependency-release-monitor definition and README in examples/developer-dependency-release-monitor/
 - [ ] T034 [P] [US1] Create ai-engineering-hiring-signal-monitor definition and README in examples/ai-engineering-hiring-signal-monitor/
 - [ ] T035 [P] [US1] Create website-snapshot-analyst definition and README in examples/website-snapshot-analyst/
 - [ ] T036 [P] [US1] Add public source lists for scheduled examples in examples/*/sources/
