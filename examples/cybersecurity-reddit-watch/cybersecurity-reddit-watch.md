@@ -9,7 +9,7 @@ vendor:
   model: gpt-5.4-mini
 tools:
   - name: fetch_reddit_cybersecurity
-    kind: local_tool
+    kind: custom_tool
     command: tools/fetch_reddit_cybersecurity.py
     args: ["--subreddit", "cybersecurity", "--limit", "25"]
     timeout: 60s
