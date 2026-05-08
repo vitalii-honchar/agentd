@@ -78,12 +78,13 @@ type AgentListResponse struct {
 }
 
 type RunSummary struct {
-	RunID       string     `json:"run_id"`
-	AgentName   string     `json:"agent_name"`
-	Status      string     `json:"status"`
-	Trigger     string     `json:"trigger,omitempty"`
-	StartedAt   *time.Time `json:"started_at,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	RunID         string     `json:"run_id"`
+	AgentName     string     `json:"agent_name"`
+	AgentRevision string     `json:"agent_revision,omitempty"`
+	Status        string     `json:"status"`
+	Trigger       string     `json:"trigger,omitempty"`
+	StartedAt     *time.Time `json:"started_at,omitempty"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty"`
 }
 
 type RunListResponse struct {

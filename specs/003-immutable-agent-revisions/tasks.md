@@ -64,7 +64,7 @@ handling, and logs.
 - [x] T042 [US2] Register agentd run command or compatibility alias in internal/agentd/app/root.go
 - [x] T043 [US2] Add HTTP run handler tests for latest and explicit revision execution in internal/agentdserver/infra/http/run_handler_test.go
 - [x] T044 [US2] Update run handler request mapping for latest and explicit revision execution in internal/agentdserver/infra/http/run_handler.go
-- [ ] T045 [US2] Update public client run request types for revision selectors in pkg/agentdclient/runs.go
+- [x] T045 [US2] Update public client run request types for revision selectors in pkg/agentdclient/runs.go
 
 ## Phase 5: User Story 3 - Execute Custom and Host Tools (P2)
 

@@ -62,20 +62,22 @@ func toAppAgentSummary(agent agentdclient.AgentSummary) app.AgentSummary {
 
 func toAppRunResponse(run agentdclient.RunSummary) app.RunResponse {
 	return app.RunResponse{
-		RunID:     run.RunID,
-		AgentName: run.AgentName,
-		Status:    run.Status,
+		RunID:         run.RunID,
+		AgentName:     run.AgentName,
+		AgentRevision: run.AgentRevision,
+		Status:        run.Status,
 	}
 }
 
 func toAppRunSummary(run agentdclient.RunSummary) app.RunSummary {
 	return app.RunSummary{
-		RunID:       run.RunID,
-		AgentName:   run.AgentName,
-		Status:      run.Status,
-		Trigger:     run.Trigger,
-		StartedAt:   run.StartedAt,
-		CompletedAt: run.CompletedAt,
+		RunID:         run.RunID,
+		AgentName:     run.AgentName,
+		AgentRevision: run.AgentRevision,
+		Status:        run.Status,
+		Trigger:       run.Trigger,
+		StartedAt:     run.StartedAt,
+		CompletedAt:   run.CompletedAt,
 	}
 }
 
