@@ -218,6 +218,8 @@ func agentFromDefinition(
 		Enabled:            definition.Enabled,
 		Vendor:             definition.Vendor,
 		Schedule:           definition.Schedule,
+		Tools:              definition.Tools,
+		MCPServers:         definition.MCPServers,
 		Status:             status,
 		CreatedAt:          now,
 		UpdatedAt:          now,

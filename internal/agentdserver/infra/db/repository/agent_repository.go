@@ -100,6 +100,9 @@ func (r *AgentRepository) FindByName(ctx context.Context, name string) (domain.A
 	if err != nil {
 		return domain.Agent{}, err
 	}
+	if err := r.loadPolicies(ctx, &agent); err != nil {
+		return domain.Agent{}, err
+	}
 
 	return agent, nil
 }
@@ -128,8 +131,123 @@ func (r *AgentRepository) List(ctx context.Context) ([]domain.Agent, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate agents: %w", err)
 	}
+	for i := range agents {
+		if err := r.loadPolicies(ctx, &agents[i]); err != nil {
+			return nil, err
+		}
+	}
 
 	return agents, nil
+}
+
+func (r *AgentRepository) loadPolicies(ctx context.Context, agent *domain.Agent) error {
+	tools, err := r.listTools(ctx, agent.Name)
+	if err != nil {
+		return err
+	}
+	mcpServers, err := r.listMCPServers(ctx, agent.Name)
+	if err != nil {
+		return err
+	}
+	agent.Tools = tools
+	agent.MCPServers = mcpServers
+
+	return nil
+}
+
+func (r *AgentRepository) listTools(ctx context.Context, agentName string) ([]domain.ToolPermission, error) {
+	const query = `SELECT agent_name, name, kind, command, args_json, env_json,
+	       read_paths_json, write_paths_json, network_allow_json
+	       FROM agent_tools WHERE agent_name = ? ORDER BY name`
+
+	rows, err := r.db.QueryContext(ctx, query, agentName)
+	if err != nil {
+		return nil, fmt.Errorf("query agent tools: %w", err)
+	}
+	defer rows.Close()
+
+	var tools []domain.ToolPermission
+	for rows.Next() {
+		var tool domain.ToolPermission
+		var command sql.NullString
+		var args, env, readPaths, writePaths, networkAllow string
+		if err := rows.Scan(
+			&tool.AgentName,
+			&tool.Name,
+			&tool.Kind,
+			&command,
+			&args,
+			&env,
+			&readPaths,
+			&writePaths,
+			&networkAllow,
+		); err != nil {
+			return nil, fmt.Errorf("scan agent tool: %w", err)
+		}
+		tool.Command = command.String
+		var err error
+		if tool.Args, err = unmarshalList(args); err != nil {
+			return nil, err
+		}
+		if tool.Env, err = unmarshalList(env); err != nil {
+			return nil, err
+		}
+		if tool.ReadPaths, err = unmarshalList(readPaths); err != nil {
+			return nil, err
+		}
+		if tool.WritePaths, err = unmarshalList(writePaths); err != nil {
+			return nil, err
+		}
+		if tool.NetworkAllow, err = unmarshalList(networkAllow); err != nil {
+			return nil, err
+		}
+		tools = append(tools, tool)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate agent tools: %w", err)
+	}
+
+	return tools, nil
+}
+
+func (r *AgentRepository) listMCPServers(ctx context.Context, agentName string) ([]domain.ToolPermission, error) {
+	const query = `SELECT agent_name, name, command, args_json, env_json
+	       FROM agent_mcp_servers WHERE agent_name = ? ORDER BY name`
+
+	rows, err := r.db.QueryContext(ctx, query, agentName)
+	if err != nil {
+		return nil, fmt.Errorf("query agent mcp servers: %w", err)
+	}
+	defer rows.Close()
+
+	var servers []domain.ToolPermission
+	for rows.Next() {
+		var server domain.ToolPermission
+		var args, env string
+		if err := rows.Scan(
+			&server.AgentName,
+			&server.Name,
+			&server.Command,
+			&args,
+			&env,
+		); err != nil {
+			return nil, fmt.Errorf("scan agent mcp server: %w", err)
+		}
+		server.Kind = domain.ToolKindMCPServer
+		var err error
+		if server.Args, err = unmarshalList(args); err != nil {
+			return nil, err
+		}
+		if server.Env, err = unmarshalList(env); err != nil {
+			return nil, err
+		}
+		servers = append(servers, server)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate agent mcp servers: %w", err)
+	}
+
+	return servers, nil
 }
 
 func (r *AgentRepository) upsertAgent(
@@ -334,6 +452,21 @@ func marshalList(values []string) (string, error) {
 	}
 
 	return string(body), nil
+}
+
+func unmarshalList(body string) ([]string, error) {
+	if strings.TrimSpace(body) == "" {
+		return []string{}, nil
+	}
+	var values []string
+	if err := json.Unmarshal([]byte(body), &values); err != nil {
+		return nil, fmt.Errorf("unmarshal string list: %w", err)
+	}
+	if values == nil {
+		return []string{}, nil
+	}
+
+	return values, nil
 }
 
 func nullString(value string) any {
