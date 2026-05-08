@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 
@@ -222,13 +223,21 @@ func (m *Manager) runProvider(
 			run.Status = domain.AgentRunStatusFailed
 			run.ErrorCode = "provider_error"
 			run.ErrorMessage = err.Error()
+			run.Result = fmt.Sprintf("run failed: %s", err.Error())
+			run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
 		}
 	} else {
 		run.Status = domain.AgentRunStatusCompleted
 		run.ProviderRequestID = response.RequestID
 		if response.Output != "" {
+			run.Result = response.Output
+			run.ResultSummary = appresult.Summarize(response.Output, appresult.DefaultSummaryLimit)
 			_, _ = io.WriteString(logWriter, response.Output)
 		}
+	}
+	if run.Status == domain.AgentRunStatusStopped && run.Result == "" {
+		run.Result = "run stopped before completion"
+		run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
 	}
 	if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
 		_ = repo.Update(context.Background(), run)
