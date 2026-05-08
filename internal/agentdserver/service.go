@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"time"
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
 	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
@@ -118,6 +119,7 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 
 		return nil, fmt.Errorf("new runtime manager: %w", err)
 	}
+	runtimeManager.SetToolExecutor(infraruntime.NewProcessToolExecutor(60 * time.Second))
 	scheduler := infrascheduler.New()
 	executeUC := appruntime.NewExecuteUseCase(agentRepo, runtimeManager)
 	stopUC := appruntime.NewStopUseCase(runtimeManager)

@@ -193,7 +193,7 @@ contracts, and example smoke verification.
 - [x] T083 [US5] Add ToolExecutor port to internal/agentdserver/app/runtime/provider.go
 - [x] T084 [US5] Implement command-line process tool adapter in internal/agentdserver/infra/runtime/tool_process.go
 - [x] T085 [US5] Persist tool execution records in internal/agentdserver/infra/db/repository/run_repository.go
-- [ ] T086 [US5] Wire ToolExecutor into service construction in internal/agentdserver/service.go
+- [x] T086 [US5] Wire ToolExecutor into service construction in internal/agentdserver/service.go
 - [ ] T087 [US5] Enforce declared-tool lookup before execution in internal/agentdserver/app/runtime/manager.go
 - [x] T088 [US5] Add timeout, stdout/stderr summary, and non-zero exit handling in internal/agentdserver/infra/runtime/tool_process.go
 - [ ] T089 [US5] Emit tool.execute.start, tool.execute.complete, and tool.execute.fail events in internal/agentdserver/app/runtime/manager.go

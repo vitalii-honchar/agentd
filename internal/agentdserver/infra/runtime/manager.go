@@ -21,6 +21,7 @@ type Manager struct {
 	logs       app.RunLogFactory
 	isolation  *IsolationBuilder
 	providers  map[string]appruntime.Provider
+	tools      appruntime.ToolExecutor
 	now        func() time.Time
 
 	mu     sync.Mutex
@@ -67,6 +68,10 @@ func NewManager(
 		now:        func() time.Time { return time.Now().UTC() },
 		active:     make(map[string]*activeRun),
 	}, nil
+}
+
+func (m *Manager) SetToolExecutor(executor appruntime.ToolExecutor) {
+	m.tools = executor
 }
 
 func (m *Manager) Execute(
