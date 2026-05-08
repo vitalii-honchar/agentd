@@ -109,6 +109,7 @@ type fakeQueryClient struct {
 	logsRequest  LogsRequest
 
 	listResponse ListResponse
+	runsResponse RunListResponse
 	agent        AgentDetail
 	logsResponse LogsResponse
 	err          error
@@ -130,6 +131,14 @@ func (f *fakeQueryClient) Inspect(_ context.Context, agentName string) (AgentDet
 	}
 
 	return f.agent, nil
+}
+
+func (f *fakeQueryClient) ListRuns(context.Context, bool) (RunListResponse, error) {
+	if f.err != nil {
+		return RunListResponse{}, f.err
+	}
+
+	return f.runsResponse, nil
 }
 
 func (f *fakeQueryClient) Logs(_ context.Context, request LogsRequest) (LogsResponse, error) {

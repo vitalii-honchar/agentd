@@ -67,3 +67,14 @@ func toAppRunResponse(run agentdclient.RunSummary) app.RunResponse {
 		Status:    run.Status,
 	}
 }
+
+func toAppRunSummary(run agentdclient.RunSummary) app.RunSummary {
+	return app.RunSummary{
+		RunID:       run.RunID,
+		AgentName:   run.AgentName,
+		Status:      run.Status,
+		Trigger:     run.Trigger,
+		StartedAt:   run.StartedAt,
+		CompletedAt: run.CompletedAt,
+	}
+}

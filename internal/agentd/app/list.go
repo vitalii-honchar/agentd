@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -10,6 +11,7 @@ import (
 type QueryClient interface {
 	List(context.Context) (ListResponse, error)
 	Inspect(context.Context, string) (AgentDetail, error)
+	ListRuns(context.Context, bool) (RunListResponse, error)
 	Logs(context.Context, LogsRequest) (LogsResponse, error)
 }
 
@@ -23,6 +25,19 @@ type AgentSummary struct {
 
 type ListResponse struct {
 	Agents []AgentSummary `json:"agents"`
+}
+
+type RunSummary struct {
+	RunID       string     `json:"run_id"`
+	AgentName   string     `json:"agent_name"`
+	Status      string     `json:"status"`
+	Trigger     string     `json:"trigger"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+type RunListResponse struct {
+	Runs []RunSummary `json:"runs"`
 }
 
 func NewListCommand(client QueryClient, output Output) *cobra.Command {
