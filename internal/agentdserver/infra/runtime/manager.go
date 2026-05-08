@@ -145,7 +145,7 @@ func (m *Manager) Execute(
 	m.active[run.ID] = active
 	m.mu.Unlock()
 
-	go m.runProvider(runCtx, provider, request.Agent, run, request.Inputs, logWriter, active)
+	go m.runProvider(runCtx, provider, request.Agent, request.Revision, run, request.Inputs, logWriter, active)
 
 	return run, nil
 }
@@ -234,6 +234,7 @@ func (m *Manager) runProvider(
 	ctx context.Context,
 	provider appruntime.Provider,
 	agent domain.Agent,
+	revision domain.AgentRevision,
 	run domain.AgentRun,
 	inputs map[string]string,
 	logWriter app.RunLogWriter,
@@ -262,7 +263,7 @@ func (m *Manager) runProvider(
 	}
 
 	prompt := preparedAgent.Prompt
-	toolOutput, toolErr := m.executeDeclaredTools(ctx, preparedAgent, run)
+	toolOutput, toolErr := m.executeDeclaredTools(ctx, preparedAgent, revision, run)
 	if toolErr != nil {
 		completedAt := m.now()
 		run.CompletedAt = &completedAt
@@ -382,7 +383,12 @@ func expandRunInputs(value string, inputs map[string]string) (string, error) {
 	return expanded, nil
 }
 
-func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, run domain.AgentRun) (string, error) {
+func (m *Manager) executeDeclaredTools(
+	ctx context.Context,
+	agent domain.Agent,
+	revision domain.AgentRevision,
+	run domain.AgentRun,
+) (string, error) {
 	if m.tools == nil || len(agent.Tools) == 0 {
 		return "", nil
 	}
@@ -394,7 +400,7 @@ func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, 
 		startedAt := m.now()
 		m.appendRunEvent(run, domain.RunActionToolExecuteStart, domain.EventLevelInfo, "execute tool "+tool.Name)
 		toolForRun := tool
-		toolForRun.Command = resolveToolCommand(agent.DefinitionSource, tool.Command)
+		toolForRun.Command = resolveToolCommandForRun(agent, revision, tool)
 		result, err := m.tools.Execute(ctx, appruntime.ToolRequest{
 			RunID:   run.ID,
 			Agent:   agent,
@@ -472,6 +478,14 @@ func resolveToolCommand(sourcePath, command string) string {
 	}
 
 	return absolute
+}
+
+func resolveToolCommandForRun(agent domain.Agent, revision domain.AgentRevision, tool domain.ToolPermission) string {
+	if tool.Kind == domain.ToolKindCustomTool && revision.ArtifactPath != "" && !filepath.IsAbs(tool.Command) {
+		return filepath.Join(revision.ArtifactPath, tool.Command)
+	}
+
+	return resolveToolCommand(agent.DefinitionSource, tool.Command)
 }
 
 func (m *Manager) appendRunEvent(
