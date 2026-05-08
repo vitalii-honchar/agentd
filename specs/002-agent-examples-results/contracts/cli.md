@@ -75,6 +75,14 @@ Exit codes:
 - `0`: command succeeded.
 - non-zero: daemon unavailable or malformed arguments.
 
+Notes:
+- `STATUS` uses daemon run statuses such as `running`, `completed`, and
+  `failed`; user-facing renderers may display uppercase labels.
+- `STARTED` and `COMPLETED` are RFC3339 timestamps when available and `-` when
+  the run has not reached that lifecycle point.
+- `agentd ps` is intended for current operational state; `agentd result` is the
+  stable command for retrieving stored execution output.
+
 ### `agentd result <agent-name>`
 
 Returns terminal run results for one agent as a compact table.
