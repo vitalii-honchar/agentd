@@ -129,7 +129,7 @@ contracts, and example smoke verification.
 - [x] T054 [P] [US3] Add result use case tests in internal/agentdserver/app/result/result_test.go
 - [x] T055 [P] [US3] Add HTTP contract tests for GET /v1/agents/{name}/results and GET /v1/runs/{run_id}/result in internal/agentdserver/infra/http/result_handler_test.go
 - [ ] T056 [P] [US3] Add CLI result command tests for text and JSON output in internal/agentd/app/result_test.go
-- [ ] T057 [P] [US3] Add public client result tests in pkg/agentdclient/results_test.go
+- [x] T057 [P] [US3] Add public client result tests in pkg/agentdclient/results_test.go
 - [ ] T058 [P] [US3] Add Bash automation scenario to tests/e2e/result_automation_test.go
 
 ### Implementation for User Story 3
