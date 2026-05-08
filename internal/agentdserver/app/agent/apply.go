@@ -130,7 +130,7 @@ func (u *ApplyUseCase) Apply(
 
 		return ApplyResult{}, err
 	}
-	if err == nil && existing.Revision == normalized.Revision {
+	if err == nil {
 		revision, revisionErr := u.revisions.FindRevisionByDigest(ctx, existing.Name, normalized.Revision)
 		if revisionErr != nil && !errors.Is(revisionErr, domain.ErrNotFound) {
 			u.logApplyFailed(ctx, request.SourcePath, normalized.Definition.Name, revisionErr)
@@ -138,13 +138,11 @@ func (u *ApplyUseCase) Apply(
 			return ApplyResult{}, revisionErr
 		}
 		if revisionErr == nil {
+			existing.Revision = revision.RevisionID
 			u.logApplyResult(ctx, ApplyOutcomeUnchanged, existing)
 
 			return applyResult(ApplyOutcomeUnchanged, existing, revision, true), nil
 		}
-		u.logApplyResult(ctx, ApplyOutcomeUnchanged, existing)
-
-		return ApplyResult{Outcome: ApplyOutcomeUnchanged, Agent: existing}, nil
 	}
 
 	agent := agentFromDefinition(normalized.Definition, normalized.Revision, u.now())
@@ -181,6 +179,7 @@ func (u *ApplyUseCase) Apply(
 			return ApplyResult{}, err
 		}
 	}
+	agent.Revision = revision.RevisionID
 	if err := u.runtimeDBs.EnsureAgent(ctx, agent.Name); err != nil {
 		u.logApplyFailed(ctx, request.SourcePath, agent.Name, err)
 

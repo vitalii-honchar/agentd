@@ -200,6 +200,13 @@ func TestAgentRepositorySaveFindListAndLatestRevisions(t *testing.T) {
 	if latest.RevisionID != second.RevisionID || !latest.IsLatestFinalized {
 		t.Fatalf("latest revision: %#v", latest)
 	}
+	foundAgent, err := fixture.Agents.FindByName(context.Background(), agent.Name)
+	if err != nil {
+		t.Fatalf("FindByName after revisions: %v", err)
+	}
+	if foundAgent.Revision != second.RevisionID {
+		t.Fatalf("agent latest revision: got %q want %q", foundAgent.Revision, second.RevisionID)
+	}
 }
 
 func TestAgentRepositoryPersistsRevisionEnvironmentArtifactFilesAndCorruption(t *testing.T) {

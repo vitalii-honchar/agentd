@@ -228,6 +228,13 @@ func (r *AgentRepository) SaveRevision(ctx context.Context, revision domain.Agen
 			return err
 		}
 	}
+	if revision.Status == domain.AgentRevisionStatusFinalized {
+		if err := updateAgentLatestRevision(ctx, tx, revision); err != nil {
+			_ = tx.Rollback()
+
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit save revision tx: %w", err)
 	}
@@ -766,6 +773,32 @@ func insertRevisionEnvironment(
 		formatTime(env.CreatedAt),
 	); err != nil {
 		return fmt.Errorf("insert revision environment %q: %w", env.Key, err)
+	}
+
+	return nil
+}
+
+func updateAgentLatestRevision(
+	ctx context.Context,
+	tx *sql.Tx,
+	revision domain.AgentRevision,
+) error {
+	result, err := tx.ExecContext(
+		ctx,
+		`UPDATE agents SET revision = ?, updated_at = ? WHERE name = ?`,
+		revision.RevisionID,
+		formatTime(revision.CreatedAt),
+		revision.AgentName,
+	)
+	if err != nil {
+		return fmt.Errorf("update agent latest revision: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("agent latest revision rows affected: %w", err)
+	}
+	if count == 0 {
+		return domain.ErrNotFound
 	}
 
 	return nil

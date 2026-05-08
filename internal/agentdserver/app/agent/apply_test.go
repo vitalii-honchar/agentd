@@ -418,6 +418,10 @@ func (r *memoryAgentRepository) List(context.Context) ([]domain.Agent, error) {
 
 func (r *memoryAgentRepository) SaveRevision(_ context.Context, revision domain.AgentRevision) error {
 	r.revisions = append(r.revisions, revision)
+	if agent, ok := r.agents[revision.AgentName]; ok && revision.Status == domain.AgentRevisionStatusFinalized {
+		agent.Revision = revision.RevisionID
+		r.agents[revision.AgentName] = agent
+	}
 
 	return nil
 }

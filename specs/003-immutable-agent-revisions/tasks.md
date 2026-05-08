@@ -50,7 +50,7 @@ handling, and logs.
 - [x] T031 [P] [US1] Add apply use case tests for environment.variables and environment.files capture in internal/agentdserver/app/agent/apply_test.go
 - [x] T032 [US1] Update apply use case to create or reuse immutable revisions in internal/agentdserver/app/agent/apply.go
 - [x] T033 [US1] Return revision ID, artifact path, revision status, and unchanged reuse outcome from apply in internal/agentdserver/app/agent/apply.go
-- [ ] T034 [US1] Persist latest finalized revision metadata on agent save in internal/agentdserver/infra/db/repository/agent_repository.go
+- [x] T034 [US1] Persist latest finalized revision metadata on agent save in internal/agentdserver/infra/db/repository/agent_repository.go
 - [ ] T035 [US1] Add HTTP apply response tests for revision ID, artifact path, revision status, and unchanged reuse in internal/agentdserver/infra/http/apply_handler_test.go
 - [ ] T036 [US1] Update apply HTTP response mapping for revision metadata in internal/agentdserver/infra/http/apply_handler.go
 - [ ] T037 [US1] Update apply CLI output for revision metadata in internal/agentd/app/apply.go
