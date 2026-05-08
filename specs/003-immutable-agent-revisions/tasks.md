@@ -41,7 +41,7 @@ handling, and logs.
 - [x] T025 Update Developer Dependency Release Monitor definition from local_tool to custom_tool in examples/developer-dependency-release-monitor/developer-dependency-release-monitor.md
 - [x] T026 Update AI Engineering Hiring Signal Monitor definition from local_tool to custom_tool in examples/ai-engineering-hiring-signal-monitor/ai-engineering-hiring-signal-monitor.md
 - [x] T027 Update Website Snapshot Analyst definition from local_tool to custom_tool in examples/website-snapshot-analyst/website-snapshot-analyst.md
-- [ ] T028 Add host_tool parser fixture for tests in internal/lib/testutil/testutil.go
+- [x] T028 Add host_tool parser fixture for tests in internal/lib/testutil/testutil.go
 
 ## Phase 3: User Story 1 - Apply Creates Self-Contained Revision (P1)
 
