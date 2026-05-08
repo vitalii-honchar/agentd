@@ -25,21 +25,21 @@ func TestAPIErrorResponsesUseConsistentEnvelope(t *testing.T) {
 			server:     NewServer(Config{}, WithInspectUseCase(&fakeInspectUseCase{err: domain.ErrNotFound})),
 			request:    localRequest(stdhttp.MethodGet, "/v1/agents/missing", nil),
 			wantStatus: stdhttp.StatusNotFound,
-			wantCode:   "not_found",
+			wantCode:   errorCodeAgentNotFound,
 		},
 		{
 			name:       "execute conflict",
 			server:     NewServer(Config{}, WithExecuteUseCase(&fakeExecuteUseCase{err: domain.ErrRunAlreadyActive})),
 			request:    localRequest(stdhttp.MethodPost, "/v1/agents/release-notes-helper/runs", nil),
 			wantStatus: stdhttp.StatusConflict,
-			wantCode:   "conflict",
+			wantCode:   errorCodeRunAlreadyActive,
 		},
 		{
 			name:       "logs invalid query",
 			server:     NewServer(Config{}, WithLogsUseCase(&fakeLogsUseCase{})),
 			request:    localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/logs?tail=0", nil),
 			wantStatus: stdhttp.StatusBadRequest,
-			wantCode:   "invalid_query",
+			wantCode:   errorCodeInvalidQuery,
 		},
 	}
 

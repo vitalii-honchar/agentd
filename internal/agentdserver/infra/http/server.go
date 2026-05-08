@@ -166,7 +166,7 @@ func sameHostMiddleware(next stdhttp.Handler) stdhttp.Handler {
 			writeError(
 				w,
 				stdhttp.StatusForbidden,
-				"forbidden",
+				errorCodeRemoteClientForbidden,
 				"requests must originate from the same host",
 				nil,
 			)

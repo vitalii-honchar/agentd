@@ -77,7 +77,7 @@ func TestSameHostMiddlewareRejectsRemoteRequests(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	if body["error"]["code"] != "forbidden" {
+	if body["error"]["code"] != errorCodeRemoteClientForbidden {
 		t.Fatalf("error body: %#v", body)
 	}
 }

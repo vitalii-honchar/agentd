@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	stdhttp "net/http"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
@@ -17,15 +16,6 @@ func (s *Server) handleInspect(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	}
 
 	writeJSON(w, stdhttp.StatusOK, toAgentDetail(agent))
-}
-
-func writeQueryError(w stdhttp.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		writeError(w, stdhttp.StatusNotFound, "not_found", err.Error(), nil)
-	default:
-		writeError(w, stdhttp.StatusInternalServerError, "internal_error", "internal server error", nil)
-	}
 }
 
 func toAgentDetail(agent domain.Agent) model.AgentDetail {

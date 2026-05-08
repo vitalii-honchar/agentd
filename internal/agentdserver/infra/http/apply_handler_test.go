@@ -79,7 +79,7 @@ func TestApplyHandlerValidationError(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body.Error.Code != "invalid_definition" {
+	if body.Error.Code != errorCodeValidationFailed {
 		t.Fatalf("error code: got %q", body.Error.Code)
 	}
 	if len(body.Error.Fields) != 1 || body.Error.Fields[0].Path != "name" {

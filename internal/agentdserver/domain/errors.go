@@ -14,6 +14,7 @@ var (
 	ErrInvalidState      = errors.New("invalid state")
 	ErrAgentDisabled     = errors.New("agent disabled")
 	ErrRunAlreadyActive  = errors.New("agent run already active")
+	ErrRunNotTerminal    = errors.New("agent run is not terminal")
 	ErrUnsupportedVendor = errors.New("unsupported llm vendor")
 )
 

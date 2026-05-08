@@ -12,7 +12,7 @@ import (
 func (s *Server) handleLogs(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	tail, err := parseTail(r.URL.Query().Get("tail"))
 	if err != nil {
-		writeError(w, stdhttp.StatusBadRequest, "invalid_query", err.Error(), nil)
+		writeError(w, stdhttp.StatusBadRequest, errorCodeInvalidQuery, err.Error(), nil)
 
 		return
 	}

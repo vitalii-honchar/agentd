@@ -2,18 +2,16 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	stdhttp "net/http"
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
-	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http/model"
 )
 
 func (s *Server) handleApply(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	var request model.ApplyRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		writeError(w, stdhttp.StatusBadRequest, "invalid_json", "invalid JSON request body", nil)
+		writeError(w, stdhttp.StatusBadRequest, errorCodeInvalidJSON, "invalid JSON request body", nil)
 
 		return
 	}
@@ -31,39 +29,5 @@ func (s *Server) handleApply(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	writeJSON(w, stdhttp.StatusOK, model.ApplyResponse{
 		Outcome: string(result.Outcome),
 		Agent:   toAgentDetail(result.Agent),
-	})
-}
-
-func writeApplyError(w stdhttp.ResponseWriter, err error) {
-	var validationErr *domain.ValidationError
-	if errors.As(err, &validationErr) || errors.Is(err, domain.ErrInvalidDefinition) {
-		var fields []model.FieldError
-		if validationErr != nil {
-			fields = make([]model.FieldError, 0, len(validationErr.Issues))
-			for _, issue := range validationErr.Issues {
-				fields = append(fields, model.FieldError{Path: issue.Field, Message: issue.Message})
-			}
-		}
-		writeError(w, stdhttp.StatusBadRequest, "invalid_definition", err.Error(), fields)
-
-		return
-	}
-
-	writeError(w, stdhttp.StatusInternalServerError, "internal_error", "internal server error", nil)
-}
-
-func writeError(
-	w stdhttp.ResponseWriter,
-	status int,
-	code string,
-	message string,
-	fields []model.FieldError,
-) {
-	writeJSON(w, status, model.ErrorResponse{
-		Error: model.ErrorBody{
-			Code:    code,
-			Message: message,
-			Fields:  fields,
-		},
 	})
 }
