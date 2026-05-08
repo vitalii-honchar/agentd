@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"syscall"
 	"time"
@@ -44,7 +43,7 @@ func (e *ProcessToolExecutor) Execute(
 
 	cmd := exec.CommandContext(ctx, request.Tool.Command, request.Tool.Args...)
 	cmd.Dir = request.WorkDir
-	cmd.Env = append(os.Environ(), request.Tool.Env...)
+	cmd.Env = append([]string{}, request.Tool.Env...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {
 		if cmd.Process == nil {

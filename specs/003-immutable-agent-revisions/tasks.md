@@ -76,7 +76,7 @@ handling, and logs.
 - [x] T051 [US3] Validate finalized revision artifacts before custom_tool process start in internal/agentdserver/infra/runtime/manager.go
 - [x] T052 [US3] Validate host_tool executables before process start in internal/agentdserver/infra/runtime/manager.go
 - [x] T053 [US3] Build tool process environments from revision env and tool-specific env in internal/agentdserver/infra/runtime/tool_process.go
-- [ ] T054 [US3] Stop inheriting undeclared host environment secrets in internal/agentdserver/infra/runtime/tool_process.go
+- [x] T054 [US3] Stop inheriting undeclared host environment secrets in internal/agentdserver/infra/runtime/tool_process.go
 
 ## Phase 6: User Story 4 - Observe Tool Output in Agent and Server Logs (P2)
 

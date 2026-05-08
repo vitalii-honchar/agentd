@@ -78,7 +78,7 @@ func TestProcessToolExecutorScopedEnv(t *testing.T) {
 	}
 }
 
-func TestProcessToolExecutorInheritsEnvironment(t *testing.T) {
+func TestProcessToolExecutorDoesNotInheritUndeclaredEnvironment(t *testing.T) {
 	t.Setenv("AGENTD_TOOL_INHERITED_ENV", "available")
 	workDir := t.TempDir()
 	script := writeToolScript(t, workDir, "inherit-env.sh", "echo ${AGENTD_TOOL_INHERITED_ENV:-missing}")
@@ -88,7 +88,7 @@ func TestProcessToolExecutorInheritsEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	if !strings.Contains(result.StdoutSummary, "available") {
+	if !strings.Contains(result.StdoutSummary, "missing") {
 		t.Fatalf("stdout: %q", result.StdoutSummary)
 	}
 }
