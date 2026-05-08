@@ -60,6 +60,19 @@ func toAppAgentSummary(agent agentdclient.AgentSummary) app.AgentSummary {
 	}
 }
 
+func toAppRevisionSummary(revision agentdclient.RevisionSummary) app.RevisionSummary {
+	return app.RevisionSummary{
+		RevisionID:   revision.RevisionID,
+		Status:       revision.Status,
+		CreatedAt:    revision.CreatedAt,
+		Latest:       revision.Latest,
+		SourcePath:   revision.SourcePath,
+		ArtifactPath: revision.ArtifactPath,
+		FinalizedAt:  revision.FinalizedAt,
+		ErrorMessage: revision.ErrorMessage,
+	}
+}
+
 func toAppRunResponse(run agentdclient.RunSummary) app.RunResponse {
 	return app.RunResponse{
 		RunID:         run.RunID,

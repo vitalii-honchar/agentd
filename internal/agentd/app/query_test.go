@@ -61,6 +61,32 @@ func TestInspectCommandCallsClient(t *testing.T) {
 	}
 }
 
+func TestRevisionsCommandCallsClient(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{revisionListResponse: RevisionListResponse{Revisions: []RevisionSummary{{
+		RevisionID:   "revision-1",
+		Status:       "finalized",
+		CreatedAt:    testLogTime,
+		Latest:       true,
+		SourcePath:   "examples/release-notes-helper/agent.md",
+		ArtifactPath: "data/work/release-notes-helper/revision-1",
+	}}}}
+	var out bytes.Buffer
+	cmd := NewRevisionsCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.revisionsAgent != "release-notes-helper" {
+		t.Fatalf("revisions agent: got %q", client.revisionsAgent)
+	}
+	if !strings.Contains(out.String(), "revision-1\tfinalized\t2026-05-08T10:00:00Z\ttrue") {
+		t.Fatalf("output: %q", out.String())
+	}
+}
+
 func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
 	t.Parallel()
 
@@ -127,6 +153,7 @@ func TestRootCommandWiresQueryCommands(t *testing.T) {
 	})
 
 	requireCommand(t, cmd, "list")
+	requireCommand(t, cmd, "revisions")
 	requireCommand(t, cmd, "inspect")
 	requireCommand(t, cmd, "ps")
 	requireCommand(t, cmd, "result")
@@ -136,12 +163,14 @@ func TestRootCommandWiresQueryCommands(t *testing.T) {
 type fakeQueryClient struct {
 	listCalled         bool
 	inspectAgent       string
+	revisionsAgent     string
 	logsRequest        LogsRequest
 	listRunsIncludeAll bool
 	resultAgentName    string
 	resultRunID        string
 
 	listResponse         ListResponse
+	revisionListResponse RevisionListResponse
 	runsResponse         RunListResponse
 	agentResultsResponse AgentResultsResponse
 	runResult            RunResult
@@ -166,6 +195,15 @@ func (f *fakeQueryClient) Inspect(_ context.Context, agentName string) (AgentDet
 	}
 
 	return f.agent, nil
+}
+
+func (f *fakeQueryClient) ListRevisions(_ context.Context, agentName string) (RevisionListResponse, error) {
+	f.revisionsAgent = agentName
+	if f.err != nil {
+		return RevisionListResponse{}, f.err
+	}
+
+	return f.revisionListResponse, nil
 }
 
 func (f *fakeQueryClient) ListRuns(_ context.Context, includeAll bool) (RunListResponse, error) {

@@ -67,6 +67,7 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	if opts.QueryClient != nil {
 		queryOutput := NewOutput(cfg.OutputFormat, out)
 		cmd.AddCommand(NewListCommand(opts.QueryClient, queryOutput))
+		cmd.AddCommand(NewRevisionsCommand(opts.QueryClient, queryOutput))
 		cmd.AddCommand(NewInspectCommand(opts.QueryClient, queryOutput))
 		cmd.AddCommand(NewPSCommand(opts.QueryClient, queryOutput))
 		cmd.AddCommand(NewResultCommand(opts.QueryClient, queryOutput))

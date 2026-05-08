@@ -77,6 +77,21 @@ type AgentListResponse struct {
 	Agents []AgentSummary `json:"agents"`
 }
 
+type RevisionSummary struct {
+	RevisionID   string     `json:"revision_id"`
+	Status       string     `json:"status"`
+	CreatedAt    time.Time  `json:"created_at"`
+	Latest       bool       `json:"latest"`
+	SourcePath   string     `json:"source_path,omitempty"`
+	ArtifactPath string     `json:"artifact_path,omitempty"`
+	FinalizedAt  *time.Time `json:"finalized_at,omitempty"`
+	ErrorMessage string     `json:"error_message,omitempty"`
+}
+
+type RevisionListResponse struct {
+	Revisions []RevisionSummary `json:"revisions"`
+}
+
 type RunSummary struct {
 	RunID         string     `json:"run_id"`
 	AgentName     string     `json:"agent_name"`

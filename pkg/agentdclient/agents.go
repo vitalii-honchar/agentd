@@ -33,3 +33,13 @@ func (c *Client) InspectAgent(ctx context.Context, name string) (AgentDetail, er
 
 	return response, nil
 }
+
+func (c *Client) ListRevisions(ctx context.Context, agentName string) ([]RevisionSummary, error) {
+	var response RevisionListResponse
+	path := fmt.Sprintf("/v1/agents/%s/revisions", url.PathEscape(agentName))
+	if err := c.doJSON(ctx, http.MethodGet, path, nil, &response); err != nil {
+		return nil, err
+	}
+
+	return response.Revisions, nil
+}

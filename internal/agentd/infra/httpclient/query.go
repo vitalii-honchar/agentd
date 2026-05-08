@@ -29,6 +29,19 @@ func (c *Client) Inspect(ctx context.Context, agentName string) (app.AgentDetail
 	return toAppAgentDetail(response), nil
 }
 
+func (c *Client) ListRevisions(ctx context.Context, agentName string) (app.RevisionListResponse, error) {
+	revisions, err := c.client.ListRevisions(ctx, agentName)
+	if err != nil {
+		return app.RevisionListResponse{}, err
+	}
+	response := app.RevisionListResponse{Revisions: make([]app.RevisionSummary, 0, len(revisions))}
+	for _, revision := range revisions {
+		response.Revisions = append(response.Revisions, toAppRevisionSummary(revision))
+	}
+
+	return response, nil
+}
+
 func (c *Client) Logs(ctx context.Context, request app.LogsRequest) (app.LogsResponse, error) {
 	response, err := c.client.Logs(ctx, agentdclient.LogsQuery{
 		AgentName: request.AgentName,

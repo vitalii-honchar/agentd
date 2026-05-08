@@ -11,6 +11,7 @@ import (
 type QueryClient interface {
 	List(context.Context) (ListResponse, error)
 	Inspect(context.Context, string) (AgentDetail, error)
+	ListRevisions(context.Context, string) (RevisionListResponse, error)
 	ListRuns(context.Context, bool) (RunListResponse, error)
 	ResultsByAgent(context.Context, string) (AgentResultsResponse, error)
 	ResultByRunID(context.Context, string) (RunResult, error)
@@ -27,6 +28,21 @@ type AgentSummary struct {
 
 type ListResponse struct {
 	Agents []AgentSummary `json:"agents"`
+}
+
+type RevisionSummary struct {
+	RevisionID   string     `json:"revision_id"`
+	Status       string     `json:"status"`
+	CreatedAt    time.Time  `json:"created_at"`
+	Latest       bool       `json:"latest"`
+	SourcePath   string     `json:"source_path,omitempty"`
+	ArtifactPath string     `json:"artifact_path,omitempty"`
+	FinalizedAt  *time.Time `json:"finalized_at,omitempty"`
+	ErrorMessage string     `json:"error_message,omitempty"`
+}
+
+type RevisionListResponse struct {
+	Revisions []RevisionSummary `json:"revisions"`
 }
 
 type RunSummary struct {
@@ -84,6 +100,46 @@ func NewListCommand(client QueryClient, output Output) *cobra.Command {
 					agent.Status,
 					agent.ScheduleType,
 					agent.Enabled,
+				); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+	}
+}
+
+func NewRevisionsCommand(client QueryClient, output Output) *cobra.Command {
+	return &cobra.Command{
+		Use:   "revisions <agent_name>",
+		Short: "List immutable Agent revisions",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if client == nil {
+				return fmt.Errorf("query client is required")
+			}
+			response, err := client.ListRevisions(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			if output.format == "json" {
+				return output.Write(response)
+			}
+			for _, revision := range response.Revisions {
+				created := ""
+				if !revision.CreatedAt.IsZero() {
+					created = revision.CreatedAt.Format(time.RFC3339)
+				}
+				if _, err := fmt.Fprintf(
+					output.writer,
+					"%s\t%s\t%s\t%t\t%s\t%s\n",
+					revision.RevisionID,
+					revision.Status,
+					created,
+					revision.Latest,
+					revision.SourcePath,
+					revision.ArtifactPath,
 				); err != nil {
 					return err
 				}
