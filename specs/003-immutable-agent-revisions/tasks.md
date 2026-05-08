@@ -72,7 +72,7 @@ handling, and logs.
 - [x] T047 [P] [US3] Add runtime manager tests proving host_tool commands invoke host-installed executables without artifact copying in internal/agentdserver/infra/runtime/manager_test.go
 - [x] T048 [P] [US3] Add runtime manager tests for missing host_tool executable errors in internal/agentdserver/infra/runtime/manager_test.go
 - [x] T049 [US3] Update runtime manager command resolution for custom_tool artifact paths in internal/agentdserver/infra/runtime/manager.go
-- [ ] T050 [US3] Update runtime manager command resolution for host_tool host executables in internal/agentdserver/infra/runtime/manager.go
+- [x] T050 [US3] Update runtime manager command resolution for host_tool host executables in internal/agentdserver/infra/runtime/manager.go
 - [ ] T051 [US3] Validate finalized revision artifacts before custom_tool process start in internal/agentdserver/infra/runtime/manager.go
 - [ ] T052 [US3] Validate host_tool executables before process start in internal/agentdserver/infra/runtime/manager.go
 - [ ] T053 [US3] Build tool process environments from revision env and tool-specific env in internal/agentdserver/infra/runtime/tool_process.go
