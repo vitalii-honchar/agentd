@@ -47,6 +47,9 @@ func (u *UseCase) ResultsByAgent(ctx context.Context, agentName string) ([]RunRe
 	if _, err := u.agents.FindByName(ctx, agentName); err != nil {
 		return nil, err
 	}
+	if err := u.runtimeDBs.EnsureAgent(ctx, agentName); err != nil {
+		return nil, err
+	}
 	repo := u.runtimeDBs.Runs(agentName)
 	if repo == nil {
 		return nil, domain.ErrNotFound
@@ -69,6 +72,9 @@ func (u *UseCase) ResultByRunID(ctx context.Context, runID string) (RunResult, e
 		return RunResult{}, err
 	}
 	for _, agent := range agents {
+		if err := u.runtimeDBs.EnsureAgent(ctx, agent.Name); err != nil {
+			return RunResult{}, err
+		}
 		repo := u.runtimeDBs.Runs(agent.Name)
 		if repo == nil {
 			continue

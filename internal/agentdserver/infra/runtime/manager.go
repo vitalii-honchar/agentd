@@ -173,8 +173,16 @@ func (m *Manager) Stop(ctx context.Context, request appruntime.StopRequest) (dom
 
 func (m *Manager) Recover(ctx context.Context) (appruntime.RecoveryResult, error) {
 	now := m.now()
-	activeRuns := m.ActiveRunsSnapshot()
-	for _, run := range activeRuns {
+	activeRuns := m.activeRunsSnapshot()
+	for _, active := range activeRuns {
+		active.cancel()
+		select {
+		case <-active.completed:
+		case <-ctx.Done():
+			return appruntime.RecoveryResult{}, ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+		run := active.run
 		run.Status = domain.AgentRunStatusInterrupted
 		run.CompletedAt = &now
 		if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
@@ -185,7 +193,15 @@ func (m *Manager) Recover(ctx context.Context) (appruntime.RecoveryResult, error
 		m.removeActive(run.ID)
 	}
 
-	return appruntime.RecoveryResult{InterruptedRuns: activeRuns, RecoveredAt: now}, nil
+	interrupted := make([]domain.AgentRun, 0, len(activeRuns))
+	for _, active := range activeRuns {
+		run := active.run
+		run.Status = domain.AgentRunStatusInterrupted
+		run.CompletedAt = &now
+		interrupted = append(interrupted, run)
+	}
+
+	return appruntime.RecoveryResult{InterruptedRuns: interrupted, RecoveredAt: now}, nil
 }
 
 func (m *Manager) ActiveRuns(context.Context) ([]domain.AgentRun, error) {
@@ -193,12 +209,22 @@ func (m *Manager) ActiveRuns(context.Context) ([]domain.AgentRun, error) {
 }
 
 func (m *Manager) ActiveRunsSnapshot() []domain.AgentRun {
+	activeRuns := m.activeRunsSnapshot()
+	runs := make([]domain.AgentRun, 0, len(activeRuns))
+	for _, active := range activeRuns {
+		runs = append(runs, active.run)
+	}
+
+	return runs
+}
+
+func (m *Manager) activeRunsSnapshot() []*activeRun {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	runs := make([]domain.AgentRun, 0, len(m.active))
+	runs := make([]*activeRun, 0, len(m.active))
 	for _, active := range m.active {
-		runs = append(runs, active.run)
+		runs = append(runs, active)
 	}
 
 	return runs
