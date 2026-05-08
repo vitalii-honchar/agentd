@@ -1,8 +1,6 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 
@@ -19,11 +17,6 @@ type RootOptions struct {
 	QueryClient   QueryClient
 	Out           io.Writer
 	Err           io.Writer
-}
-
-type Output struct {
-	format string
-	writer io.Writer
 }
 
 func NewRootCommand(opts RootOptions) *cobra.Command {
@@ -77,29 +70,4 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	}
 
 	return cmd
-}
-
-func NewOutput(format string, writer io.Writer) Output {
-	if writer == nil {
-		writer = os.Stdout
-	}
-
-	return Output{format: format, writer: writer}
-}
-
-func (o Output) Write(value any) error {
-	if o.format == config.OutputJSON {
-		encoder := json.NewEncoder(o.writer)
-		encoder.SetIndent("", "  ")
-
-		return encoder.Encode(value)
-	}
-	if text, ok := value.(string); ok {
-		_, err := fmt.Fprintln(o.writer, text)
-
-		return err
-	}
-	_, err := fmt.Fprintln(o.writer, value)
-
-	return err
 }
