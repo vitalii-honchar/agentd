@@ -448,7 +448,7 @@ func (m *Manager) executeDeclaredTools(
 				run,
 				domain.RunActionToolExecuteFail,
 				domain.EventLevelError,
-				toolLogMessage("tool failed", tool.Name, result),
+				toolLogMessage("tool failed", tool.Name, result, err),
 			)
 
 			return strings.Join(outputs, "\n"), err
@@ -457,7 +457,7 @@ func (m *Manager) executeDeclaredTools(
 			run,
 			domain.RunActionToolExecuteComplete,
 			domain.EventLevelInfo,
-			toolLogMessage("tool completed", tool.Name, result),
+			toolLogMessage("tool completed", tool.Name, result, nil),
 		)
 		if result.StdoutSummary != "" {
 			outputs = append(outputs, fmt.Sprintf("%s stdout: %s", tool.Name, result.StdoutSummary))
@@ -470,13 +470,23 @@ func (m *Manager) executeDeclaredTools(
 	return strings.Join(outputs, "\n"), nil
 }
 
-func toolLogMessage(prefix string, toolName string, result appruntime.ToolResult) string {
+func toolLogMessage(prefix string, toolName string, result appruntime.ToolResult, err error) string {
 	parts := []string{prefix + " " + toolName}
 	if result.StdoutSummary != "" {
 		parts = append(parts, "stdout: "+result.StdoutSummary)
 	}
 	if result.StderrSummary != "" {
 		parts = append(parts, "stderr: "+result.StderrSummary)
+	}
+	if result.ResultSummary != "" {
+		parts = append(parts, "result: "+result.ResultSummary)
+	}
+	parts = append(parts, fmt.Sprintf("exit_code: %d", result.ExitCode))
+	if result.TimedOut {
+		parts = append(parts, "timed_out: true")
+	}
+	if err != nil {
+		parts = append(parts, "error: "+err.Error())
 	}
 
 	return strings.Join(parts, " | ")

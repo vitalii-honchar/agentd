@@ -35,6 +35,7 @@ type ToolRequest struct {
 type ToolResult struct {
 	StdoutSummary string
 	StderrSummary string
+	ResultSummary string
 	ExitCode      int
 	TimedOut      bool
 }

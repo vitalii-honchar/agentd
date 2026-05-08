@@ -62,6 +62,7 @@ func (e *ProcessToolExecutor) Execute(
 		StdoutSummary: appresult.Summarize(stdout.String(), appresult.DefaultSummaryLimit),
 		StderrSummary: appresult.Summarize(stderr.String(), appresult.DefaultSummaryLimit),
 	}
+	result.ResultSummary = result.StdoutSummary
 	if cmd.ProcessState != nil {
 		result.ExitCode = cmd.ProcessState.ExitCode()
 	}
