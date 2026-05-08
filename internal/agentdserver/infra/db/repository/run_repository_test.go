@@ -279,6 +279,43 @@ func TestRuntimeEventRepositoryAppendAndQuery(t *testing.T) {
 	}
 }
 
+func TestRuntimeEventRepositoryListsActionsByRunOnly(t *testing.T) {
+	t.Parallel()
+
+	fixture := newRuntimeRepositoryFixture(t, "website-snapshot-analyst")
+	for _, runID := range []string{"run-a", "run-b"} {
+		run := domain.AgentRun{
+			ID:            runID,
+			AgentName:     "website-snapshot-analyst",
+			AgentRevision: "rev-1",
+			Trigger:       domain.RunTriggerManual,
+			Status:        domain.AgentRunStatusRunning,
+			WorkDir:       "/tmp/" + runID,
+			LogPath:       "/tmp/" + runID + "/run.log",
+		}
+		if err := fixture.Runs.Create(context.Background(), run); err != nil {
+			t.Fatalf("Create %s: %v", runID, err)
+		}
+	}
+	events := []domain.RuntimeEvent{
+		{ID: "event-a", AgentName: "website-snapshot-analyst", RunID: "run-a", EventType: "llm.prompt.send", Level: domain.EventLevelInfo, Message: "prompt sent", AttributesJSON: "{}", CreatedAt: time.Date(2026, 5, 8, 10, 0, 0, 0, time.UTC)},
+		{ID: "event-b", AgentName: "website-snapshot-analyst", RunID: "run-b", EventType: "tool.execute.start", Level: domain.EventLevelInfo, Message: "tool started", AttributesJSON: "{}", CreatedAt: time.Date(2026, 5, 8, 10, 1, 0, 0, time.UTC)},
+	}
+	for _, event := range events {
+		if err := fixture.Events.Append(context.Background(), event); err != nil {
+			t.Fatalf("Append %s: %v", event.ID, err)
+		}
+	}
+
+	byRun, err := fixture.Events.ListByRun(context.Background(), "run-a", 10)
+	if err != nil {
+		t.Fatalf("ListByRun: %v", err)
+	}
+	if len(byRun) != 1 || byRun[0].EventType != "llm.prompt.send" {
+		t.Fatalf("events by run: %#v", byRun)
+	}
+}
+
 func runIDs(runs []domain.AgentRun) []string {
 	ids := make([]string, 0, len(runs))
 	for _, run := range runs {
