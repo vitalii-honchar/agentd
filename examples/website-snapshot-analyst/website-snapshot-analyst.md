@@ -12,7 +12,7 @@ inputs:
     description: Website URL to screenshot and summarize
 tools:
   - name: capture_website
-    kind: local_tool
+    kind: custom_tool
     command: tools/capture_website.js
     args: ["--url", "{{inputs.url}}", "--output", ".agentd-work/screenshot.png"]
     timeout: 90s
