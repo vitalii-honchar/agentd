@@ -166,6 +166,11 @@ components:
                 - agent_not_found
                 - run_not_found
                 - run_not_terminal
+                - agent_run_failed
+                - run_already_active
+                - agent_disabled
+                - invalid_state
+                - invalid_query
                 - validation_failed
                 - daemon_unavailable
                 - remote_client_forbidden
