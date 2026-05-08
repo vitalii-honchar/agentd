@@ -1,8 +1,11 @@
 package runtime
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -379,6 +382,60 @@ func TestManagerLogsToolTimeoutEvidence(t *testing.T) {
 	assertEventMessageContains(t, events, domain.RunActionToolExecuteFail, "error: tool snapshot timed out")
 }
 
+func TestManagerEmitsStructuredToolExecutionLog(t *testing.T) {
+	t.Parallel()
+
+	var logBuffer bytes.Buffer
+	originalLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logBuffer, &slog.HandlerOptions{})))
+	t.Cleanup(func() { slog.SetDefault(originalLogger) })
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{
+		result: appruntime.ToolResult{
+			StdoutSummary: "stdout summary",
+			StderrSummary: "stderr summary",
+			ResultSummary: "result summary",
+			ExitCode:      0,
+		},
+	})
+	agent := testAgent("tool-structured-log-agent")
+	agent.Revision = "revision-1"
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "snapshot",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "snapshot",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+
+	records := parseRuntimeLogRecords(t, logBuffer.Bytes())
+	for _, record := range records {
+		if record["event"] != domain.RunActionToolExecuteComplete {
+			continue
+		}
+		if record["agent"] != agent.Name || record["run_id"] != run.ID || record["revision"] != "revision-1" {
+			t.Fatalf("structured identity: %#v", record)
+		}
+		if record["stdout"] != "stdout summary" || record["stderr"] != "stderr summary" || record["result"] != "result summary" {
+			t.Fatalf("structured summaries: %#v", record)
+		}
+		if record["exit_code"] != float64(0) || record["timed_out"] != false {
+			t.Fatalf("structured exit state: %#v", record)
+		}
+
+		return
+	}
+	t.Fatalf("structured tool completion log not found in %#v", records)
+}
+
 func TestResolveToolCommandReturnsAbsolutePathForRelativeDefinitionSource(t *testing.T) {
 	t.Parallel()
 
@@ -392,6 +449,25 @@ func TestResolveToolCommandReturnsAbsolutePathForRelativeDefinitionSource(t *tes
 	if filepath.Base(command) != "fetch_reddit_cybersecurity.py" {
 		t.Fatalf("resolved command: %q", command)
 	}
+}
+
+func parseRuntimeLogRecords(t *testing.T, body []byte) []map[string]any {
+	t.Helper()
+
+	lines := bytes.Split(bytes.TrimSpace(body), []byte("\n"))
+	records := make([]map[string]any, 0, len(lines))
+	for _, line := range lines {
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		var record map[string]any
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatalf("parse log record %q: %v", string(line), err)
+		}
+		records = append(records, record)
+	}
+
+	return records
 }
 
 func newManagerFixture(t *testing.T, provider appruntime.Provider) (*Manager, app.RuntimeDBManager) {
