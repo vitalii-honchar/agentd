@@ -6,7 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,6 +62,51 @@ func TestRuntimeConcurrencyStopAndRecovery(t *testing.T) {
 		t.Fatalf("interrupted runs: got %d want 1", len(result.InterruptedRuns))
 	}
 	waitForE2ERunStatus(t, stack.runtimeDBs, "agent-b", runB.RunID, domain.AgentRunStatusInterrupted)
+}
+
+func TestRuntimeUsesRevisionEnvAfterSourceDeletionWithoutHostEnvLeak(t *testing.T) {
+	t.Setenv("HOST_ONLY_SECRET", "should-not-leak")
+	provider := &recordingPromptProvider{}
+	stack := newRuntimeStackWithProvider(t, provider)
+	stack.manager.SetToolExecutor(infraruntime.NewProcessToolExecutor(5 * time.Second))
+	sourceDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(sourceDir, "tools"), 0o755); err != nil {
+		t.Fatalf("MkdirAll tools: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sourceDir, ".env"),
+		[]byte("REVISION_SECRET=from-env-file\n"),
+		0o600,
+	); err != nil {
+		t.Fatalf("WriteFile .env: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sourceDir, "tools", "env.sh"),
+		[]byte("#!/bin/sh\necho REVISION_SECRET=$REVISION_SECRET\necho HOST_ONLY_SECRET=${HOST_ONLY_SECRET:-absent}\n"),
+		0o755,
+	); err != nil {
+		t.Fatalf("WriteFile tool: %v", err)
+	}
+
+	sourcePath := filepath.Join(sourceDir, "agent.md")
+	applied := postApply(t, stack.server, sourcePath, envToolDefinition())
+	if applied.RevisionID == "" {
+		t.Fatal("apply did not return revision ID")
+	}
+	if err := os.RemoveAll(sourceDir); err != nil {
+		t.Fatalf("RemoveAll source: %v", err)
+	}
+
+	run := postRun(t, stack.server, "env-e2e-agent:"+applied.RevisionID)
+	waitForE2ERunStatus(t, stack.runtimeDBs, "env-e2e-agent", run.RunID, domain.AgentRunStatusCompleted)
+	prompt := provider.promptForRun(run.RunID)
+	if !strings.Contains(prompt, "REVISION_SECRET=from-env-file") {
+		t.Fatalf("prompt missing revision env value: %q", prompt)
+	}
+	if !strings.Contains(prompt, "HOST_ONLY_SECRET=absent") ||
+		strings.Contains(prompt, "should-not-leak") {
+		t.Fatalf("prompt leaked undeclared host env: %q", prompt)
+	}
 }
 
 type runtimeStack struct {
@@ -316,4 +363,31 @@ access:
     allow: []
 ---
 Prompt for ` + name
+}
+
+func envToolDefinition() string {
+	return `---
+name: env-e2e-agent
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+environment:
+  files:
+    - .env
+tools:
+  - name: env
+    kind: custom_tool
+    command: tools/env.sh
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+Run the env tool.`
 }
