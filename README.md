@@ -84,16 +84,113 @@ Never put secret values in Agent Definition files, examples, issues, logs, or co
 
 ## Architecture
 
-agentd follows a daemon-first design:
+agentd follows a daemon-first design. The `agentd` CLI is intentionally thin:
+it parses commands, formats output, and calls the local daemon over HTTP. The
+`agentdserver` daemon owns validation, persistence, scheduling, execution,
+restart recovery, and log access.
 
-- The CLI is thin and talks to the daemon over local HTTP.
-- The daemon owns validation, scheduling, execution, recovery, and logging.
-- A settings SQLite database stores applied Agent Definitions, schedule metadata, and policy.
-- Each Agent gets a separate runtime SQLite database for runs, runtime events, and log references.
-- Run logs are written as isolated files under `AGENTD_RUN_LOG_DIR`.
-- Provider-specific LLM code lives behind runtime ports; OpenAI is the first provider adapter.
+```mermaid
+flowchart LR
+    user[Developer] --> cli[agentd CLI]
+    cli -->|local HTTP| api[agentdserver HTTP API]
+    api --> app[Application use cases]
+    app --> settings[(settings SQLite DB)]
+    app --> runtime[(per-Agent runtime SQLite DBs)]
+    app --> scheduler[Scheduler]
+    app --> runner[Run manager]
+    scheduler --> runner
+    runner --> workdirs[isolated work directories]
+    runner --> logs[isolated run log files]
+    runner --> provider[LLM provider adapter]
+    provider --> openai[OpenAI API]
+```
 
-The main implementation lives under `internal/agentd` for the CLI and `internal/agentdserver` for the daemon. Spec Kit design artifacts remain under `specs/`, while public development docs live under `docs/`.
+The server keeps domain rules independent from transport, storage, scheduling,
+and provider details. Application use cases define the daemon operations, while
+infrastructure adapters handle HTTP, Markdown parsing, SQLite repositories,
+cron-compatible scheduling, isolated runtime setup, run log IO, and LLM
+providers. OpenAI is the first provider adapter behind the runtime provider
+port.
+
+```mermaid
+flowchart TB
+    subgraph Commands
+        agentdCmd[cmd/agentd]
+        serverCmd[cmd/agentdserver]
+    end
+
+    subgraph CLI[internal/agentd]
+        cliApp[app commands]
+        httpClient[infra/httpclient]
+        cliConfig[config]
+    end
+
+    subgraph Daemon[internal/agentdserver]
+        service[service wiring root]
+        domain[domain entities and invariants]
+        usecases[app use cases]
+        http[infra/http]
+        definition[infra/definition]
+        db[infra/db repositories]
+        schedulerInfra[infra/scheduler]
+        runtimeInfra[infra/runtime]
+        logsInfra[infra/logs]
+        llmInfra[infra/llm]
+    end
+
+    agentdCmd --> cliApp
+    cliApp --> httpClient
+    cliConfig --> cliApp
+    httpClient --> http
+
+    serverCmd --> service
+    service --> usecases
+    usecases --> domain
+    usecases --> db
+    usecases --> schedulerInfra
+    usecases --> runtimeInfra
+    usecases --> logsInfra
+    http --> usecases
+    definition --> usecases
+    runtimeInfra --> llmInfra
+```
+
+Applied Agent Definitions, schedule metadata, and access policy live in one
+settings SQLite database. Each Agent gets its own runtime SQLite database for
+Agent Runs, runtime events, and log references. Run logs are separate files
+under `AGENTD_RUN_LOG_DIR`, and each run gets an isolated work directory under
+the daemon data directory.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as agentd CLI
+    participant API as daemon HTTP API
+    participant App as execute use case
+    participant Manager as run manager
+    participant Provider as LLM provider
+    participant DB as runtime SQLite DB
+    participant Logs as run log file
+
+    User->>CLI: agentd execute <agent>
+    CLI->>API: POST /v1/agents/{name}/runs
+    API->>App: execute request
+    App->>Manager: start isolated run
+    Manager->>DB: create run record
+    Manager->>Logs: open run log
+    Manager->>Provider: execute model request
+    Provider-->>Manager: model response or error
+    Manager->>Logs: write run output
+    Manager->>DB: record final status and events
+    Manager-->>App: run summary
+    App-->>API: response
+    API-->>CLI: JSON result
+    CLI-->>User: formatted run status
+```
+
+The main implementation lives under `internal/agentd` for the CLI and
+`internal/agentdserver` for the daemon. Spec Kit design artifacts remain under
+`specs/`, while public development docs live under `docs/`.
 
 ## Development
 
