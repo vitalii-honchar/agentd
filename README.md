@@ -9,9 +9,7 @@ The project currently targets a single-user developer machine. It is built as on
 
 ## Status
 
-agentd is early-stage software. The daemon, CLI, definition parser, SQLite-backed state, OpenAI provider path, runtime lifecycle, and isolated log plumbing are implemented and covered by tests. APIs, Agent Definition schema details, and runtime behavior may still change before a stable release.
-
-Local script tools can be declared in Agent Definitions and are persisted as part of the definition. Full execution of arbitrary local script tools is not complete unless implemented in a later change; current execution is centered on the LLM provider runtime path.
+agentd is early-stage software. The daemon, CLI, definition parser, SQLite-backed state, OpenAI provider path, runtime lifecycle, declared local tool execution, result retrieval, and isolated log plumbing are implemented and covered by tests. APIs, Agent Definition schema details, and runtime behavior may still change before a stable release.
 
 ## Install
 
@@ -46,24 +44,56 @@ go run ./cmd/agentdserver
 Apply, list, inspect, execute, and read logs:
 
 ```bash
-go run ./cmd/agentd apply examples/release-notes-helper.md
+go run ./cmd/agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
 go run ./cmd/agentd list
-go run ./cmd/agentd inspect release-notes-helper
-go run ./cmd/agentd execute release-notes-helper
-go run ./cmd/agentd logs release-notes-helper
+go run ./cmd/agentd inspect hacker-news-builder-brief
+go run ./cmd/agentd execute hacker-news-builder-brief
+go run ./cmd/agentd ps -a
+go run ./cmd/agentd result hacker-news-builder-brief
+go run ./cmd/agentd logs hacker-news-builder-brief
 ```
 
 Read a specific run if needed:
 
 ```bash
-go run ./cmd/agentd logs release-notes-helper --run <run_id> --tail 100
+go run ./cmd/agentd result <run_id>
+go run ./cmd/agentd logs hacker-news-builder-brief --run <run_id> --tail 100
 ```
 
-The product research example uses portable placeholder paths. Replace `/path/to/ai-product-research` with your local project path before applying it:
+The manual website snapshot example accepts run-time input:
 
 ```bash
-go run ./cmd/agentd apply examples/ai-product-research.md
+go run ./cmd/agentd apply examples/website-snapshot-analyst/website-snapshot-analyst.md
+go run ./cmd/agentd execute website-snapshot-analyst --input url=https://example.com
 ```
+
+## Examples
+
+Examples live in self-contained folders under `examples/`. Each folder includes
+an Agent Definition, README, fixtures or source lists, and any declared CLI tool
+scripts. The examples avoid dedicated infrastructure; most work with bundled
+fixtures if live public-source reads fail. Install only the language/runtime
+dependencies called out in the example README.
+
+- `cybersecurity-reddit-watch`: monitors r/cybersecurity for vulnerabilities,
+  leak reports, exploit chatter, and urgent defensive action.
+- `hacker-news-builder-brief`: daily Hacker News API brief for engineers and
+  builders.
+- `reddit-customer-pain-monitor`: daily product-manager brief of repeated pains
+  from public Reddit communities.
+- `product-hunt-launch-radar`: daily launch radar from a bundled Product Hunt
+  sample for competitive/product discovery.
+- `github-trending-engineering-radar`: monitors high-signal repositories by
+  language for engineering trend spotting.
+- `developer-dependency-release-monitor`: watches common dependency release
+  sources and summarizes upgrade risk.
+- `ai-engineering-hiring-signal-monitor`: tracks public AI engineering hiring
+  signals from bundled source definitions.
+- `website-snapshot-analyst`: manual Puppeteer-based screenshot and summary
+  workflow for a user-provided URL.
+
+Declared tools run as separate CLI processes with bounded execution, stdout and
+stderr summaries, persisted tool execution records, and scoped action logs.
 
 ## Configuration
 

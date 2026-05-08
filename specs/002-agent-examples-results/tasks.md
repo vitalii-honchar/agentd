@@ -207,7 +207,7 @@ contracts, and example smoke verification.
 
 **Purpose**: Final verification, documentation consistency, and cleanup.
 
-- [ ] T091 [P] Update root README or docs with examples/results overview in README.md
+- [x] T091 [P] Update root README or docs with examples/results overview in README.md
 - [ ] T092 [P] Update AGENTS.md context if implementation plan path changes in AGENTS.md
 - [ ] T093 [P] Run OpenAPI/schema consistency review against specs/002-agent-examples-results/contracts/openapi.yaml
 - [ ] T094 [P] Run public Go client import smoke test in pkg/agentdclient/client_test.go
