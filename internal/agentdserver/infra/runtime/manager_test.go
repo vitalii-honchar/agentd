@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -95,6 +97,66 @@ func TestManagerStopCancelsRun(t *testing.T) {
 	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusStopped)
 }
 
+func TestManagerDoesNotExecuteUndeclaredTools(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{
+		t:             t,
+		failOnExecute: true,
+	})
+	agent := testAgent("manual-agent")
+	agent.Prompt = "Run tools/undeclared.sh before answering."
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	if strings.Contains(provider.prompt(), "Tool results:") {
+		t.Fatalf("provider prompt included undeclared tool output: %q", provider.prompt())
+	}
+}
+
+func TestManagerExecutesDeclaredLocalToolsBeforeProvider(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingProvider{name: "openai", output: "analysis complete"}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{
+		result: appruntime.ToolResult{StdoutSummary: "snapshot title: Example"},
+	})
+	agent := testAgent("website-snapshot-analyst")
+	agent.DefinitionSource = filepath.Join(t.TempDir(), "website-snapshot-analyst.md")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "snapshot",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "tools/snapshot.js",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	if !strings.Contains(provider.prompt(), "Tool results:\nsnapshot stdout: snapshot title: Example") {
+		t.Fatalf("provider prompt missing tool output: %q", provider.prompt())
+	}
+	events, err := runtimeDBs.Events(agent.Name).ListByRun(context.Background(), run.ID, 20)
+	if err != nil {
+		t.Fatalf("ListByRun: %v", err)
+	}
+	assertEventType(t, events, domain.RunActionToolExecuteStart)
+	assertEventType(t, events, domain.RunActionToolExecuteComplete)
+}
+
 func newManagerFixture(t *testing.T, provider appruntime.Provider) (*Manager, app.RuntimeDBManager) {
 	t.Helper()
 
@@ -138,6 +200,47 @@ func (p *blockingProvider) Execute(ctx context.Context, _ appruntime.ProviderReq
 	return appruntime.ProviderResponse{}, ctx.Err()
 }
 
+type capturingProvider struct {
+	name   string
+	output string
+
+	mu         sync.Mutex
+	lastPrompt string
+}
+
+func (p *capturingProvider) Name() string {
+	return p.name
+}
+
+func (p *capturingProvider) Execute(_ context.Context, request appruntime.ProviderRequest) (appruntime.ProviderResponse, error) {
+	p.mu.Lock()
+	p.lastPrompt = request.Prompt
+	p.mu.Unlock()
+
+	return appruntime.ProviderResponse{RequestID: "request-1", Output: p.output}, nil
+}
+
+func (p *capturingProvider) prompt() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.lastPrompt
+}
+
+type recordingToolExecutor struct {
+	t             *testing.T
+	failOnExecute bool
+	result        appruntime.ToolResult
+}
+
+func (e *recordingToolExecutor) Execute(_ context.Context, _ appruntime.ToolRequest) (appruntime.ToolResult, error) {
+	if e.failOnExecute {
+		e.t.Fatal("undeclared tool was executed")
+	}
+
+	return e.result, nil
+}
+
 func testAgent(name string) domain.Agent {
 	return domain.Agent{
 		Name:     name,
@@ -177,6 +280,17 @@ func waitForRunStatus(
 		t.Fatalf("FindByID: %v", err)
 	}
 	t.Fatalf("run status: got %q want %q", run.Status, want)
+}
+
+func assertEventType(t *testing.T, events []domain.RuntimeEvent, eventType string) {
+	t.Helper()
+
+	for _, event := range events {
+		if event.EventType == eventType {
+			return
+		}
+	}
+	t.Fatalf("event %q not found in %#v", eventType, events)
 }
 
 func TestIsolationBuilderCreatesPerRunDirectory(t *testing.T) {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -213,12 +215,34 @@ func (m *Manager) runProvider(
 	defer logWriter.Close()
 	defer m.removeActive(run.ID)
 
+	prompt := agent.Prompt
+	toolOutput, toolErr := m.executeDeclaredTools(ctx, agent, run)
+	if toolErr != nil {
+		completedAt := m.now()
+		run.CompletedAt = &completedAt
+		run.Status = domain.AgentRunStatusFailed
+		run.ErrorCode = "tool_failed"
+		run.ErrorMessage = toolErr.Error()
+		run.Result = fmt.Sprintf("run failed: %s", toolErr.Error())
+		run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+		if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
+			_ = repo.Update(context.Background(), run)
+		}
+		m.appendRunEvent(run, domain.RunActionResultPersisted, domain.EventLevelInfo, "persisted run result")
+		m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed")
+
+		return
+	}
+	if toolOutput != "" {
+		prompt += "\n\nTool results:\n" + toolOutput
+	}
+
 	m.appendRunEvent(run, domain.RunActionLLMPromptSend, domain.EventLevelInfo, "send LLM prompt to provider")
 	response, err := provider.Execute(ctx, appruntime.ProviderRequest{
 		RunID:     run.ID,
 		AgentName: agent.Name,
 		Model:     agent.Vendor.Model,
-		Prompt:    agent.Prompt,
+		Prompt:    prompt,
 	})
 	completedAt := m.now()
 	run.CompletedAt = &completedAt
@@ -255,6 +279,70 @@ func (m *Manager) runProvider(
 	} else {
 		m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed or stopped")
 	}
+}
+
+func (m *Manager) executeDeclaredTools(ctx context.Context, agent domain.Agent, run domain.AgentRun) (string, error) {
+	if m.tools == nil || len(agent.Tools) == 0 {
+		return "", nil
+	}
+	var outputs []string
+	for _, tool := range agent.Tools {
+		if tool.Kind != domain.ToolKindLocalTool {
+			continue
+		}
+		startedAt := m.now()
+		m.appendRunEvent(run, domain.RunActionToolExecuteStart, domain.EventLevelInfo, "execute tool "+tool.Name)
+		toolForRun := tool
+		toolForRun.Command = resolveToolCommand(agent.DefinitionSource, tool.Command)
+		result, err := m.tools.Execute(ctx, appruntime.ToolRequest{
+			RunID:   run.ID,
+			Agent:   agent,
+			Tool:    toolForRun,
+			WorkDir: run.WorkDir,
+		})
+		completedAt := m.now()
+		execution := domain.ToolExecution{
+			ID:             uuid.NewString(),
+			RunID:          run.ID,
+			AgentName:      run.AgentName,
+			ToolName:       tool.Name,
+			CommandSummary: toolForRun.Command,
+			StartedAt:      startedAt,
+			CompletedAt:    &completedAt,
+			ExitCode:       result.ExitCode,
+			TimedOut:       result.TimedOut,
+			StdoutSummary:  result.StdoutSummary,
+			StderrSummary:  result.StderrSummary,
+		}
+		if err != nil {
+			execution.ErrorMessage = err.Error()
+		}
+		if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
+			_ = repo.CreateToolExecution(context.Background(), execution)
+		}
+		if err != nil {
+			m.appendRunEvent(run, domain.RunActionToolExecuteFail, domain.EventLevelError, "tool failed "+tool.Name)
+
+			return strings.Join(outputs, "\n"), err
+		}
+		m.appendRunEvent(run, domain.RunActionToolExecuteComplete, domain.EventLevelInfo, "tool completed "+tool.Name)
+		if result.StdoutSummary != "" {
+			outputs = append(outputs, fmt.Sprintf("%s stdout: %s", tool.Name, result.StdoutSummary))
+		}
+		if result.StderrSummary != "" {
+			outputs = append(outputs, fmt.Sprintf("%s stderr: %s", tool.Name, result.StderrSummary))
+		}
+	}
+
+	return strings.Join(outputs, "\n"), nil
+}
+
+func resolveToolCommand(sourcePath, command string) string {
+	if filepath.IsAbs(command) || sourcePath == "" {
+		return command
+	}
+
+	return filepath.Join(filepath.Dir(sourcePath), command)
 }
 
 func (m *Manager) appendRunEvent(
