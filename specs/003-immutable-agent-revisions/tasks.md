@@ -94,7 +94,7 @@ handling, and logs.
 - [x] T063 [US5] Implement revision list and inspect use cases in internal/agentdserver/app/agent/revision.go
 - [x] T064 [P] [US5] Add HTTP contract tests for revision list and inspect in internal/agentdserver/infra/http/inspect_handler_test.go
 - [x] T065 [US5] Add revision list and inspect HTTP routes in internal/agentdserver/infra/http/server.go
-- [ ] T066 [US5] Add revision list and inspect HTTP handlers in internal/agentdserver/infra/http/inspect_handler.go
+- [x] T066 [US5] Add revision list and inspect HTTP handlers in internal/agentdserver/infra/http/inspect_handler.go
 - [ ] T067 [US5] Add CLI revision list output in internal/agentd/app/list.go
 - [ ] T068 [US5] Add CLI revision inspect output in internal/agentd/app/inspect.go
 
