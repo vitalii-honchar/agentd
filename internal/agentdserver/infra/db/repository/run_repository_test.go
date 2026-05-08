@@ -179,6 +179,58 @@ func TestAgentRunRepositoryListsActiveAndAllRuns(t *testing.T) {
 	}
 }
 
+func TestAgentRunRepositoryLooksUpResultsByAgentAndRunID(t *testing.T) {
+	t.Parallel()
+
+	fixture := newRuntimeRepositoryFixture(t, "website-snapshot-analyst")
+	now := time.Date(2026, 5, 8, 10, 0, 0, 0, time.UTC)
+	completedAt := now.Add(time.Minute)
+	active := domain.AgentRun{
+		ID:            "active-run",
+		AgentName:     "website-snapshot-analyst",
+		AgentRevision: "rev-1",
+		Trigger:       domain.RunTriggerManual,
+		Status:        domain.AgentRunStatusRunning,
+		StartedAt:     &now,
+		WorkDir:       "/tmp/active-run",
+		LogPath:       "/tmp/active-run/run.log",
+	}
+	terminal := domain.AgentRun{
+		ID:            "terminal-run",
+		AgentName:     "website-snapshot-analyst",
+		AgentRevision: "rev-1",
+		Trigger:       domain.RunTriggerManual,
+		Status:        domain.AgentRunStatusCompleted,
+		StartedAt:     &now,
+		CompletedAt:   &completedAt,
+		WorkDir:       "/tmp/terminal-run",
+		LogPath:       "/tmp/terminal-run/run.log",
+		Result:        "Full website analysis result",
+		ResultSummary: "Website analysis summary",
+	}
+	for _, run := range []domain.AgentRun{active, terminal} {
+		if err := fixture.Runs.Create(context.Background(), run); err != nil {
+			t.Fatalf("Create %s: %v", run.ID, err)
+		}
+	}
+
+	found, err := fixture.Runs.FindByID(context.Background(), terminal.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if found.Result != terminal.Result || found.ResultSummary != terminal.ResultSummary {
+		t.Fatalf("found result: %#v", found)
+	}
+
+	results, err := fixture.Runs.ListTerminal(context.Background())
+	if err != nil {
+		t.Fatalf("ListTerminal: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != terminal.ID {
+		t.Fatalf("terminal results: %#v", results)
+	}
+}
+
 func TestRuntimeEventRepositoryAppendAndQuery(t *testing.T) {
 	t.Parallel()
 
