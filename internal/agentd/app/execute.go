@@ -19,10 +19,18 @@ type RunResponse struct {
 }
 
 func NewExecuteCommand(client ExecuteClient, output Output) *cobra.Command {
+	return newExecuteCommand("execute <agent_name>", "Execute an Agent immediately", client, output)
+}
+
+func NewRunCommand(client ExecuteClient, output Output) *cobra.Command {
+	return newExecuteCommand("run <agent_name[:revision]>", "Run an Agent revision immediately", client, output)
+}
+
+func newExecuteCommand(use string, short string, client ExecuteClient, output Output) *cobra.Command {
 	var inputPairs []string
 	cmd := &cobra.Command{
-		Use:   "execute <agent_name>",
-		Short: "Execute an Agent immediately",
+		Use:   use,
+		Short: short,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client == nil {

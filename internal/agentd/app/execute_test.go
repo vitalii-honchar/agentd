@@ -50,6 +50,24 @@ func TestExecuteCommandPassesInputs(t *testing.T) {
 	}
 }
 
+func TestRunCommandCallsClientWithExplicitRevision(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeRuntimeClient{run: RunResponse{
+		RunID: "run-1", AgentName: "release-notes-helper", Status: "running",
+	}}
+	var out bytes.Buffer
+	cmd := NewRunCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper:11111111-1111-4111-8111-111111111111"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.executeAgent != "release-notes-helper:11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("execute agent: got %q", client.executeAgent)
+	}
+}
+
 func TestStopCommandCallsClientWithRunID(t *testing.T) {
 	t.Parallel()
 
