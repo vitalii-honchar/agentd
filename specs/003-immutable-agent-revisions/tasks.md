@@ -100,7 +100,7 @@ handling, and logs.
 
 ## Phase 8: Recovery, Docs, and Verification
 
-- [ ] T069 Add daemon startup recovery for pending/corrupt revision artifacts in internal/agentdserver/service.go
+- [x] T069 Add daemon startup recovery for pending/corrupt revision artifacts in internal/agentdserver/service.go
 - [ ] T070 Add daemon startup cleanup for stale execution directories in internal/agentdserver/service.go
 - [ ] T071 [P] Add e2e test applying an agent, mutating source prompt/tool, deleting source folder, and running explicit revision in tests/e2e/apply_test.go
 - [ ] T072 [P] Add e2e test proving declared .env values survive source deletion and undeclared host env secrets are absent in tests/e2e/runtime_test.go

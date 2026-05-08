@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -166,6 +167,13 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 
 		return nil, fmt.Errorf("new inspect use case: %w", err)
 	}
+	revisionUC, err := appagent.NewRevisionUseCase(agentRepo)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
+
+		return nil, fmt.Errorf("new revision use case: %w", err)
+	}
 	logsUC, err := applogs.NewUseCase(agentRepo, runtimeDBs, logReader)
 	if err != nil {
 		_ = settings.Stop(context.Background())
@@ -200,8 +208,10 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 		daemonhttp.WithResultUseCase(resultUC),
 		daemonhttp.WithListUseCase(listUC),
 		daemonhttp.WithInspectUseCase(inspectUC),
+		daemonhttp.WithRevisionUseCase(revisionUC),
 		daemonhttp.WithLogsUseCase(logsUC),
 	)
+	workRoot := filepath.Join(cfg.Storage.DataDir, "work")
 
 	return &AgentdServer{
 		Config:     cfg,
@@ -209,6 +219,9 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 		runtimeDBs: runtimeDBs,
 		components: []component{
 			{name: "settings", start: settings.Start, stop: settings.Stop},
+			{name: "revision-artifact-recovery", start: func(ctx context.Context) error {
+				return recoverRevisionArtifacts(ctx, agentRepo, workRoot)
+			}},
 			{name: "recovery", start: func(ctx context.Context) error {
 				_, err := recoveryUC.Recover(ctx)
 
@@ -255,6 +268,97 @@ func (s *AgentdServer) Stop(ctx context.Context) error {
 	slog.Info("agentdserver stopped")
 
 	return nil
+}
+
+func recoverRevisionArtifacts(ctx context.Context, revisions revisionArtifactRepository, workRoot string) error {
+	agents, err := revisions.List(ctx)
+	if err != nil {
+		return fmt.Errorf("list agents for revision recovery: %w", err)
+	}
+	for _, agent := range agents {
+		agentRevisions, err := revisions.ListRevisions(ctx, agent.Name)
+		if err != nil {
+			return fmt.Errorf("list revisions for %s: %w", agent.Name, err)
+		}
+		for _, revision := range agentRevisions {
+			switch revision.Status {
+			case domain.AgentRevisionStatusPending:
+				message := "revision creation was interrupted before finalization"
+				if err := revisions.MarkRevisionCorrupt(ctx, revision.AgentName, revision.RevisionID, message); err != nil {
+					return fmt.Errorf("mark pending revision corrupt %s:%s: %w", revision.AgentName, revision.RevisionID, err)
+				}
+				slog.Warn(
+					"Marked pending revision corrupt during startup recovery",
+					"agent", revision.AgentName,
+					"revision", revision.RevisionID,
+					"error", message,
+				)
+			case domain.AgentRevisionStatusFinalized:
+				if message := revisionArtifactCorruption(revision, workRoot); message != "" {
+					if err := revisions.MarkRevisionCorrupt(ctx, revision.AgentName, revision.RevisionID, message); err != nil {
+						return fmt.Errorf("mark finalized revision corrupt %s:%s: %w", revision.AgentName, revision.RevisionID, err)
+					}
+					slog.Warn(
+						"Marked revision artifact corrupt during startup recovery",
+						"agent", revision.AgentName,
+						"revision", revision.RevisionID,
+						"error", message,
+					)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+type revisionArtifactRepository interface {
+	List(ctx context.Context) ([]domain.Agent, error)
+	ListRevisions(ctx context.Context, agentName string) ([]domain.AgentRevision, error)
+	MarkRevisionCorrupt(ctx context.Context, agentName, revisionID, errorMessage string) error
+}
+
+func revisionArtifactCorruption(revision domain.AgentRevision, workRoot string) string {
+	artifactPath := revision.ArtifactPath
+	if artifactPath == "" {
+		artifactPath = filepath.Join(workRoot, revision.AgentName, revision.RevisionID)
+	}
+	if info, err := os.Stat(artifactPath); err != nil {
+		return fmt.Sprintf("revision artifact directory is missing: %s", artifactPath)
+	} else if !info.IsDir() {
+		return fmt.Sprintf("revision artifact path is not a directory: %s", artifactPath)
+	}
+	for _, file := range revision.ArtifactFiles {
+		if message := revisionFileCorruption(artifactPath, file.ArtifactRelativePath); message != "" {
+			return message
+		}
+	}
+	for _, tool := range revision.Tools {
+		if tool.Kind != domain.ToolKindCustomTool {
+			continue
+		}
+		for _, copiedFile := range tool.CopiedFiles {
+			if message := revisionFileCorruption(artifactPath, copiedFile); message != "" {
+				return message
+			}
+		}
+	}
+
+	return ""
+}
+
+func revisionFileCorruption(artifactPath string, relativePath string) string {
+	if relativePath == "" {
+		return ""
+	}
+	path := filepath.Join(artifactPath, relativePath)
+	if info, err := os.Stat(path); err != nil {
+		return fmt.Sprintf("revision artifact file is missing: %s", path)
+	} else if info.IsDir() {
+		return fmt.Sprintf("revision artifact file is a directory: %s", path)
+	}
+
+	return ""
 }
 
 func startHTTP(server *daemonhttp.Server) func(context.Context) error {
