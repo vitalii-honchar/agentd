@@ -40,6 +40,39 @@ func TestInspectUseCaseReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestInspectUseCaseMasksContractSchemaBodies(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	agent := testAgent("contracted-agent")
+	agent.Contract = &domain.AgentContract{
+		InputSchemaRaw:      `{"type":"object","properties":{"api_key":{"const":"sk-secret"}}}`,
+		OutputSchemaRaw:     `{"type":"object","properties":{"token":{"const":"secret-token"}}}`,
+		InputSchemaDigest:   "sha256:input",
+		OutputSchemaDigest:  "sha256:output",
+		CreatedFromRevision: "revision-1",
+	}
+	repo.agents[agent.Name] = agent
+	useCase, err := NewInspectUseCase(repo)
+	if err != nil {
+		t.Fatalf("NewInspectUseCase: %v", err)
+	}
+
+	inspected, err := useCase.Inspect(context.Background(), agent.Name)
+	if err != nil {
+		t.Fatalf("Inspect: %v", err)
+	}
+	if inspected.Contract == nil {
+		t.Fatal("contract is nil")
+	}
+	if inspected.Contract.InputSchemaRaw != "" || inspected.Contract.OutputSchemaRaw != "" {
+		t.Fatalf("contract schema bodies should be masked: %#v", inspected.Contract)
+	}
+	if inspected.Contract.InputSchemaDigest != "sha256:input" || inspected.Contract.OutputSchemaDigest != "sha256:output" {
+		t.Fatalf("contract digests should remain visible: %#v", inspected.Contract)
+	}
+}
+
 func TestListUseCaseReturnsAgents(t *testing.T) {
 	t.Parallel()
 

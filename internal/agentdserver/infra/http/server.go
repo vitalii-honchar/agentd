@@ -44,6 +44,10 @@ type ExecuteUseCase interface {
 	Execute(context.Context, string, map[string]string) (domain.AgentRun, error)
 }
 
+type RuntimeInputExecuteUseCase interface {
+	ExecuteWithRuntimeInput(context.Context, string, domain.RuntimeInput) (domain.AgentRun, error)
+}
+
 type StopUseCase interface {
 	Stop(context.Context, string, string) (domain.AgentRun, error)
 }
@@ -199,7 +203,7 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("GET /v1/runs/{run_id}/result", s.handleRunResult)
 	}
 	if s.logsUseCase != nil {
-		s.mux.HandleFunc("GET /v1/agents/{name}/logs", s.handleLogs)
+		s.mux.HandleFunc("GET /v1/runs/{run_id}/logs", s.handleLogs)
 	}
 }
 

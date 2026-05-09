@@ -23,6 +23,12 @@ func TestFromLookupDefaults(t *testing.T) {
 	if cfg.Runtime.StartupTimeout != DefaultStartupTimeout {
 		t.Fatalf("unexpected startup timeout: %s", cfg.Runtime.StartupTimeout)
 	}
+	if cfg.Codex.Command != DefaultCodexCommand {
+		t.Fatalf("unexpected codex command: %s", cfg.Codex.Command)
+	}
+	if cfg.Codex.Timeout != DefaultCodexTimeout {
+		t.Fatalf("unexpected codex timeout: %s", cfg.Codex.Timeout)
+	}
 }
 
 func TestFromLookupOverrides(t *testing.T) {
@@ -40,6 +46,10 @@ func TestFromLookupOverrides(t *testing.T) {
 		"AGENTD_RUN_STOP_TIMEOUT":   "7s",
 		"AGENTD_HTTP_READ_TIMEOUT":  "8s",
 		"AGENTD_HTTP_WRITE_TIMEOUT": "9s",
+		"AGENTD_CODEX_COMMAND":      "/opt/bin/codex",
+		"AGENTD_CODEX_MODEL":        "gpt-5.4-mini",
+		"AGENTD_CODEX_PROFILE":      "agentd",
+		"AGENTD_CODEX_TIMEOUT":      "2m",
 		"OPENAI_API_KEY":            "test-key",
 	}
 
@@ -63,6 +73,15 @@ func TestFromLookupOverrides(t *testing.T) {
 	if cfg.OpenAI.APIKey != "test-key" {
 		t.Fatalf("unexpected OpenAI API key")
 	}
+	if cfg.Codex.Command != "/opt/bin/codex" {
+		t.Fatalf("unexpected codex command: %s", cfg.Codex.Command)
+	}
+	if cfg.Codex.Model != "gpt-5.4-mini" || cfg.Codex.Profile != "agentd" {
+		t.Fatalf("unexpected codex model/profile: %#v", cfg.Codex)
+	}
+	if cfg.Codex.Timeout != 2*time.Minute {
+		t.Fatalf("unexpected codex timeout: %s", cfg.Codex.Timeout)
+	}
 }
 
 func TestFromLookupInvalidNumbersFallBack(t *testing.T) {
@@ -72,6 +91,7 @@ func TestFromLookupInvalidNumbersFallBack(t *testing.T) {
 		"AGENTD_SHUTDOWN_TIMEOUT":  "bad",
 		"AGENTD_RUN_STOP_TIMEOUT":  "bad",
 		"AGENTD_HTTP_READ_TIMEOUT": "bad",
+		"AGENTD_CODEX_TIMEOUT":     "bad",
 	}
 
 	cfg, err := FromLookup(mapLookup(values))
@@ -85,6 +105,9 @@ func TestFromLookupInvalidNumbersFallBack(t *testing.T) {
 	if cfg.Runtime.StartupTimeout != DefaultStartupTimeout {
 		t.Fatalf("unexpected startup timeout: %s", cfg.Runtime.StartupTimeout)
 	}
+	if cfg.Codex.Timeout != DefaultCodexTimeout {
+		t.Fatalf("unexpected codex timeout: %s", cfg.Codex.Timeout)
+	}
 }
 
 func TestValidateRejectsMissingRequiredFields(t *testing.T) {
@@ -96,6 +119,28 @@ func TestValidateRejectsMissingRequiredFields(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatalf("expected validation error")
+	}
+}
+
+func TestValidateRejectsInvalidCodexConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := FromLookup(emptyLookup)
+	if err != nil {
+		t.Fatalf("from lookup: %v", err)
+	}
+	cfg.Codex.Command = ""
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected missing codex command validation error")
+	}
+
+	cfg, err = FromLookup(emptyLookup)
+	if err != nil {
+		t.Fatalf("from lookup: %v", err)
+	}
+	cfg.Codex.Timeout = 0
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected invalid codex timeout validation error")
 	}
 }
 

@@ -18,9 +18,8 @@ func (s *Server) handleLogs(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	}
 
 	result, err := s.logsUseCase.Read(r.Context(), applogs.Query{
-		AgentName: r.PathValue("name"),
-		RunID:     r.URL.Query().Get("run_id"),
-		Tail:      tail,
+		RunID: r.PathValue("run_id"),
+		Tail:  tail,
 	})
 	if err != nil {
 		writeQueryError(w, err)

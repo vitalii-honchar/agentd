@@ -37,7 +37,7 @@ func TestAPIErrorResponsesUseConsistentEnvelope(t *testing.T) {
 		{
 			name:       "logs invalid query",
 			server:     NewServer(Config{}, WithLogsUseCase(&fakeLogsUseCase{})),
-			request:    localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/logs?tail=0", nil),
+			request:    localRequest(stdhttp.MethodGet, "/v1/runs/run-1/logs?tail=0", nil),
 			wantStatus: stdhttp.StatusBadRequest,
 			wantCode:   errorCodeInvalidQuery,
 		},

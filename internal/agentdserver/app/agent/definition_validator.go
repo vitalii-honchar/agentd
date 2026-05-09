@@ -10,6 +10,7 @@ import (
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 
 	"github.com/robfig/cron/v3"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 type NormalizedDefinition struct {
@@ -19,6 +20,9 @@ type NormalizedDefinition struct {
 
 func NormalizeDefinition(definition domain.AgentDefinition) (NormalizedDefinition, error) {
 	if err := definition.Validate(); err != nil {
+		return NormalizedDefinition{}, err
+	}
+	if err := validateContractSchemas(definition.Contract); err != nil {
 		return NormalizedDefinition{}, err
 	}
 	if err := validateSchedule(definition.Schedule); err != nil {
@@ -39,11 +43,45 @@ func NormalizeDefinition(definition domain.AgentDefinition) (NormalizedDefinitio
 	if err := validateExampleToolPolicies(definition); err != nil {
 		return NormalizedDefinition{}, err
 	}
+	definition.Contract = copyContract(definition.Contract)
+	if definition.Contract != nil {
+		definition.Contract.InputSchemaDigest = digestStrings(definition.Contract.InputSchemaRaw)
+		definition.Contract.OutputSchemaDigest = digestStrings(definition.Contract.OutputSchemaRaw)
+	}
 
 	return NormalizedDefinition{
 		Definition: definition,
 		Revision:   hashDefinition(definition.RawMarkdown),
 	}, nil
+}
+
+func validateContractSchemas(contract *domain.AgentContract) error {
+	if contract == nil {
+		return nil
+	}
+	if err := compileContractSchema(contract.InputSchemaRaw); err != nil {
+		return fmt.Errorf("%w: contract.input: %v", domain.ErrInvalidContractSchema, err)
+	}
+	if err := compileContractSchema(contract.OutputSchemaRaw); err != nil {
+		return fmt.Errorf("%w: contract.output: %v", domain.ErrInvalidContractSchema, err)
+	}
+
+	return nil
+}
+
+func compileContractSchema(schemaRaw string) error {
+	compiler := jsonschema.NewCompiler()
+	compiler.DefaultDraft(jsonschema.Draft2020)
+	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(schemaRaw))
+	if err != nil {
+		return err
+	}
+	if err := compiler.AddResource("schema.json", doc); err != nil {
+		return err
+	}
+	_, err = compiler.Compile("schema.json")
+
+	return err
 }
 
 func validateSchedule(schedule domain.Schedule) error {
@@ -140,7 +178,21 @@ func validateExampleToolPolicies(definition domain.AgentDefinition) error {
 
 func hashDefinition(markdown string) string {
 	normalized := strings.TrimSpace(strings.ReplaceAll(markdown, "\r\n", "\n"))
+	return digestStrings(normalized)
+}
+
+func digestStrings(values ...string) string {
+	normalized := strings.Join(values, "\x00")
 	sum := sha256.Sum256([]byte(normalized))
 
 	return hex.EncodeToString(sum[:])
+}
+
+func copyContract(contract *domain.AgentContract) *domain.AgentContract {
+	if contract == nil {
+		return nil
+	}
+
+	copied := *contract
+	return &copied
 }

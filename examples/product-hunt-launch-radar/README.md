@@ -15,7 +15,8 @@ agentd apply examples/product-hunt-launch-radar/product-hunt-launch-radar.md
 agentd execute product-hunt-launch-radar
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs product-hunt-launch-radar --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result product-hunt-launch-radar` to review the daily launch history.
+Run results are finalized as JSON matching the example contract, including `summary`, `interesting_launches`, and `positioning_patterns`.

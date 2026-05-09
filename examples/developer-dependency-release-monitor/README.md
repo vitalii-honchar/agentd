@@ -15,7 +15,8 @@ agentd apply examples/developer-dependency-release-monitor/developer-dependency-
 agentd execute developer-dependency-release-monitor
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs developer-dependency-release-monitor --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result developer-dependency-release-monitor` to review release history across days.
+Run results are finalized as JSON matching the example contract, including `summary`, `releases_requiring_attention`, and upgrade priority details.

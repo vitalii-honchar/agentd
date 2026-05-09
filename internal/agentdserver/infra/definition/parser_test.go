@@ -177,6 +177,96 @@ Capture a screenshot and summarize the supplied website.`)
 	}
 }
 
+func TestParseMarkdownDefinitionWithOptionalContract(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("examples/release-notes-helper.md", `---
+name: release-notes-helper
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+contract:
+  input: |
+    {"type":"object","required":["topic"],"properties":{"topic":{"type":"string"}}}
+  output: |
+    {"type":"object","required":["summary"],"properties":{"summary":{"type":"string"}}}
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+Summarize one topic.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if definition.Contract == nil {
+		t.Fatal("contract is nil")
+	}
+	if definition.Contract.InputSchemaRaw != `{"type":"object","required":["topic"],"properties":{"topic":{"type":"string"}}}`+"\n" {
+		t.Fatalf("input schema: %q", definition.Contract.InputSchemaRaw)
+	}
+	if definition.Contract.OutputSchemaRaw != `{"type":"object","required":["summary"],"properties":{"summary":{"type":"string"}}}`+"\n" {
+		t.Fatalf("output schema: %q", definition.Contract.OutputSchemaRaw)
+	}
+}
+
+func TestParseMarkdownDefinitionWithoutContractLeavesNilContract(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("plain.md", `---
+name: plain-agent
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+Run without a contract.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+	if definition.Contract != nil {
+		t.Fatalf("contract: got %#v want nil", definition.Contract)
+	}
+}
+
+func TestParseMarkdownRejectsInvalidContractSchemaText(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseMarkdown("bad-contract.md", `---
+name: bad-contract-agent
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+contract:
+  input: |
+    {"type":
+  output: |
+    {"type":"object"}
+---
+Prompt.`)
+	if err == nil {
+		t.Fatal("ParseMarkdown returned nil error")
+	}
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("ParseMarkdown error %v does not match ErrInvalidDefinition", err)
+	}
+}
+
 func TestParseMarkdownDefinitionWithCustomHostToolsAndEnvironment(t *testing.T) {
 	t.Parallel()
 

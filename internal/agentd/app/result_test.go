@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,49 @@ func TestResultCommandShowsFullRunResultJSON(t *testing.T) {
 		t.Fatalf("run id: got %q", client.resultRunID)
 	}
 	if !strings.Contains(out.String(), `"result": "full result"`) {
+		t.Fatalf("output: %q", out.String())
+	}
+}
+
+func TestResultCommandShowsStructuredJSONValueInTextOutput(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{runResult: RunResult{
+		RunSummary:   RunSummary{RunID: "11111111-1111-4111-8111-111111111111", AgentName: "contracted-agent", Status: "completed"},
+		ResultFormat: "json",
+		Result:       `{"summary":"done","score":0.91}`,
+		ResultJSON:   json.RawMessage(`{"summary":"done","score":0.91}`),
+	}}
+	var out bytes.Buffer
+	cmd := NewResultCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"11111111-1111-4111-8111-111111111111"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out.String(), `"summary": "done"`) || !strings.Contains(out.String(), `"score": 0.91`) {
+		t.Fatalf("output: %q", out.String())
+	}
+}
+
+func TestResultCommandShowsStructuredJSONValueInJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{runResult: RunResult{
+		RunSummary:   RunSummary{RunID: "11111111-1111-4111-8111-111111111111", AgentName: "contracted-agent", Status: "completed"},
+		ResultFormat: "json",
+		ResultJSON:   json.RawMessage(`{"summary":"done"}`),
+	}}
+	var out bytes.Buffer
+	cmd := NewResultCommand(client, NewOutput(config.OutputJSON, &out))
+	cmd.SetArgs([]string{"11111111-1111-4111-8111-111111111111"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out.String(), `"result_format": "json"`) ||
+		!strings.Contains(out.String(), `"result_json": {`) ||
+		!strings.Contains(out.String(), `"summary": "done"`) {
 		t.Fatalf("output: %q", out.String())
 	}
 }

@@ -8,8 +8,11 @@ import (
 	"testing"
 	"time"
 
+	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/config"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	codexadapter "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/llm/codex"
+	openaiadapter "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/llm/openai"
 )
 
 func TestNewWithConfigStartStop(t *testing.T) {
@@ -38,6 +41,49 @@ func TestNewWithConfigRejectsNilConfig(t *testing.T) {
 	_, err := NewWithConfig(nil)
 	if err == nil {
 		t.Fatal("NewWithConfig returned nil error")
+	}
+}
+
+func TestNewProvidersRegistersOpenAIAndCodex(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig(t)
+	cfg.OpenAI.APIKey = "test-key"
+	cfg.Codex = config.CodexConfig{
+		Command: "codex",
+		Timeout: time.Minute,
+	}
+
+	providers, err := newProviders(cfg)
+	if err != nil {
+		t.Fatalf("newProviders: %v", err)
+	}
+	if !hasProvider(providers, openaiadapter.ProviderName) {
+		t.Fatalf("providers missing openai: %#v", providers)
+	}
+	if !hasProvider(providers, codexadapter.ProviderName) {
+		t.Fatalf("providers missing codex: %#v", providers)
+	}
+}
+
+func TestNewProvidersRegistersCodexWithoutOpenAI(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig(t)
+	cfg.Codex = config.CodexConfig{
+		Command: "codex",
+		Timeout: time.Minute,
+	}
+
+	providers, err := newProviders(cfg)
+	if err != nil {
+		t.Fatalf("newProviders: %v", err)
+	}
+	if hasProvider(providers, openaiadapter.ProviderName) {
+		t.Fatalf("providers should not include openai without API key: %#v", providers)
+	}
+	if !hasProvider(providers, codexadapter.ProviderName) {
+		t.Fatalf("providers missing codex: %#v", providers)
 	}
 }
 
@@ -87,6 +133,16 @@ func TestRecoverRevisionArtifactsMarksPendingAndMissingArtifactsCorrupt(t *testi
 	}
 }
 
+func hasProvider(providers []appruntime.Provider, name string) bool {
+	for _, provider := range providers {
+		if provider.Name() == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func TestCleanupStaleExecutionDirsRemovesExecutionsOnly(t *testing.T) {
 	t.Parallel()
 
@@ -134,6 +190,10 @@ func testConfig(t *testing.T) *config.Config {
 			StartupTimeout:  time.Second,
 			ShutdownTimeout: time.Second,
 			RunStopTimeout:  time.Second,
+		},
+		Codex: config.CodexConfig{
+			Command: config.DefaultCodexCommand,
+			Timeout: config.DefaultCodexTimeout,
 		},
 	}
 }

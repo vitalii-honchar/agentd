@@ -7,6 +7,55 @@ schedule:
 vendor:
   name: openai
   model: gpt-5.4-mini
+contract:
+  input: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    }
+  output: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string" },
+        "recurring_pains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pain": { "type": "string" },
+              "audience": { "type": "string" },
+              "urgency": { "type": "string" },
+              "evidence_urls": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["pain", "audience", "urgency", "evidence_urls"]
+          }
+        },
+        "opportunity_hypotheses": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "audience_notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "no_action_note": { "type": "string" }
+      },
+      "required": [
+        "summary",
+        "recurring_pains",
+        "opportunity_hypotheses",
+        "audience_notes",
+        "no_action_note"
+      ]
+    }
 tools:
   - name: fetch_reddit_pain_posts
     kind: custom_tool

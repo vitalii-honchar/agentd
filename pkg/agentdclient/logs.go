@@ -9,14 +9,15 @@ import (
 )
 
 func (c *Client) Logs(ctx context.Context, query LogsQuery) (LogsResult, error) {
-	values := url.Values{}
-	if query.RunID != "" {
-		values.Set("run_id", query.RunID)
+	if query.RunID == "" {
+		return LogsResult{}, fmt.Errorf("run ID is required")
 	}
+
+	values := url.Values{}
 	if query.Tail > 0 {
 		values.Set("tail", strconv.Itoa(query.Tail))
 	}
-	path := fmt.Sprintf("/v1/agents/%s/logs", url.PathEscape(query.AgentName))
+	path := fmt.Sprintf("/v1/runs/%s/logs", url.PathEscape(query.RunID))
 	if encoded := values.Encode(); encoded != "" {
 		path += "?" + encoded
 	}

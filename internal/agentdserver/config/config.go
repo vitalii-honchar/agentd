@@ -24,6 +24,8 @@ const (
 	DefaultRunStopTimeout   = 10 * time.Second
 	DefaultHTTPReadTimeout  = 5 * time.Second
 	DefaultHTTPWriteTimeout = 30 * time.Second
+	DefaultCodexCommand     = "codex"
+	DefaultCodexTimeout     = 10 * time.Minute
 )
 
 type Config struct {
@@ -32,6 +34,7 @@ type Config struct {
 	Storage    StorageConfig
 	Runtime    RuntimeConfig
 	OpenAI     OpenAIConfig
+	Codex      CodexConfig
 }
 
 type ServerConfig struct {
@@ -61,6 +64,13 @@ type RuntimeConfig struct {
 
 type OpenAIConfig struct {
 	APIKey string
+}
+
+type CodexConfig struct {
+	Command string
+	Model   string
+	Profile string
+	Timeout time.Duration
 }
 
 func FromEnv() (*Config, error) {
@@ -96,6 +106,12 @@ func FromLookup(lookup func(string) (string, bool)) (*Config, error) {
 		},
 		OpenAI: OpenAIConfig{
 			APIKey: getWithDefault(lookup, "OPENAI_API_KEY", ""),
+		},
+		Codex: CodexConfig{
+			Command: getWithDefault(lookup, "AGENTD_CODEX_COMMAND", DefaultCodexCommand),
+			Model:   getWithDefault(lookup, "AGENTD_CODEX_MODEL", ""),
+			Profile: getWithDefault(lookup, "AGENTD_CODEX_PROFILE", ""),
+			Timeout: getDuration(lookup, "AGENTD_CODEX_TIMEOUT", DefaultCodexTimeout),
 		},
 	}
 	if err := cfg.Validate(); err != nil {
@@ -135,6 +151,12 @@ func (c *Config) Validate() error {
 	}
 	if c.Runtime.RunStopTimeout <= 0 {
 		return fmt.Errorf("run stop timeout must be positive")
+	}
+	if strings.TrimSpace(c.Codex.Command) == "" {
+		return fmt.Errorf("codex command is required")
+	}
+	if c.Codex.Timeout <= 0 {
+		return fmt.Errorf("codex timeout must be positive")
 	}
 
 	return nil

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -32,7 +34,7 @@ func NewResultCommand(client QueryClient, output Output) *cobra.Command {
 					if err := output.Write(result); err != nil {
 						return err
 					}
-				} else if err := output.Write(result.Result); err != nil {
+				} else if err := writeRunResult(output, result); err != nil {
 					return err
 				}
 				if result.Status == "failed" {
@@ -62,6 +64,20 @@ func NewResultCommand(client QueryClient, output Output) *cobra.Command {
 			return output.WriteTable([]string{"RUN ID", "STATUS", "COMPLETED", "RESULT"}, rows)
 		},
 	}
+}
+
+func writeRunResult(output Output, result RunResult) error {
+	if result.ResultFormat == "json" && len(result.ResultJSON) > 0 {
+		var formatted bytes.Buffer
+		if err := json.Indent(&formatted, result.ResultJSON, "", "  "); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintln(output.writer, formatted.String())
+
+		return err
+	}
+
+	return output.Write(result.Result)
 }
 
 type ExitError struct {

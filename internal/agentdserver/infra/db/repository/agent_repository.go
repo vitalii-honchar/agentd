@@ -94,7 +94,9 @@ func (r *AgentRepository) FindByName(ctx context.Context, name string) (domain.A
 	const query = `SELECT name, revision, definition_source_path, definition_markdown,
 	       prompt, enabled, vendor_name, vendor_model, schedule_type,
 	       schedule_expression, next_run_at, status, last_run_id, last_error,
-	       created_at, updated_at, applied_at
+	       created_at, updated_at, applied_at, contract_input_schema_raw,
+	       contract_output_schema_raw, contract_input_schema_digest,
+	       contract_output_schema_digest
 	       FROM agents WHERE name = ?`
 
 	agent, err := scanAgent(r.db.QueryRowContext(ctx, query, name))
@@ -112,7 +114,9 @@ func (r *AgentRepository) List(ctx context.Context) ([]domain.Agent, error) {
 	const query = `SELECT name, revision, definition_source_path, definition_markdown,
 	       prompt, enabled, vendor_name, vendor_model, schedule_type,
 	       schedule_expression, next_run_at, status, last_run_id, last_error,
-	       created_at, updated_at, applied_at
+	       created_at, updated_at, applied_at, contract_input_schema_raw,
+	       contract_output_schema_raw, contract_input_schema_digest,
+	       contract_output_schema_digest
 	       FROM agents ORDER BY name`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -245,7 +249,9 @@ func (r *AgentRepository) SaveRevision(ctx context.Context, revision domain.Agen
 func (r *AgentRepository) ListRevisions(ctx context.Context, agentName string) ([]domain.AgentRevision, error) {
 	const query = `SELECT agent_name, revision_id, content_digest, source_path, artifact_path,
 	       environment_json, prompt, vendor_name, vendor_model, schedule_type,
-	       schedule_expression, status, created_at, finalized_at, error_message
+	       schedule_expression, status, created_at, finalized_at, error_message,
+	       contract_input_schema_raw, contract_output_schema_raw,
+	       contract_input_schema_digest, contract_output_schema_digest, contract_digest
 	       FROM agent_revisions WHERE agent_name = ? ORDER BY created_at DESC, revision_id DESC`
 
 	rows, err := r.db.QueryContext(ctx, query, agentName)
@@ -287,7 +293,9 @@ func (r *AgentRepository) FindRevisionByID(
 ) (domain.AgentRevision, error) {
 	const query = `SELECT agent_name, revision_id, content_digest, source_path, artifact_path,
 	       environment_json, prompt, vendor_name, vendor_model, schedule_type,
-	       schedule_expression, status, created_at, finalized_at, error_message
+	       schedule_expression, status, created_at, finalized_at, error_message,
+	       contract_input_schema_raw, contract_output_schema_raw,
+	       contract_input_schema_digest, contract_output_schema_digest, contract_digest
 	       FROM agent_revisions WHERE agent_name = ? AND revision_id = ?`
 
 	revision, err := scanRevision(r.db.QueryRowContext(ctx, query, agentName, revisionID))
@@ -313,7 +321,9 @@ func (r *AgentRepository) FindRevisionByDigest(
 ) (domain.AgentRevision, error) {
 	const query = `SELECT agent_name, revision_id, content_digest, source_path, artifact_path,
 	       environment_json, prompt, vendor_name, vendor_model, schedule_type,
-	       schedule_expression, status, created_at, finalized_at, error_message
+	       schedule_expression, status, created_at, finalized_at, error_message,
+	       contract_input_schema_raw, contract_output_schema_raw,
+	       contract_input_schema_digest, contract_output_schema_digest, contract_digest
 	       FROM agent_revisions WHERE agent_name = ? AND content_digest = ?`
 
 	revision, err := scanRevision(r.db.QueryRowContext(ctx, query, agentName, contentDigest))
@@ -338,7 +348,9 @@ func (r *AgentRepository) FindLatestFinalizedRevision(
 ) (domain.AgentRevision, error) {
 	const query = `SELECT agent_name, revision_id, content_digest, source_path, artifact_path,
 	       environment_json, prompt, vendor_name, vendor_model, schedule_type,
-	       schedule_expression, status, created_at, finalized_at, error_message
+	       schedule_expression, status, created_at, finalized_at, error_message,
+	       contract_input_schema_raw, contract_output_schema_raw,
+	       contract_input_schema_digest, contract_output_schema_digest, contract_digest
 	       FROM agent_revisions
 	       WHERE agent_name = ? AND status = ?
 	       ORDER BY created_at DESC, revision_id DESC
@@ -510,8 +522,10 @@ func (r *AgentRepository) upsertAgent(
 	           name, revision, definition_source_path, definition_markdown,
 	           prompt, enabled, vendor_name, vendor_model, schedule_type,
 	           schedule_expression, next_run_at, status, last_run_id, last_error,
-	           created_at, updated_at, applied_at
-	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	           created_at, updated_at, applied_at, contract_input_schema_raw,
+	           contract_output_schema_raw, contract_input_schema_digest,
+	           contract_output_schema_digest
+	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	       ON CONFLICT(name) DO UPDATE SET
 	           revision = excluded.revision,
 	           definition_source_path = excluded.definition_source_path,
@@ -527,7 +541,11 @@ func (r *AgentRepository) upsertAgent(
 	           last_run_id = excluded.last_run_id,
 	           last_error = excluded.last_error,
 	           updated_at = excluded.updated_at,
-	           applied_at = excluded.applied_at`
+	           applied_at = excluded.applied_at,
+	           contract_input_schema_raw = excluded.contract_input_schema_raw,
+	           contract_output_schema_raw = excluded.contract_output_schema_raw,
+	           contract_input_schema_digest = excluded.contract_input_schema_digest,
+	           contract_output_schema_digest = excluded.contract_output_schema_digest`
 
 	if _, err := tx.ExecContext(ctx, query,
 		agent.Name,
@@ -547,6 +565,10 @@ func (r *AgentRepository) upsertAgent(
 		formatTime(agent.CreatedAt),
 		formatTime(agent.UpdatedAt),
 		formatTime(agent.AppliedAt),
+		contractInputSchemaRaw(agent.Contract),
+		contractOutputSchemaRaw(agent.Contract),
+		contractInputSchemaDigest(agent.Contract),
+		contractOutputSchemaDigest(agent.Contract),
 	); err != nil {
 		return fmt.Errorf("upsert agent: %w", err)
 	}
@@ -634,8 +656,10 @@ func upsertRevision(ctx context.Context, tx *sql.Tx, revision domain.AgentRevisi
 	const query = `INSERT INTO agent_revisions (
 	           agent_name, revision_id, content_digest, source_path, artifact_path,
 	           environment_json, prompt, vendor_name, vendor_model, schedule_type,
-	           schedule_expression, status, created_at, finalized_at, error_message
-	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	           schedule_expression, status, created_at, finalized_at, error_message,
+	           contract_input_schema_raw, contract_output_schema_raw,
+	           contract_input_schema_digest, contract_output_schema_digest, contract_digest
+	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	       ON CONFLICT(agent_name, revision_id) DO UPDATE SET
 	           content_digest = excluded.content_digest,
 	           source_path = excluded.source_path,
@@ -648,7 +672,12 @@ func upsertRevision(ctx context.Context, tx *sql.Tx, revision domain.AgentRevisi
 	           schedule_expression = excluded.schedule_expression,
 	           status = excluded.status,
 	           finalized_at = excluded.finalized_at,
-	           error_message = excluded.error_message`
+	           error_message = excluded.error_message,
+	           contract_input_schema_raw = excluded.contract_input_schema_raw,
+	           contract_output_schema_raw = excluded.contract_output_schema_raw,
+	           contract_input_schema_digest = excluded.contract_input_schema_digest,
+	           contract_output_schema_digest = excluded.contract_output_schema_digest,
+	           contract_digest = excluded.contract_digest`
 
 	if _, err := tx.ExecContext(ctx, query,
 		revision.AgentName,
@@ -666,6 +695,11 @@ func upsertRevision(ctx context.Context, tx *sql.Tx, revision domain.AgentRevisi
 		formatTime(revision.CreatedAt),
 		nullTime(revision.FinalizedAt),
 		nullString(revision.ErrorMessage),
+		nullString(revision.ContractInputSchemaRaw),
+		nullString(revision.ContractOutputSchemaRaw),
+		nullString(revision.ContractInputSchemaDigest),
+		nullString(revision.ContractOutputSchemaDigest),
+		nullString(revision.ContractDigest),
 	); err != nil {
 		return fmt.Errorf("upsert agent revision %q: %w", revision.RevisionID, err)
 	}
@@ -813,6 +847,8 @@ func scanAgent(scanner agentScanner) (domain.Agent, error) {
 		agent                                               domain.Agent
 		enabled                                             int
 		scheduleExpression, nextRunAt, lastRunID, lastError sql.NullString
+		contractInputRaw, contractOutputRaw                 sql.NullString
+		contractInputDigest, contractOutputDigest           sql.NullString
 		createdAt, updatedAt, appliedAt                     string
 	)
 
@@ -834,6 +870,10 @@ func scanAgent(scanner agentScanner) (domain.Agent, error) {
 		&createdAt,
 		&updatedAt,
 		&appliedAt,
+		&contractInputRaw,
+		&contractOutputRaw,
+		&contractInputDigest,
+		&contractOutputDigest,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -863,6 +903,12 @@ func scanAgent(scanner agentScanner) (domain.Agent, error) {
 	if agent.AppliedAt, err = parseTime(appliedAt); err != nil {
 		return domain.Agent{}, err
 	}
+	agent.Contract = scanContract(
+		contractInputRaw,
+		contractOutputRaw,
+		contractInputDigest,
+		contractOutputDigest,
+	)
 
 	return agent, nil
 }
@@ -1077,6 +1123,9 @@ func scanRevision(scanner agentScanner) (domain.AgentRevision, error) {
 	var (
 		revision                                      domain.AgentRevision
 		scheduleExpression, finalizedAt, errorMessage sql.NullString
+		contractInputRaw, contractOutputRaw           sql.NullString
+		contractInputDigest, contractOutputDigest     sql.NullString
+		contractDigest                                sql.NullString
 		createdAt                                     string
 	)
 
@@ -1096,6 +1145,11 @@ func scanRevision(scanner agentScanner) (domain.AgentRevision, error) {
 		&createdAt,
 		&finalizedAt,
 		&errorMessage,
+		&contractInputRaw,
+		&contractOutputRaw,
+		&contractInputDigest,
+		&contractOutputDigest,
+		&contractDigest,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1117,8 +1171,26 @@ func scanRevision(scanner agentScanner) (domain.AgentRevision, error) {
 	if revision.CreatedAt, errParse = parseTime(createdAt); errParse != nil {
 		return domain.AgentRevision{}, errParse
 	}
+	revision.ContractInputSchemaRaw = contractInputRaw.String
+	revision.ContractOutputSchemaRaw = contractOutputRaw.String
+	revision.ContractInputSchemaDigest = contractInputDigest.String
+	revision.ContractOutputSchemaDigest = contractOutputDigest.String
+	revision.ContractDigest = contractDigest.String
 
 	return revision, nil
+}
+
+func scanContract(inputRaw, outputRaw, inputDigest, outputDigest sql.NullString) *domain.AgentContract {
+	if !inputRaw.Valid && !outputRaw.Valid && !inputDigest.Valid && !outputDigest.Valid {
+		return nil
+	}
+
+	return &domain.AgentContract{
+		InputSchemaRaw:     inputRaw.String,
+		OutputSchemaRaw:    outputRaw.String,
+		InputSchemaDigest:  inputDigest.String,
+		OutputSchemaDigest: outputDigest.String,
+	}
 }
 
 func marshalList(values []string) (string, error) {
@@ -1154,6 +1226,34 @@ func nullString(value string) any {
 	}
 
 	return value
+}
+
+func contractInputSchemaRaw(contract *domain.AgentContract) any {
+	if contract == nil {
+		return nil
+	}
+	return nullString(contract.InputSchemaRaw)
+}
+
+func contractOutputSchemaRaw(contract *domain.AgentContract) any {
+	if contract == nil {
+		return nil
+	}
+	return nullString(contract.OutputSchemaRaw)
+}
+
+func contractInputSchemaDigest(contract *domain.AgentContract) any {
+	if contract == nil {
+		return nil
+	}
+	return nullString(contract.InputSchemaDigest)
+}
+
+func contractOutputSchemaDigest(contract *domain.AgentContract) any {
+	if contract == nil {
+		return nil
+	}
+	return nullString(contract.OutputSchemaDigest)
 }
 
 func nullTime(value *time.Time) any {

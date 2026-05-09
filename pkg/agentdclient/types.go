@@ -1,6 +1,7 @@
 package agentdclient
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -56,12 +57,13 @@ type ApplyResponse struct {
 }
 
 type AgentSummary struct {
-	Name          string     `json:"name"`
-	Enabled       bool       `json:"enabled"`
-	Status        string     `json:"status"`
-	ScheduleType  string     `json:"schedule_type"`
-	NextRunAt     *time.Time `json:"next_run_at,omitempty"`
-	LastRunStatus string     `json:"last_run_status,omitempty"`
+	Name          string           `json:"name"`
+	Enabled       bool             `json:"enabled"`
+	Status        string           `json:"status"`
+	ScheduleType  string           `json:"schedule_type"`
+	NextRunAt     *time.Time       `json:"next_run_at,omitempty"`
+	LastRunStatus string           `json:"last_run_status,omitempty"`
+	Contract      *ContractSummary `json:"contract,omitempty"`
 }
 
 type AgentDetail struct {
@@ -71,6 +73,11 @@ type AgentDetail struct {
 	VendorModel string `json:"vendor_model"`
 	LastRunID   string `json:"last_run_id,omitempty"`
 	RecentError string `json:"recent_error,omitempty"`
+}
+
+type ContractSummary struct {
+	InputSchemaDigest  string `json:"input_schema_digest,omitempty"`
+	OutputSchemaDigest string `json:"output_schema_digest,omitempty"`
 }
 
 type AgentListResponse struct {
@@ -137,15 +144,22 @@ type RunSummary struct {
 	CompletedAt   *time.Time `json:"completed_at,omitempty"`
 }
 
+type RunInput struct {
+	Input        json.RawMessage
+	LegacyInputs map[string]string
+}
+
 type RunListResponse struct {
 	Runs []RunSummary `json:"runs"`
 }
 
 type RunResult struct {
 	RunSummary
-	Result        string   `json:"result,omitempty"`
-	ResultSummary string   `json:"result_summary,omitempty"`
-	Failure       *Failure `json:"failure,omitempty"`
+	ResultFormat  string          `json:"result_format,omitempty"`
+	Result        string          `json:"result,omitempty"`
+	ResultJSON    json.RawMessage `json:"result_json,omitempty"`
+	ResultSummary string          `json:"result_summary,omitempty"`
+	Failure       *Failure        `json:"failure,omitempty"`
 }
 
 type Failure struct {

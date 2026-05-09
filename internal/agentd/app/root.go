@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -36,6 +37,8 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	if errOut == nil {
 		errOut = os.Stderr
 	}
+	var daemon bool
+	var deamon bool
 
 	cmd := &cobra.Command{
 		Use:           "agentd",
@@ -46,11 +49,17 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 			return cmd.Help()
 		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			if daemon || deamon {
+				return fmt.Errorf("daemon mode cannot be combined with a client subcommand")
+			}
+
 			return cfg.Validate()
 		},
 	}
 	cmd.SetOut(out)
 	cmd.SetErr(errOut)
+	cmd.PersistentFlags().BoolVarP(&daemon, "daemon", "d", false, "start the local agentd daemon")
+	cmd.PersistentFlags().BoolVar(&deamon, "deamon", false, "start the local agentd daemon (deprecated spelling)")
 	cmd.PersistentFlags().StringVar(&cfg.ServerURL, "server", cfg.ServerURL, "agentdserver URL")
 	cmd.PersistentFlags().StringVar(&cfg.OutputFormat, "output", cfg.OutputFormat, "output format: text or json")
 	if opts.Client != nil {

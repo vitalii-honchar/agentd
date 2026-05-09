@@ -7,6 +7,45 @@ schedule:
 vendor:
   name: openai
   model: gpt-5.4-mini
+contract:
+  input: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    }
+  output: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string" },
+        "repositories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string" },
+              "why_it_matters": { "type": "string" },
+              "signals": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "risks": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["name", "url", "why_it_matters", "signals", "risks"]
+          }
+        },
+        "no_action_note": { "type": "string" }
+      },
+      "required": ["summary", "repositories", "no_action_note"]
+    }
 tools:
   - name: fetch_github_trending
     kind: custom_tool

@@ -3,6 +3,7 @@ package runtime
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"syscall"
@@ -77,4 +78,15 @@ func (e *ProcessToolExecutor) Execute(
 	}
 
 	return result, nil
+}
+
+func ToolResultObservationJSON(result appruntime.ToolResult) ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"stdout":     result.StdoutSummary,
+		"stderr":     result.StderrSummary,
+		"result":     result.ResultSummary,
+		"exit_code":  result.ExitCode,
+		"timed_out":  result.TimedOut,
+		"successful": result.ExitCode == 0 && !result.TimedOut,
+	})
 }

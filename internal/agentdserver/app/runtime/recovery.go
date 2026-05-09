@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
+	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
@@ -45,6 +46,7 @@ func (u *RecoveryUseCase) Recover(ctx context.Context) (RecoveryResult, error) {
 		for _, run := range active {
 			run.Status = domain.AgentRunStatusInterrupted
 			run.CompletedAt = &recoveredAt
+			markInterruptedRun(&run)
 			if err := repo.Update(ctx, run); err != nil {
 				return RecoveryResult{}, err
 			}
@@ -53,4 +55,22 @@ func (u *RecoveryUseCase) Recover(ctx context.Context) (RecoveryResult, error) {
 	}
 
 	return RecoveryResult{InterruptedRuns: interrupted, RecoveredAt: recoveredAt}, nil
+}
+
+func markInterruptedRun(run *domain.AgentRun) {
+	if run == nil {
+		return
+	}
+	if run.ErrorCode == "" {
+		run.ErrorCode = "run_interrupted"
+	}
+	if run.ErrorMessage == "" {
+		run.ErrorMessage = "run interrupted during daemon recovery"
+	}
+	if run.Result == "" {
+		run.Result = "run interrupted during daemon recovery"
+	}
+	if run.ResultSummary == "" {
+		run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+	}
 }

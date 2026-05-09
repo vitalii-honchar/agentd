@@ -11,12 +11,16 @@ import (
 const (
 	errorCodeAgentDisabled         = "agent_disabled"
 	errorCodeAgentNotFound         = "agent_not_found"
+	errorCodeContractInputInvalid  = "contract_input_invalid"
+	errorCodeContractOutputInvalid = "contract_output_invalid"
 	errorCodeDaemonUnavailable     = "daemon_unavailable"
 	errorCodeInternal              = "internal_error"
 	errorCodeInvalidJSON           = "invalid_json"
 	errorCodeInvalidQuery          = "invalid_query"
 	errorCodeInvalidState          = "invalid_state"
 	errorCodeRemoteClientForbidden = "remote_client_forbidden"
+	errorCodeProviderError         = "provider_error"
+	errorCodeReActFailed           = "react_failed"
 	errorCodeRunAlreadyActive      = "run_already_active"
 	errorCodeRunNotFound           = "run_not_found"
 	errorCodeRunNotTerminal        = "run_not_terminal"
@@ -52,6 +56,8 @@ func writeQueryError(w stdhttp.ResponseWriter, err error) {
 
 func writeExecuteError(w stdhttp.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, domain.ErrContractInputInvalid):
+		writeError(w, stdhttp.StatusBadRequest, errorCodeContractInputInvalid, err.Error(), nil)
 	case errors.Is(err, domain.ErrNotFound):
 		writeError(w, stdhttp.StatusNotFound, errorCodeAgentNotFound, err.Error(), nil)
 	default:

@@ -35,18 +35,28 @@ func NewInspectCommand(client QueryClient, output Output) *cobra.Command {
 				return output.Write(agent)
 			}
 
-			return output.Write(fmt.Sprintf(
-				"name: %s\nstatus: %s\nschedule: %s\nvendor: %s/%s\nrevision: %s\nlast_run: %s",
-				agent.Name,
-				agent.Status,
-				agent.ScheduleType,
-				agent.VendorName,
-				agent.VendorModel,
-				agent.Revision,
-				agent.LastRunID,
-			))
+			return output.Write(formatAgentInspect(agent))
 		},
 	}
+}
+
+func formatAgentInspect(agent AgentDetail) string {
+	var builder strings.Builder
+	writeRevisionLine(&builder, "name", agent.Name)
+	writeRevisionLine(&builder, "status", agent.Status)
+	writeRevisionLine(&builder, "schedule", agent.ScheduleType)
+	writeRevisionLine(&builder, "vendor", agent.VendorName+"/"+agent.VendorModel)
+	writeRevisionLine(&builder, "revision", agent.Revision)
+	writeRevisionLine(&builder, "last_run", agent.LastRunID)
+	if agent.Contract != nil {
+		writeRevisionLine(&builder, "contract", "enabled")
+		writeRevisionLine(&builder, "contract_input_schema", agent.Contract.InputSchemaDigest)
+		writeRevisionLine(&builder, "contract_output_schema", agent.Contract.OutputSchemaDigest)
+	} else {
+		writeRevisionLine(&builder, "contract", "not configured")
+	}
+
+	return strings.TrimRight(builder.String(), "\n")
 }
 
 func formatRevisionInspect(revision RevisionDetail) string {

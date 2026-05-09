@@ -244,6 +244,7 @@ func (u *ApplyUseCase) createRevisionArtifact(
 	}
 	revision := result.Revision
 	revision.ContentDigest = contentDigest
+	applyContractToRevision(&revision, definition.Contract, revisionID)
 	revision.EnvironmentJSON = "[]"
 	revision.Environment = environment
 	revision.ArtifactFiles = mergeArtifactFiles(revision.ArtifactFiles, envArtifactFiles)
@@ -340,6 +341,7 @@ func agentFromDefinition(
 		Prompt:             definition.Prompt,
 		Enabled:            definition.Enabled,
 		Vendor:             definition.Vendor,
+		Contract:           copyContract(definition.Contract),
 		Schedule:           definition.Schedule,
 		Tools:              definition.Tools,
 		MCPServers:         definition.MCPServers,
@@ -362,7 +364,7 @@ func revisionFromDefinition(
 		return domain.AgentRevision{}, err
 	}
 
-	return domain.AgentRevision{
+	revision := domain.AgentRevision{
 		AgentName:       definition.Name,
 		RevisionID:      revisionID,
 		ContentDigest:   contentDigest,
@@ -378,7 +380,21 @@ func revisionFromDefinition(
 		Tools:           revisionToolsFromDefinition(definition, revisionID, now),
 		ArtifactFiles:   artifactFiles,
 		Environment:     environment,
-	}, nil
+	}
+	applyContractToRevision(&revision, definition.Contract, revisionID)
+
+	return revision, nil
+}
+
+func applyContractToRevision(revision *domain.AgentRevision, contract *domain.AgentContract, revisionID string) {
+	if revision == nil || contract == nil {
+		return
+	}
+	revision.ContractInputSchemaRaw = contract.InputSchemaRaw
+	revision.ContractOutputSchemaRaw = contract.OutputSchemaRaw
+	revision.ContractInputSchemaDigest = contract.InputSchemaDigest
+	revision.ContractOutputSchemaDigest = contract.OutputSchemaDigest
+	revision.ContractDigest = digestStrings(contract.InputSchemaDigest, contract.OutputSchemaDigest)
 }
 
 func revisionToolsFromDefinition(

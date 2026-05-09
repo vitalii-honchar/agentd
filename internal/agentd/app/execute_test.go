@@ -3,12 +3,13 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/vitalii-honchar/agentd/internal/agentd/config"
-
-	"github.com/spf13/cobra"
 )
 
 func TestExecuteCommandCallsClient(t *testing.T) {
@@ -47,6 +48,50 @@ func TestExecuteCommandPassesInputs(t *testing.T) {
 	}
 	if client.executeInputs["url"] != "https://example.com" {
 		t.Fatalf("execute inputs: %#v", client.executeInputs)
+	}
+}
+
+func TestExecuteCommandPassesInputJSON(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeRuntimeClient{run: RunResponse{
+		RunID: "run-1", AgentName: "contracted-agent", Status: "running",
+	}}
+	var out bytes.Buffer
+	cmd := NewExecuteCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"contracted-agent", "--input-json", `{"topic":"agentd","limit":3}`})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	var input map[string]any
+	if err := json.Unmarshal(client.executeRunInput.Input, &input); err != nil {
+		t.Fatalf("decode input JSON: %v raw=%s", err, client.executeRunInput.Input)
+	}
+	if input["topic"] != "agentd" || input["limit"] != float64(3) {
+		t.Fatalf("input JSON: %#v", input)
+	}
+}
+
+func TestExecuteCommandPassesInputFile(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "input.json")
+	if err := os.WriteFile(path, []byte(`{"topic":"agentd"}`), 0o600); err != nil {
+		t.Fatalf("write input file: %v", err)
+	}
+	client := &fakeRuntimeClient{run: RunResponse{
+		RunID: "run-1", AgentName: "contracted-agent", Status: "running",
+	}}
+	var out bytes.Buffer
+	cmd := NewExecuteCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"contracted-agent", "--input-file", path})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if string(client.executeRunInput.Input) != `{"topic":"agentd"}` {
+		t.Fatalf("input file JSON: %s", client.executeRunInput.Input)
 	}
 }
 
@@ -108,16 +153,27 @@ func TestRootCommandWiresRuntimeCommands(t *testing.T) {
 }
 
 type fakeRuntimeClient struct {
-	executeAgent  string
-	executeInputs map[string]string
-	stopRequest   StopRequest
-	run           RunResponse
-	err           error
+	executeAgent    string
+	executeInputs   map[string]string
+	executeRunInput RunInput
+	stopRequest     StopRequest
+	run             RunResponse
+	err             error
 }
 
 func (f *fakeRuntimeClient) Execute(_ context.Context, agentName string, inputs map[string]string) (RunResponse, error) {
 	f.executeAgent = agentName
 	f.executeInputs = inputs
+	if f.err != nil {
+		return RunResponse{}, f.err
+	}
+
+	return f.run, nil
+}
+
+func (f *fakeRuntimeClient) ExecuteWithInput(_ context.Context, agentName string, input RunInput) (RunResponse, error) {
+	f.executeAgent = agentName
+	f.executeRunInput = input
 	if f.err != nil {
 		return RunResponse{}, f.err
 	}
@@ -132,14 +188,4 @@ func (f *fakeRuntimeClient) Stop(_ context.Context, request StopRequest) (RunRes
 	}
 
 	return f.run, nil
-}
-
-func requireCommand(t *testing.T, cmd interface{ Commands() []*cobra.Command }, name string) {
-	t.Helper()
-	for _, child := range cmd.Commands() {
-		if child.Name() == name {
-			return
-		}
-	}
-	t.Fatalf("command %q was not wired", name)
 }

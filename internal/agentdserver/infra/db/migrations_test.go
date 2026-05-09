@@ -96,6 +96,57 @@ func TestSettingsMigrationsEnforceRevisionDigestUniquenessPerAgent(t *testing.T)
 	}
 }
 
+func TestSettingsMigrationsAddNullableContractMetadata(t *testing.T) {
+	t.Parallel()
+
+	database, err := New("settings", Config{
+		Path:         t.TempDir() + "/settings.db",
+		MaxOpenConns: 1,
+		Pragmas:      PragmasSettings,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer stopDB(t, database)
+
+	if err := database.Start(context.Background()); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	for _, column := range []string{
+		"contract_input_schema_raw",
+		"contract_output_schema_raw",
+		"contract_input_schema_digest",
+		"contract_output_schema_digest",
+	} {
+		assertNullableColumnExists(t, database, "agents", column)
+	}
+	for _, column := range []string{
+		"contract_input_schema_raw",
+		"contract_output_schema_raw",
+		"contract_input_schema_digest",
+		"contract_output_schema_digest",
+		"contract_digest",
+	} {
+		assertNullableColumnExists(t, database, "agent_revisions", column)
+	}
+
+	insertMigrationTestAgent(t, database, "legacy-contract-agent")
+	insertMigrationTestRevision(t, database, "legacy-contract-agent", "revision-1", "sha256:legacy")
+
+	var inputSchema any
+	if err := database.QueryRowContext(
+		context.Background(),
+		"SELECT contract_input_schema_raw FROM agents WHERE name = ?",
+		"legacy-contract-agent",
+	).Scan(&inputSchema); err != nil {
+		t.Fatalf("select legacy agent contract column: %v", err)
+	}
+	if inputSchema != nil {
+		t.Fatalf("legacy agent contract column: got %#v want nil", inputSchema)
+	}
+}
+
 func TestEmbeddedRuntimeMigrations(t *testing.T) {
 	t.Parallel()
 
@@ -187,6 +238,40 @@ func assertObjectExists(t *testing.T, database *DB, objectType, name string) {
 	if count != 1 {
 		t.Fatalf("%s %s count: got %d want 1", objectType, name, count)
 	}
+}
+
+func assertNullableColumnExists(t *testing.T, database *DB, table string, column string) {
+	t.Helper()
+
+	rows, err := database.QueryContext(context.Background(), "PRAGMA table_info("+table+")")
+	if err != nil {
+		t.Fatalf("query table info for %s: %v", table, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			columnType string
+			notNull    int
+			defaultVal any
+			pk         int
+		)
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultVal, &pk); err != nil {
+			t.Fatalf("scan table info for %s: %v", table, err)
+		}
+		if name == column {
+			if notNull != 0 {
+				t.Fatalf("column %s.%s should be nullable", table, column)
+			}
+			return
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate table info for %s: %v", table, err)
+	}
+	t.Fatalf("column %s.%s does not exist", table, column)
 }
 
 func stopDB(t *testing.T, database *DB) {

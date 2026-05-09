@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -50,6 +51,31 @@ const (
 	AgentRevisionStatusCorrupt   AgentRevisionStatus = "corrupt"
 )
 
+type ResultFormat string
+
+const (
+	ResultFormatText ResultFormat = "text"
+	ResultFormatJSON ResultFormat = "json"
+)
+
+type RuntimeInputSource string
+
+const (
+	RuntimeInputSourceCLI          RuntimeInputSource = "cli"
+	RuntimeInputSourceFile         RuntimeInputSource = "file"
+	RuntimeInputSourcePublicClient RuntimeInputSource = "public_client"
+	RuntimeInputSourceSchedule     RuntimeInputSource = "schedule"
+	RuntimeInputSourceInternalTest RuntimeInputSource = "internal_test"
+)
+
+type ReActDecision string
+
+const (
+	ReActDecisionToolCall ReActDecision = "tool_call"
+	ReActDecisionFinal    ReActDecision = "final"
+	ReActDecisionFail     ReActDecision = "fail"
+)
+
 type RevisionEnvironmentSource string
 
 const (
@@ -85,14 +111,22 @@ const (
 )
 
 const (
-	RunActionLLMPromptSend       = "llm.prompt.send"
-	RunActionLLMResponseReceive  = "llm.response.receive"
-	RunActionToolExecuteStart    = "tool.execute.start"
-	RunActionToolExecuteComplete = "tool.execute.complete"
-	RunActionToolExecuteFail     = "tool.execute.fail"
-	RunActionResultPersisted     = "run.result.persisted"
-	RunActionComplete            = "run.complete"
-	RunActionFail                = "run.fail"
+	RunActionLLMPromptSend          = "llm.prompt.send"
+	RunActionLLMResponseReceive     = "llm.response.receive"
+	RunActionProviderFail           = "provider.fail"
+	RunActionContractInputValidated = "contract.input.validated"
+	RunActionContractInputRejected  = "contract.input.rejected"
+	RunActionReActStep              = "react.step"
+	RunActionReActToolObservation   = "react.tool.observation"
+	RunActionToolExecuteStart       = "tool.execute.start"
+	RunActionToolExecuteComplete    = "tool.execute.complete"
+	RunActionToolExecuteFail        = "tool.execute.fail"
+	RunActionOutputFinalizeStart    = "output.finalize.start"
+	RunActionOutputFinalizeDone     = "output.finalize.complete"
+	RunActionOutputFinalizeFail     = "output.finalize.fail"
+	RunActionResultPersisted        = "run.result.persisted"
+	RunActionComplete               = "run.complete"
+	RunActionFail                   = "run.fail"
 )
 
 var agentNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
@@ -104,6 +138,7 @@ type AgentDefinition struct {
 	Vendor      Vendor
 	Environment DefinitionEnvironment
 	Inputs      []InputDefinition
+	Contract    *AgentContract
 	Tools       []ToolPermission
 	MCPServers  []ToolPermission
 	Access      AccessPolicy
@@ -163,6 +198,42 @@ type Vendor struct {
 	Model string
 }
 
+type ProviderMetadata struct {
+	Name                 string
+	Model                string
+	RequiresDirectAPIKey bool
+	ConfigJSON           string
+}
+
+type AgentContract struct {
+	InputSchemaRaw      string
+	OutputSchemaRaw     string
+	InputSchemaDigest   string
+	OutputSchemaDigest  string
+	CreatedFromRevision string
+}
+
+type RuntimeInput struct {
+	RawJSON      json.RawMessage
+	LegacyInputs map[string]string
+	Source       RuntimeInputSource
+}
+
+type ReActStep struct {
+	StepIndex          int
+	RunID              string
+	AgentName          string
+	RevisionID         string
+	ModelMessage       string
+	Decision           ReActDecision
+	ToolName           string
+	ToolArgsJSON       string
+	ObservationSummary string
+	StartedAt          time.Time
+	CompletedAt        *time.Time
+	ErrorMessage       string
+}
+
 type DefinitionEnvironment struct {
 	Variables map[string]string
 	Files     []string
@@ -196,6 +267,7 @@ type Agent struct {
 	Prompt             string
 	Enabled            bool
 	Vendor             Vendor
+	Contract           *AgentContract
 	Schedule           Schedule
 	Tools              []ToolPermission
 	MCPServers         []ToolPermission
@@ -220,22 +292,28 @@ func (a Agent) CanExecute() error {
 }
 
 type AgentRun struct {
-	ID                string
-	AgentName         string
-	AgentRevision     string
-	Trigger           RunTrigger
-	Status            AgentRunStatus
-	StartedAt         *time.Time
-	CompletedAt       *time.Time
-	DueAt             *time.Time
-	WorkDir           string
-	LogPath           string
-	ProviderRequestID string
-	Result            string
-	ResultSummary     string
-	ErrorCode         string
-	ErrorMessage      string
-	StopRequestedAt   *time.Time
+	ID                         string
+	AgentName                  string
+	AgentRevision              string
+	Trigger                    RunTrigger
+	Status                     AgentRunStatus
+	StartedAt                  *time.Time
+	CompletedAt                *time.Time
+	DueAt                      *time.Time
+	WorkDir                    string
+	LogPath                    string
+	InputJSON                  json.RawMessage
+	ContractInputSchemaDigest  string
+	ContractOutputSchemaDigest string
+	ProviderName               string
+	ProviderModel              string
+	ProviderRequestID          string
+	ResultFormat               ResultFormat
+	Result                     string
+	ResultSummary              string
+	ErrorCode                  string
+	ErrorMessage               string
+	StopRequestedAt            *time.Time
 }
 
 type ToolExecution struct {
@@ -254,23 +332,28 @@ type ToolExecution struct {
 }
 
 type AgentRevision struct {
-	AgentName         string
-	RevisionID        string
-	ContentDigest     string
-	SourcePath        string
-	ArtifactPath      string
-	EnvironmentJSON   string
-	Prompt            string
-	Vendor            Vendor
-	Schedule          Schedule
-	Status            AgentRevisionStatus
-	CreatedAt         time.Time
-	FinalizedAt       *time.Time
-	ErrorMessage      string
-	Tools             []RevisionTool
-	ArtifactFiles     []RevisionArtifactFile
-	Environment       []RevisionEnvironment
-	IsLatestFinalized bool
+	AgentName                  string
+	RevisionID                 string
+	ContentDigest              string
+	SourcePath                 string
+	ArtifactPath               string
+	EnvironmentJSON            string
+	Prompt                     string
+	Vendor                     Vendor
+	Schedule                   Schedule
+	ContractInputSchemaRaw     string
+	ContractOutputSchemaRaw    string
+	ContractInputSchemaDigest  string
+	ContractOutputSchemaDigest string
+	ContractDigest             string
+	Status                     AgentRevisionStatus
+	CreatedAt                  time.Time
+	FinalizedAt                *time.Time
+	ErrorMessage               string
+	Tools                      []RevisionTool
+	ArtifactFiles              []RevisionArtifactFile
+	Environment                []RevisionEnvironment
+	IsLatestFinalized          bool
 }
 
 type RevisionTool struct {

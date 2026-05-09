@@ -15,7 +15,8 @@ agentd apply examples/reddit-customer-pain-monitor/reddit-customer-pain-monitor.
 agentd execute reddit-customer-pain-monitor
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs reddit-customer-pain-monitor --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result reddit-customer-pain-monitor` to compare daily pain themes over time.
+Run results are finalized as JSON matching the example contract, including `summary`, `recurring_pains`, and `opportunity_hypotheses`.

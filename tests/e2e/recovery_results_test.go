@@ -120,6 +120,34 @@ func TestManagerRecoveryInterruptsActiveToolProcess(t *testing.T) {
 	}
 }
 
+func TestContractedRunRecoveryAndObservabilityEvents(t *testing.T) {
+	t.Parallel()
+
+	provider := &countingE2EProvider{}
+	stack := newRuntimeStackWithProvider(t, provider)
+	postApply(t, stack.server, "contracted-agent.md", contractedE2EDefinition())
+
+	response := postRunRaw(t, stack.server, "contracted-agent", `{"input":{"topic":"agentd"}}`)
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("run status: got %d body %s", response.Code, response.Body.String())
+	}
+	var body model.RunResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode run response: %v", err)
+	}
+	waitForE2ERunStatus(t, stack.runtimeDBs, "contracted-agent", body.RunID, domain.AgentRunStatusCompleted)
+	waitForEventType(t, stack.runtimeDBs, "contracted-agent", body.RunID, domain.RunActionContractInputValidated)
+	waitForEventType(t, stack.runtimeDBs, "contracted-agent", body.RunID, domain.RunActionOutputFinalizeDone)
+
+	result, err := stack.runtimeDBs.Runs("contracted-agent").FindByID(context.Background(), body.RunID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if result.ResultFormat != domain.ResultFormatJSON || result.ContractOutputSchemaDigest == "" {
+		t.Fatalf("contracted run metadata: %#v", result)
+	}
+}
+
 func openSettingsDB(t *testing.T, path string) *db.DB {
 	t.Helper()
 

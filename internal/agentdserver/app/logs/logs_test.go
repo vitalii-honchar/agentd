@@ -10,26 +10,26 @@ import (
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
-func TestUseCaseReadsLatestRunLogs(t *testing.T) {
+func TestUseCaseReadsRunIDLogs(t *testing.T) {
 	t.Parallel()
 
 	run := domain.AgentRun{
-		ID:        "run-latest",
+		ID:        "run-1",
 		AgentName: "release-notes-helper",
-		LogPath:   "/tmp/run-latest.log",
+		LogPath:   "/tmp/run-1.log",
 		Status:    domain.AgentRunStatusCompleted,
 	}
 	reader := &fakeLogReader{entries: []app.LogEntry{{RunID: run.ID, Line: "done"}}}
 	useCase := newUseCaseForTest(t, reader, run)
 
-	result, err := useCase.Read(context.Background(), Query{AgentName: "release-notes-helper", Tail: 10})
+	result, err := useCase.Read(context.Background(), Query{RunID: "run-1", Tail: 10})
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
-	if result.Run.ID != "run-latest" || len(result.Entries) != 1 {
+	if result.Run.ID != "run-1" || len(result.Entries) != 1 {
 		t.Fatalf("result: %#v", result)
 	}
-	if reader.query.RunID != "run-latest" || reader.query.LogPath != "/tmp/run-latest.log" || reader.query.Tail != 10 {
+	if reader.query.RunID != "run-1" || reader.query.LogPath != "/tmp/run-1.log" || reader.query.Tail != 10 {
 		t.Fatalf("reader query: %#v", reader.query)
 	}
 }
@@ -47,14 +47,64 @@ func TestUseCaseReadsSpecificRunLogs(t *testing.T) {
 	useCase := newUseCaseForTest(t, reader, run)
 
 	result, err := useCase.Read(context.Background(), Query{
-		AgentName: "release-notes-helper",
-		RunID:     "run-1",
+		RunID: "run-1",
 	})
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
 	if result.Run.ID != "run-1" || result.Entries[0].Line != "specific" {
 		t.Fatalf("result: %#v", result)
+	}
+}
+
+func TestUseCaseReadsLogsByRunIDAcrossAgents(t *testing.T) {
+	t.Parallel()
+
+	run := domain.AgentRun{
+		ID:        "run-target",
+		AgentName: "agent-b",
+		LogPath:   "/tmp/run-target.log",
+		Status:    domain.AgentRunStatusCompleted,
+	}
+	reader := &fakeLogReader{entries: []app.LogEntry{{RunID: run.ID, Line: "target"}}}
+	useCase, err := NewUseCase(
+		newMemoryAgentRepository(testAgent("agent-a"), testAgent("agent-b")),
+		&memoryRuntimeDBManager{runs: map[string]app.AgentRunRepository{
+			"agent-a": &memoryRunRepository{runs: []domain.AgentRun{{ID: "run-other", AgentName: "agent-a"}}},
+			"agent-b": &memoryRunRepository{runs: []domain.AgentRun{run}},
+		}},
+		reader,
+	)
+	if err != nil {
+		t.Fatalf("NewUseCase: %v", err)
+	}
+
+	result, err := useCase.Read(context.Background(), Query{RunID: "run-target"})
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if result.Agent.Name != "agent-b" || result.Run.ID != "run-target" {
+		t.Fatalf("result: %#v", result)
+	}
+	if reader.query.AgentName != "agent-b" || reader.query.RunID != "run-target" {
+		t.Fatalf("reader query: %#v", reader.query)
+	}
+}
+
+func TestUseCaseRejectsAgentNameOnlyLogsQuery(t *testing.T) {
+	t.Parallel()
+
+	run := domain.AgentRun{
+		ID:        "run-latest",
+		AgentName: "release-notes-helper",
+		LogPath:   "/tmp/run-latest.log",
+		Status:    domain.AgentRunStatusCompleted,
+	}
+	useCase := newUseCaseForTest(t, &fakeLogReader{}, run)
+
+	_, err := useCase.Read(context.Background(), Query{AgentName: "release-notes-helper"})
+	if err == nil {
+		t.Fatal("Read error is nil")
 	}
 }
 
@@ -92,7 +142,7 @@ func TestUseCaseIncludesScopedRuntimeActionLogs(t *testing.T) {
 		t.Fatalf("NewUseCase: %v", err)
 	}
 
-	result, err := useCase.Read(context.Background(), Query{AgentName: "release-notes-helper", RunID: "run-1"})
+	result, err := useCase.Read(context.Background(), Query{RunID: "run-1"})
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
@@ -102,6 +152,90 @@ func TestUseCaseIncludesScopedRuntimeActionLogs(t *testing.T) {
 	if result.Entries[0].Message != "sent prompt to provider" {
 		t.Fatalf("message: %#v", result.Entries[0])
 	}
+}
+
+func TestUseCaseIncludesContractReActFinalizationAndFailureEvents(t *testing.T) {
+	t.Parallel()
+
+	run := domain.AgentRun{
+		ID:        "run-1",
+		AgentName: "release-notes-helper",
+		LogPath:   "/tmp/run-1.log",
+		Status:    domain.AgentRunStatusFailed,
+	}
+	events := []domain.RuntimeEvent{
+		{
+			ID:        "event-1",
+			AgentName: "release-notes-helper",
+			RunID:     run.ID,
+			EventType: domain.RunActionContractInputValidated,
+			Level:     domain.EventLevelInfo,
+			Message:   "contract input validated",
+			CreatedAt: time.Date(2026, 5, 8, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			ID:        "event-2",
+			AgentName: "release-notes-helper",
+			RunID:     run.ID,
+			EventType: domain.RunActionReActStep,
+			Level:     domain.EventLevelInfo,
+			Message:   "react step 1 tool_call lookup",
+			CreatedAt: time.Date(2026, 5, 8, 10, 0, 1, 0, time.UTC),
+		},
+		{
+			ID:        "event-3",
+			AgentName: "release-notes-helper",
+			RunID:     run.ID,
+			EventType: domain.RunActionOutputFinalizeDone,
+			Level:     domain.EventLevelInfo,
+			Message:   "structured output finalized",
+			CreatedAt: time.Date(2026, 5, 8, 10, 0, 2, 0, time.UTC),
+		},
+		{
+			ID:        "event-4",
+			AgentName: "release-notes-helper",
+			RunID:     run.ID,
+			EventType: domain.RunActionProviderFail,
+			Level:     domain.EventLevelError,
+			Message:   "provider failed",
+			CreatedAt: time.Date(2026, 5, 8, 10, 0, 3, 0, time.UTC),
+		},
+	}
+	useCase, err := NewUseCase(
+		newMemoryAgentRepository(testAgent("release-notes-helper")),
+		&memoryRuntimeDBManager{
+			runs: map[string]app.AgentRunRepository{
+				"release-notes-helper": &memoryRunRepository{runs: []domain.AgentRun{run}},
+			},
+			events: map[string]app.RuntimeEventRepository{
+				"release-notes-helper": &memoryEventRepository{events: events},
+			},
+		},
+		&fakeLogReader{},
+	)
+	if err != nil {
+		t.Fatalf("NewUseCase: %v", err)
+	}
+
+	result, err := useCase.Read(context.Background(), Query{RunID: run.ID})
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	assertLogAction(t, result.Entries, domain.RunActionContractInputValidated)
+	assertLogAction(t, result.Entries, domain.RunActionReActStep)
+	assertLogAction(t, result.Entries, domain.RunActionOutputFinalizeDone)
+	assertLogAction(t, result.Entries, domain.RunActionProviderFail)
+}
+
+func assertLogAction(t *testing.T, entries []app.LogEntry, action string) {
+	t.Helper()
+
+	for _, entry := range entries {
+		if entry.Action == action {
+			return
+		}
+	}
+	t.Fatalf("action %q not found in %#v", action, entries)
 }
 
 func TestUseCaseReturnsEmptyLogsForEmptyFile(t *testing.T) {
@@ -115,7 +249,7 @@ func TestUseCaseReturnsEmptyLogsForEmptyFile(t *testing.T) {
 	}
 	useCase := newUseCaseForTest(t, &fakeLogReader{}, run)
 
-	result, err := useCase.Read(context.Background(), Query{AgentName: "release-notes-helper"})
+	result, err := useCase.Read(context.Background(), Query{RunID: "run-empty"})
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
@@ -135,7 +269,7 @@ func TestUseCaseReturnsNotFoundForPrunedLogs(t *testing.T) {
 	}
 	useCase := newUseCaseForTest(t, &fakeLogReader{err: domain.ErrNotFound}, run)
 
-	_, err := useCase.Read(context.Background(), Query{AgentName: "release-notes-helper"})
+	_, err := useCase.Read(context.Background(), Query{RunID: "run-pruned"})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("Read error: got %v want ErrNotFound", err)
 	}

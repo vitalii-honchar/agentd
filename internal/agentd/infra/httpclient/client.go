@@ -47,6 +47,7 @@ func toAppAgentDetail(agent agentdclient.AgentDetail) app.AgentDetail {
 		VendorModel:  agent.VendorModel,
 		LastRunID:    agent.LastRunID,
 		RecentError:  agent.RecentError,
+		Contract:     toAppContractSummary(agent.Contract),
 	}
 }
 
@@ -57,6 +58,18 @@ func toAppAgentSummary(agent agentdclient.AgentSummary) app.AgentSummary {
 		Status:        agent.Status,
 		ScheduleType:  agent.ScheduleType,
 		LastRunStatus: agent.LastRunStatus,
+		Contract:      toAppContractSummary(agent.Contract),
+	}
+}
+
+func toAppContractSummary(contract *agentdclient.ContractSummary) *app.ContractSummary {
+	if contract == nil {
+		return nil
+	}
+
+	return &app.ContractSummary{
+		InputSchemaDigest:  contract.InputSchemaDigest,
+		OutputSchemaDigest: contract.OutputSchemaDigest,
 	}
 }
 
@@ -151,7 +164,9 @@ func toAppRunSummary(run agentdclient.RunSummary) app.RunSummary {
 func toAppRunResult(result agentdclient.RunResult) app.RunResult {
 	mapped := app.RunResult{
 		RunSummary:    toAppRunSummary(result.RunSummary),
+		ResultFormat:  result.ResultFormat,
 		Result:        result.Result,
+		ResultJSON:    result.ResultJSON,
 		ResultSummary: result.ResultSummary,
 	}
 	if result.Failure != nil {

@@ -19,7 +19,8 @@ agentd apply examples/website-snapshot-analyst/website-snapshot-analyst.md
 agentd execute website-snapshot-analyst --input url=https://example.com
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs website-snapshot-analyst --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result website-snapshot-analyst` to list previous website analyses.
+Run input must match the example contract (`url` as a URI), and results are finalized as JSON with website summary, audience/value, visible content, issues, and follow-up questions.

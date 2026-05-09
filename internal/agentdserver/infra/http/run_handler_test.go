@@ -67,6 +67,65 @@ func TestExecuteHandlerPassesInputs(t *testing.T) {
 	}
 }
 
+func TestExecuteHandlerPassesStructuredInput(t *testing.T) {
+	t.Parallel()
+
+	execute := &fakeExecuteUseCase{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: "contracted-agent",
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	server := NewServer(Config{}, WithExecuteUseCase(execute))
+	response := httptest.NewRecorder()
+	request := localRequest(
+		stdhttp.MethodPost,
+		"/v1/agents/contracted-agent/runs",
+		strings.NewReader(`{"input":{"topic":"agentd","limit":3}}`),
+	)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusAccepted {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusAccepted, response.Body.String())
+	}
+	var input map[string]any
+	if err := json.Unmarshal(execute.runtimeInput.RawJSON, &input); err != nil {
+		t.Fatalf("decode runtime input: %v raw=%s", err, execute.runtimeInput.RawJSON)
+	}
+	if input["topic"] != "agentd" || input["limit"] != float64(3) {
+		t.Fatalf("runtime input: %#v", input)
+	}
+	if len(execute.runtimeInput.LegacyInputs) != 0 {
+		t.Fatalf("legacy inputs should be empty for structured input: %#v", execute.runtimeInput.LegacyInputs)
+	}
+}
+
+func TestExecuteHandlerPassesLegacyInputs(t *testing.T) {
+	t.Parallel()
+
+	execute := &fakeExecuteUseCase{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: "legacy-agent",
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	server := NewServer(Config{}, WithExecuteUseCase(execute))
+	response := httptest.NewRecorder()
+	request := localRequest(
+		stdhttp.MethodPost,
+		"/v1/agents/legacy-agent/runs",
+		strings.NewReader(`{"legacy_inputs":{"url":"https://example.com"}}`),
+	)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusAccepted {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusAccepted, response.Body.String())
+	}
+	if execute.runtimeInput.LegacyInputs["url"] != "https://example.com" {
+		t.Fatalf("legacy inputs: %#v", execute.runtimeInput.LegacyInputs)
+	}
+}
+
 func TestExecuteHandlerPassesExplicitRevisionSelector(t *testing.T) {
 	t.Parallel()
 
@@ -174,15 +233,31 @@ func TestStopHandlerNotFound(t *testing.T) {
 }
 
 type fakeExecuteUseCase struct {
-	agentName string
-	inputs    map[string]string
-	run       domain.AgentRun
-	err       error
+	agentName    string
+	inputs       map[string]string
+	runtimeInput domain.RuntimeInput
+	run          domain.AgentRun
+	err          error
 }
 
 func (f *fakeExecuteUseCase) Execute(_ context.Context, agentName string, inputs map[string]string) (domain.AgentRun, error) {
 	f.agentName = agentName
 	f.inputs = inputs
+	if f.err != nil {
+		return domain.AgentRun{}, f.err
+	}
+
+	return f.run, nil
+}
+
+func (f *fakeExecuteUseCase) ExecuteWithRuntimeInput(
+	_ context.Context,
+	agentName string,
+	input domain.RuntimeInput,
+) (domain.AgentRun, error) {
+	f.agentName = agentName
+	f.runtimeInput = input
+	f.inputs = input.LegacyInputs
 	if f.err != nil {
 		return domain.AgentRun{}, f.err
 	}

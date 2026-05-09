@@ -19,7 +19,23 @@ func (s *Server) handleExecute(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 			return
 		}
 	}
-	run, err := s.executeUseCase.Execute(r.Context(), r.PathValue("name"), request.Inputs)
+	legacyInputs := request.LegacyInputs
+	if legacyInputs == nil {
+		legacyInputs = request.Inputs
+	}
+	var (
+		run domain.AgentRun
+		err error
+	)
+	if execute, ok := s.executeUseCase.(RuntimeInputExecuteUseCase); ok {
+		run, err = execute.ExecuteWithRuntimeInput(r.Context(), r.PathValue("name"), domain.RuntimeInput{
+			RawJSON:      request.Input,
+			LegacyInputs: legacyInputs,
+			Source:       domain.RuntimeInputSourcePublicClient,
+		})
+	} else {
+		run, err = s.executeUseCase.Execute(r.Context(), r.PathValue("name"), legacyInputs)
+	}
 	if err != nil {
 		writeExecuteError(w, err)
 

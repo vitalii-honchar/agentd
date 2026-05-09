@@ -2,6 +2,7 @@ package result
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -22,7 +23,9 @@ type RunResult struct {
 	Trigger       domain.RunTrigger
 	StartedAt     *time.Time
 	CompletedAt   *time.Time
+	ResultFormat  domain.ResultFormat
 	Result        string
+	ResultJSON    json.RawMessage
 	ResultSummary string
 	Failure       *Failure
 }
@@ -109,14 +112,26 @@ func toRunResult(run domain.AgentRun, includeFullResult bool) RunResult {
 		Trigger:       run.Trigger,
 		StartedAt:     run.StartedAt,
 		CompletedAt:   run.CompletedAt,
+		ResultFormat:  normalizedResultFormat(run.ResultFormat),
 		ResultSummary: summary,
 	}
 	if includeFullResult {
 		result.Result = run.Result
+		if result.ResultFormat == domain.ResultFormatJSON && json.Valid([]byte(run.Result)) {
+			result.ResultJSON = append(json.RawMessage(nil), run.Result...)
+		}
 	}
 	if run.Status == domain.AgentRunStatusFailed || run.ErrorCode != "" || run.ErrorMessage != "" {
 		result.Failure = &Failure{Code: run.ErrorCode, Message: run.ErrorMessage}
 	}
 
 	return result
+}
+
+func normalizedResultFormat(format domain.ResultFormat) domain.ResultFormat {
+	if format == "" {
+		return domain.ResultFormatText
+	}
+
+	return format
 }

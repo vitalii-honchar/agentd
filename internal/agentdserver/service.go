@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
@@ -19,6 +20,7 @@ import (
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/db/repository"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/infra/definition"
 	daemonhttp "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/http"
+	codexadapter "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/llm/codex"
 	openaiadapter "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/llm/openai"
 	runlogs "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/logs"
 	infraruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/infra/runtime"
@@ -81,16 +83,12 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 
 		return nil, fmt.Errorf("new runtime db manager: %w", err)
 	}
-	var providers []appruntime.Provider
-	if cfg.OpenAI.APIKey != "" {
-		openAIProvider, err := openaiadapter.NewProvider(openaiadapter.Config{APIKey: cfg.OpenAI.APIKey})
-		if err != nil {
-			_ = settings.Stop(context.Background())
-			_ = runtimeDBs.Close(context.Background())
+	providers, err := newProviders(cfg)
+	if err != nil {
+		_ = settings.Stop(context.Background())
+		_ = runtimeDBs.Close(context.Background())
 
-			return nil, fmt.Errorf("new openai provider: %w", err)
-		}
-		providers = append(providers, openAIProvider)
+		return nil, err
 	}
 	logFactory, err := runlogs.NewRunLogFactory(cfg.Storage.RunLogDir)
 	if err != nil {
@@ -246,6 +244,27 @@ func NewWithConfig(cfg *config.Config) (*AgentdServer, error) {
 			{name: "runtime-dbs", stop: runtimeDBs.Close},
 		},
 	}, nil
+}
+
+func newProviders(cfg *config.Config) ([]appruntime.Provider, error) {
+	var providers []appruntime.Provider
+	if cfg.OpenAI.APIKey != "" {
+		openAIProvider, err := openaiadapter.NewProvider(openaiadapter.Config{APIKey: cfg.OpenAI.APIKey})
+		if err != nil {
+			return nil, fmt.Errorf("new openai provider: %w", err)
+		}
+		providers = append(providers, openAIProvider)
+	}
+	if strings.TrimSpace(cfg.Codex.Command) != "" {
+		providers = append(providers, codexadapter.NewProvider(codexadapter.Config{
+			Command: cfg.Codex.Command,
+			Model:   cfg.Codex.Model,
+			Profile: cfg.Codex.Profile,
+			Timeout: cfg.Codex.Timeout,
+		}))
+	}
+
+	return providers, nil
 }
 
 func (s *AgentdServer) Start(ctx context.Context) error {

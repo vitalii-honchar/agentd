@@ -47,9 +47,10 @@ func TestClientResultByRunID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.String()
 		_ = json.NewEncoder(w).Encode(RunResult{
-			RunSummary: RunSummary{RunID: "run-2", AgentName: "website-snapshot-analyst", Status: "failed"},
-			Result:     "full result",
-			Failure:    &Failure{Code: "tool_failed", Message: "tool failed"},
+			RunSummary:   RunSummary{RunID: "run-2", AgentName: "website-snapshot-analyst", Status: "failed"},
+			ResultFormat: "json",
+			ResultJSON:   json.RawMessage(`{"summary":"done"}`),
+			Failure:      &Failure{Code: "tool_failed", Message: "tool failed"},
 		})
 	}))
 	t.Cleanup(server.Close)
@@ -65,7 +66,7 @@ func TestClientResultByRunID(t *testing.T) {
 	if gotPath != "/v1/runs/run-2/result" {
 		t.Fatalf("path: got %q", gotPath)
 	}
-	if result.Result != "full result" || result.Failure == nil {
+	if result.ResultFormat != "json" || string(result.ResultJSON) != `{"summary":"done"}` || result.Failure == nil {
 		t.Fatalf("result: %#v", result)
 	}
 }

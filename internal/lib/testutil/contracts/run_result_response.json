@@ -5,6 +5,11 @@
   "trigger": "schedule",
   "started_at": "2026-05-08T08:00:00Z",
   "completed_at": "2026-05-08T08:01:12Z",
-  "result": "Full untrimmed result text for the Hacker News builder brief.",
+  "result_format": "json",
+  "result": "{\"summary\":\"Top stories for builders\",\"important_items\":[]}",
+  "result_json": {
+    "summary": "Top stories for builders",
+    "important_items": []
+  },
   "result_summary": "Top stories: SQLite on servers, Go release notes..."
 }

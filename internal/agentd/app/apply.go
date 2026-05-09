@@ -27,15 +27,16 @@ type ApplyResponse struct {
 }
 
 type AgentDetail struct {
-	Name         string `json:"name"`
-	Enabled      bool   `json:"enabled"`
-	Status       string `json:"status"`
-	ScheduleType string `json:"schedule_type"`
-	Revision     string `json:"revision"`
-	VendorName   string `json:"vendor_name"`
-	VendorModel  string `json:"vendor_model"`
-	LastRunID    string `json:"last_run_id,omitempty"`
-	RecentError  string `json:"recent_error,omitempty"`
+	Name         string           `json:"name"`
+	Enabled      bool             `json:"enabled"`
+	Status       string           `json:"status"`
+	ScheduleType string           `json:"schedule_type"`
+	Revision     string           `json:"revision"`
+	VendorName   string           `json:"vendor_name"`
+	VendorModel  string           `json:"vendor_model"`
+	LastRunID    string           `json:"last_run_id,omitempty"`
+	RecentError  string           `json:"recent_error,omitempty"`
+	Contract     *ContractSummary `json:"contract,omitempty"`
 }
 
 func NewApplyCommand(client ApplyClient, output Output) *cobra.Command {

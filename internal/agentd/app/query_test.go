@@ -135,24 +135,22 @@ func TestInspectCommandCallsRevisionClientForRevisionSelector(t *testing.T) {
 	}
 }
 
-func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
+func TestLogsCommandCallsClientWithRunIDAndTail(t *testing.T) {
 	t.Parallel()
 
+	runID := "11111111-1111-4111-8111-111111111111"
 	client := &fakeQueryClient{logsResponse: LogsResponse{
-		AgentName: "release-notes-helper",
-		RunID:     "run-1",
-		Entries:   []LogEntry{{RunID: "run-1", Line: "completed"}},
+		RunID:   runID,
+		Entries: []LogEntry{{RunID: runID, Line: "completed"}},
 	}}
 	var out bytes.Buffer
 	cmd := NewLogsCommand(client, NewOutput(config.OutputText, &out))
-	cmd.SetArgs([]string{"release-notes-helper", "--run", "run-1", "--tail", "25"})
+	cmd.SetArgs([]string{runID, "--tail", "25"})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	if client.logsRequest.AgentName != "release-notes-helper" ||
-		client.logsRequest.RunID != "run-1" ||
-		client.logsRequest.Tail != 25 {
+	if client.logsRequest.AgentName != "" || client.logsRequest.RunID != runID || client.logsRequest.Tail != 25 {
 		t.Fatalf("logs request: %#v", client.logsRequest)
 	}
 	if !strings.Contains(out.String(), "completed") {
@@ -163,24 +161,24 @@ func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
 func TestLogsCommandFormatsActionLogs(t *testing.T) {
 	t.Parallel()
 
+	runID := "11111111-1111-4111-8111-111111111111"
 	client := &fakeQueryClient{logsResponse: LogsResponse{
-		AgentName: "release-notes-helper",
-		RunID:     "run-1",
+		RunID: runID,
 		Entries: []LogEntry{{
 			Timestamp: testLogTime,
-			RunID:     "run-1",
+			RunID:     runID,
 			Action:    "llm.prompt.send",
 			Message:   "sent prompt",
 		}},
 	}}
 	var out bytes.Buffer
 	cmd := NewLogsCommand(client, NewOutput(config.OutputText, &out))
-	cmd.SetArgs([]string{"release-notes-helper", "--run", "run-1"})
+	cmd.SetArgs([]string{runID})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	if !strings.Contains(out.String(), "2026-05-08T10:00:00Z run-1 llm.prompt.send sent prompt") {
+	if !strings.Contains(out.String(), "2026-05-08T10:00:00Z "+runID+" llm.prompt.send sent prompt") {
 		t.Fatalf("output: %q", out.String())
 	}
 }

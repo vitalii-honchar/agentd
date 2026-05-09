@@ -209,6 +209,58 @@ func TestAgentRepositorySaveFindListAndLatestRevisions(t *testing.T) {
 	}
 }
 
+func TestAgentRepositoryPersistsAgentAndRevisionContracts(t *testing.T) {
+	t.Parallel()
+
+	fixture := newSettingsRepositoryFixture(t)
+	agent := testRepositoryAgent("contract-agent")
+	agent.Contract = &domain.AgentContract{
+		InputSchemaRaw:     `{"type":"object","required":["topic"]}`,
+		OutputSchemaRaw:    `{"type":"object","required":["summary"]}`,
+		InputSchemaDigest:  "sha256:input",
+		OutputSchemaDigest: "sha256:output",
+	}
+	if err := fixture.Agents.Save(context.Background(), agent, nil, nil); err != nil {
+		t.Fatalf("Save agent: %v", err)
+	}
+
+	foundAgent, err := fixture.Agents.FindByName(context.Background(), agent.Name)
+	if err != nil {
+		t.Fatalf("FindByName: %v", err)
+	}
+	if foundAgent.Contract == nil {
+		t.Fatal("found agent contract is nil")
+	}
+	if foundAgent.Contract.InputSchemaRaw != agent.Contract.InputSchemaRaw ||
+		foundAgent.Contract.OutputSchemaRaw != agent.Contract.OutputSchemaRaw ||
+		foundAgent.Contract.InputSchemaDigest != agent.Contract.InputSchemaDigest ||
+		foundAgent.Contract.OutputSchemaDigest != agent.Contract.OutputSchemaDigest {
+		t.Fatalf("found agent contract: %#v", foundAgent.Contract)
+	}
+
+	revision := testRepositoryRevision(agent.Name, "44444444-4444-4444-8444-444444444444", "sha256:contracted", time.Date(2026, 5, 8, 13, 0, 0, 0, time.UTC))
+	revision.ContractInputSchemaRaw = agent.Contract.InputSchemaRaw
+	revision.ContractOutputSchemaRaw = agent.Contract.OutputSchemaRaw
+	revision.ContractInputSchemaDigest = agent.Contract.InputSchemaDigest
+	revision.ContractOutputSchemaDigest = agent.Contract.OutputSchemaDigest
+	revision.ContractDigest = "sha256:contract"
+	if err := fixture.Agents.SaveRevision(context.Background(), revision); err != nil {
+		t.Fatalf("SaveRevision: %v", err)
+	}
+
+	foundRevision, err := fixture.Agents.FindRevisionByID(context.Background(), agent.Name, revision.RevisionID)
+	if err != nil {
+		t.Fatalf("FindRevisionByID: %v", err)
+	}
+	if foundRevision.ContractInputSchemaRaw != revision.ContractInputSchemaRaw ||
+		foundRevision.ContractOutputSchemaRaw != revision.ContractOutputSchemaRaw ||
+		foundRevision.ContractInputSchemaDigest != revision.ContractInputSchemaDigest ||
+		foundRevision.ContractOutputSchemaDigest != revision.ContractOutputSchemaDigest ||
+		foundRevision.ContractDigest != revision.ContractDigest {
+		t.Fatalf("found revision contract: %#v", foundRevision)
+	}
+}
+
 func TestAgentRepositoryPersistsRevisionEnvironmentArtifactFilesAndCorruption(t *testing.T) {
 	t.Parallel()
 

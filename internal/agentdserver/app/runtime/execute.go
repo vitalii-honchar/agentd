@@ -2,9 +2,12 @@ package runtime
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
@@ -23,6 +26,17 @@ func NewExecuteUseCase(agents app.AgentRepository, manager Manager) *ExecuteUseC
 }
 
 func (u *ExecuteUseCase) Execute(ctx context.Context, agentSelector string, inputs map[string]string) (domain.AgentRun, error) {
+	return u.ExecuteWithRuntimeInput(ctx, agentSelector, domain.RuntimeInput{
+		LegacyInputs: inputs,
+		Source:       domain.RuntimeInputSourcePublicClient,
+	})
+}
+
+func (u *ExecuteUseCase) ExecuteWithRuntimeInput(
+	ctx context.Context,
+	agentSelector string,
+	input domain.RuntimeInput,
+) (domain.AgentRun, error) {
 	agentName, revisionID := splitAgentRevisionSelector(agentSelector)
 	agent, err := u.agents.FindByName(ctx, agentName)
 	if err != nil {
@@ -38,12 +52,16 @@ func (u *ExecuteUseCase) Execute(ctx context.Context, agentSelector string, inpu
 	if hasRevision {
 		agent = agentFromRevision(agent, revision)
 	}
+	if err := validateRuntimeInput(agent.Contract, input); err != nil {
+		return domain.AgentRun{}, err
+	}
 
 	return u.manager.Execute(ctx, ExecuteRequest{
-		Agent:    agent,
-		Revision: revision,
-		Trigger:  domain.RunTriggerManual,
-		Inputs:   inputs,
+		Agent:        agent,
+		Revision:     revision,
+		Trigger:      domain.RunTriggerManual,
+		Inputs:       input.LegacyInputs,
+		RuntimeInput: input,
 	})
 }
 
@@ -92,9 +110,79 @@ func agentFromRevision(agent domain.Agent, revision domain.AgentRevision) domain
 	agent.Prompt = revision.Prompt
 	agent.Vendor = revision.Vendor
 	agent.Schedule = revision.Schedule
+	agent.Contract = contractFromRevision(revision)
 	agent.Tools = toolsFromRevision(revision.Tools)
 
 	return agent
+}
+
+func validateRuntimeInput(contract *domain.AgentContract, input domain.RuntimeInput) error {
+	if contract == nil {
+		return nil
+	}
+	raw, err := runtimeInputJSON(input)
+	if err != nil {
+		return fmt.Errorf("%w: %v", domain.ErrContractInputInvalid, err)
+	}
+	compiler := jsonschema.NewCompiler()
+	compiler.DefaultDraft(jsonschema.Draft2020)
+	schemaDoc, err := jsonschema.UnmarshalJSON(strings.NewReader(contract.InputSchemaRaw))
+	if err != nil {
+		return fmt.Errorf("%w: contract.input: %v", domain.ErrInvalidContractSchema, err)
+	}
+	if err := compiler.AddResource("contract-input.json", schemaDoc); err != nil {
+		return fmt.Errorf("%w: contract.input: %v", domain.ErrInvalidContractSchema, err)
+	}
+	schema, err := compiler.Compile("contract-input.json")
+	if err != nil {
+		return fmt.Errorf("%w: contract.input: %v", domain.ErrInvalidContractSchema, err)
+	}
+	value, err := jsonschema.UnmarshalJSON(strings.NewReader(string(raw)))
+	if err != nil {
+		return fmt.Errorf("%w: %v", domain.ErrContractInputInvalid, err)
+	}
+	if err := schema.Validate(value); err != nil {
+		return fmt.Errorf("%w: %v", domain.ErrContractInputInvalid, err)
+	}
+
+	return nil
+}
+
+func runtimeInputJSON(input domain.RuntimeInput) (json.RawMessage, error) {
+	if len(input.RawJSON) > 0 {
+		if !json.Valid(input.RawJSON) {
+			return nil, fmt.Errorf("input must be valid JSON")
+		}
+
+		return input.RawJSON, nil
+	}
+	if input.LegacyInputs != nil {
+		body, err := json.Marshal(input.LegacyInputs)
+		if err != nil {
+			return nil, err
+		}
+
+		return body, nil
+	}
+
+	return json.RawMessage(`{}`), nil
+}
+
+func contractFromRevision(revision domain.AgentRevision) *domain.AgentContract {
+	if revision.ContractInputSchemaRaw == "" &&
+		revision.ContractOutputSchemaRaw == "" &&
+		revision.ContractInputSchemaDigest == "" &&
+		revision.ContractOutputSchemaDigest == "" {
+		return nil
+	}
+
+	return &domain.AgentContract{
+		InputSchemaRaw:      revision.ContractInputSchemaRaw,
+		OutputSchemaRaw:     revision.ContractOutputSchemaRaw,
+		InputSchemaDigest:   revision.ContractInputSchemaDigest,
+		OutputSchemaDigest:  revision.ContractOutputSchemaDigest,
+		CreatedFromRevision: revision.RevisionID,
+	}
 }
 
 func toolsFromRevision(revisionTools []domain.RevisionTool) []domain.ToolPermission {

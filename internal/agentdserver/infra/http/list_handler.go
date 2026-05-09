@@ -30,5 +30,17 @@ func toAgentSummary(agent domain.Agent) model.AgentSummary {
 		Status:       string(agent.Status),
 		ScheduleType: string(agent.Schedule.Type),
 		NextRunAt:    agent.NextRunAt,
+		Contract:     toContractSummary(agent.Contract),
+	}
+}
+
+func toContractSummary(contract *domain.AgentContract) *model.ContractSummary {
+	if contract == nil {
+		return nil
+	}
+
+	return &model.ContractSummary{
+		InputSchemaDigest:  contract.InputSchemaDigest,
+		OutputSchemaDigest: contract.OutputSchemaDigest,
 	}
 }

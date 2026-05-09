@@ -31,7 +31,8 @@ agentd apply examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md
 agentd execute cybersecurity-reddit-watch
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs cybersecurity-reddit-watch --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result cybersecurity-reddit-watch` for the compact history table.
+Run results are finalized as JSON matching the example contract, including `executive_summary`, `high_signal_posts`, and `follow_up_actions`.

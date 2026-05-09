@@ -15,9 +15,10 @@ agentd apply examples/github-trending-engineering-radar/github-trending-engineer
 agentd run github-trending-engineering-radar
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs github-trending-engineering-radar --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result github-trending-engineering-radar` for the compact daily history.
+Run results are finalized as JSON matching the example contract, including `summary`, `repositories`, and `no_action_note`.
 
 `agentd apply` creates an immutable revision under `data/work/github-trending-engineering-radar/<revision_id>`. The `custom_tool` script plus declared `sources/` and `fixtures/` files are copied into that revision, so an explicit run like `agentd run github-trending-engineering-radar:<revision_id>` keeps working even if this example folder is later edited or removed.

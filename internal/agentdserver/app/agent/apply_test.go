@@ -151,6 +151,132 @@ func TestApplyUseCaseCreatesDistinctRevisionsForPromptAndToolMutation(t *testing
 	}
 }
 
+func TestApplyUseCasePersistsContractAndRevisionDigests(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	result, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "contracted-agent.md",
+		Markdown:   contractedDefinition("Summarize the requested topic."),
+	})
+	if err != nil {
+		t.Fatalf("Apply contracted: %v", err)
+	}
+	if result.Agent.Contract == nil {
+		t.Fatal("applied agent contract is nil")
+	}
+	if result.Agent.Contract.InputSchemaDigest == "" || result.Agent.Contract.OutputSchemaDigest == "" {
+		t.Fatalf("agent contract digests: %#v", result.Agent.Contract)
+	}
+	if len(repo.revisions) != 1 {
+		t.Fatalf("revisions: got %d want 1", len(repo.revisions))
+	}
+	revision := repo.revisions[0]
+	if revision.ContractInputSchemaRaw == "" || revision.ContractOutputSchemaRaw == "" {
+		t.Fatalf("revision contract schemas: %#v", revision)
+	}
+	if revision.ContractInputSchemaDigest == "" ||
+		revision.ContractOutputSchemaDigest == "" ||
+		revision.ContractDigest == "" {
+		t.Fatalf("revision contract digests: %#v", revision)
+	}
+}
+
+func TestApplyUseCaseRejectsInvalidContractWithoutMutation(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	_, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "bad-contract.md",
+		Markdown: `---
+name: bad-contract-agent
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+contract:
+  input: |
+    {"type":
+  output: |
+    {"type":"object"}
+---
+Prompt.`,
+	})
+	if err == nil {
+		t.Fatal("Apply returned nil error")
+	}
+	if !errors.Is(err, domain.ErrInvalidDefinition) {
+		t.Fatalf("Apply error %v does not match ErrInvalidDefinition", err)
+	}
+	if len(repo.agents) != 0 || len(repo.revisions) != 0 {
+		t.Fatalf("repo mutated after invalid contract: agents=%#v revisions=%#v", repo.agents, repo.revisions)
+	}
+	if len(runtimeDBs.ensured) != 0 {
+		t.Fatalf("runtime DBs mutated after invalid contract: %#v", runtimeDBs.ensured)
+	}
+}
+
+func TestApplyUseCaseLegacyNoContractStillRunsThroughApply(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	result, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   manualDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply legacy: %v", err)
+	}
+	if result.Agent.Contract != nil {
+		t.Fatalf("legacy contract: got %#v want nil", result.Agent.Contract)
+	}
+	if len(repo.revisions) != 1 {
+		t.Fatalf("revisions: got %d want 1", len(repo.revisions))
+	}
+	if repo.revisions[0].ContractDigest != "" {
+		t.Fatalf("legacy revision contract digest: got %q want empty", repo.revisions[0].ContractDigest)
+	}
+}
+
+func TestApplyUseCaseContractChangesRevisionDigest(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	legacy, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   manualDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply legacy: %v", err)
+	}
+	contracted, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   contractedDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply contracted: %v", err)
+	}
+	if contracted.Agent.Revision == legacy.Agent.Revision {
+		t.Fatalf("contracted revision should differ from legacy revision %q", legacy.Agent.Revision)
+	}
+	if len(repo.revisions) != 2 {
+		t.Fatalf("revisions: got %d want 2", len(repo.revisions))
+	}
+}
+
 func TestApplyUseCaseRevisionRetainsPromptAndToolsAfterSourceDeletion(t *testing.T) {
 	t.Parallel()
 
@@ -590,6 +716,32 @@ access:
     write: []
   network:
     allow: []
+---
+` + prompt
+}
+
+func contractedDefinition(prompt string) string {
+	return `---
+name: release-notes-helper
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+contract:
+  input: |
+    {"type":"object","required":["topic"],"properties":{"topic":{"type":"string"}}}
+  output: |
+    {"type":"object","required":["summary"],"properties":{"summary":{"type":"string"}}}
+tools: []
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: ["api.openai.com"]
 ---
 ` + prompt
 }

@@ -409,6 +409,261 @@ func TestManagerLogsToolTimeoutEvidence(t *testing.T) {
 	assertEventMessageContains(t, events, domain.RunActionToolExecuteFail, "error: tool snapshot timed out")
 }
 
+func TestManagerPersistsContractedJSONResult(t *testing.T) {
+	t.Parallel()
+
+	provider := &contractFinalizingProvider{
+		name:      "openai",
+		output:    "plain summary",
+		finalJSON: json.RawMessage(`{"summary":"done","score":0.91}`),
+	}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	agent := testAgent("contracted-agent")
+	agent.Contract = &domain.AgentContract{
+		OutputSchemaRaw:    `{"type":"object","required":["summary","score"],"properties":{"summary":{"type":"string"},"score":{"type":"number"}}}`,
+		OutputSchemaDigest: "sha256:output",
+	}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.ResultFormat != domain.ResultFormatJSON {
+		t.Fatalf("result format: got %q want %q", stored.ResultFormat, domain.ResultFormatJSON)
+	}
+	if stored.Result != `{"summary":"done","score":0.91}` {
+		t.Fatalf("result: got %q", stored.Result)
+	}
+	if stored.ContractOutputSchemaDigest != "sha256:output" {
+		t.Fatalf("output digest: got %q", stored.ContractOutputSchemaDigest)
+	}
+	if provider.finalizeCalls != 1 {
+		t.Fatalf("Finalize calls: got %d want 1", provider.finalizeCalls)
+	}
+}
+
+func TestManagerPersistsCodexContractedJSONResult(t *testing.T) {
+	t.Parallel()
+
+	provider := &contractFinalizingProvider{
+		name:      "codex",
+		output:    "codex plain summary",
+		finalJSON: json.RawMessage(`{"summary":"codex done"}`),
+	}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	agent := testAgent("codex-contracted-agent")
+	agent.Vendor = domain.Vendor{Name: "codex", Model: "gpt-5.4-mini"}
+	agent.Contract = &domain.AgentContract{
+		OutputSchemaRaw:    `{"type":"object","required":["summary"],"properties":{"summary":{"type":"string"}}}`,
+		OutputSchemaDigest: "sha256:codex-output",
+	}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.ProviderName != "codex" || stored.ProviderModel != "gpt-5.4-mini" {
+		t.Fatalf("provider metadata: %#v", stored)
+	}
+	if stored.ResultFormat != domain.ResultFormatJSON || stored.Result != `{"summary":"codex done"}` {
+		t.Fatalf("result: format=%q value=%q", stored.ResultFormat, stored.Result)
+	}
+}
+
+func TestManagerFailsContractedRunWhenFinalJSONIsInvalid(t *testing.T) {
+	t.Parallel()
+
+	provider := &contractFinalizingProvider{
+		name:      "openai",
+		output:    "plain summary",
+		finalJSON: json.RawMessage(`{"summary":false}`),
+	}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	agent := testAgent("invalid-contracted-agent")
+	agent.Contract = &domain.AgentContract{
+		OutputSchemaRaw: `{"type":"object","required":["summary"],"properties":{"summary":{"type":"string"}}}`,
+	}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusFailed)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.ErrorCode != "contract_output_invalid" {
+		t.Fatalf("error code: got %q", stored.ErrorCode)
+	}
+	if stored.ResultFormat != domain.ResultFormatJSON {
+		t.Fatalf("result format: got %q want %q", stored.ResultFormat, domain.ResultFormatJSON)
+	}
+	if provider.finalizeCalls != 2 {
+		t.Fatalf("Finalize calls: got %d want bounded initial+repair calls", provider.finalizeCalls)
+	}
+}
+
+func TestManagerRunsMultiStepReActLoop(t *testing.T) {
+	t.Parallel()
+
+	provider := &reActLoopProvider{decisions: []appruntime.ReActResponse{
+		{
+			Decision:     domain.ReActDecisionToolCall,
+			ToolName:     "lookup",
+			ToolArgsJSON: `{"topic":"agentd"}`,
+			Message:      appruntime.ProviderMessage{Role: appruntime.ProviderRoleAssistant, Content: "Need evidence."},
+		},
+		{
+			Decision:  domain.ReActDecisionFinal,
+			FinalText: "done with evidence",
+			Message:   appruntime.ProviderMessage{Role: appruntime.ProviderRoleAssistant, Content: "done with evidence"},
+		},
+	}}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	toolExecutor := &recordingToolExecutor{
+		result: appruntime.ToolResult{StdoutSummary: "evidence"},
+	}
+	manager.SetToolExecutor(toolExecutor)
+	agent := testAgent("react-agent")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "lookup",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "lookup",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.Result != "done with evidence" {
+		t.Fatalf("result: got %q", stored.Result)
+	}
+	if provider.decideCalls != 2 {
+		t.Fatalf("decide calls: got %d want 2", provider.decideCalls)
+	}
+	if toolExecutor.count() != 1 {
+		t.Fatalf("tool calls: got %d want 1", toolExecutor.count())
+	}
+}
+
+func TestManagerRunsOneStepReActFinal(t *testing.T) {
+	t.Parallel()
+
+	provider := &reActLoopProvider{decisions: []appruntime.ReActResponse{{
+		Decision:  domain.ReActDecisionFinal,
+		FinalText: "done without tools",
+		Message:   appruntime.ProviderMessage{Role: appruntime.ProviderRoleAssistant, Content: "done without tools"},
+	}}}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	agent := testAgent("one-step-react-agent")
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusCompleted)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.Result != "done without tools" || provider.decideCalls != 1 {
+		t.Fatalf("stored=%#v decide_calls=%d", stored, provider.decideCalls)
+	}
+}
+
+func TestManagerFailsReActLoopWhenToolDenied(t *testing.T) {
+	t.Parallel()
+
+	provider := &reActLoopProvider{decisions: []appruntime.ReActResponse{{
+		Decision:     domain.ReActDecisionToolCall,
+		ToolName:     "undeclared",
+		ToolArgsJSON: `{}`,
+	}}}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{t: t, failOnExecute: true})
+	agent := testAgent("denied-react-agent")
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusFailed)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.ErrorCode != "tool_denied" {
+		t.Fatalf("error code: got %q", stored.ErrorCode)
+	}
+}
+
+func TestManagerFailsReActLoopWhenToolLimitReached(t *testing.T) {
+	t.Parallel()
+
+	provider := &reActLoopProvider{decisions: []appruntime.ReActResponse{
+		{Decision: domain.ReActDecisionToolCall, ToolName: "lookup", ToolArgsJSON: `{}`},
+		{Decision: domain.ReActDecisionToolCall, ToolName: "lookup", ToolArgsJSON: `{}`},
+	}}
+	manager, runtimeDBs := newManagerFixture(t, provider)
+	manager.SetToolExecutor(&recordingToolExecutor{result: appruntime.ToolResult{StdoutSummary: "evidence"}})
+	agent := testAgent("limited-react-agent")
+	agent.Tools = []domain.ToolPermission{{
+		Name:    "lookup",
+		Kind:    domain.ToolKindLocalTool,
+		Command: "lookup",
+	}}
+
+	run, err := manager.Execute(context.Background(), appruntime.ExecuteRequest{
+		Agent: agent, Trigger: domain.RunTriggerManual,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	waitForRunStatus(t, runtimeDBs, agent.Name, run.ID, domain.AgentRunStatusFailed)
+	stored, err := runtimeDBs.Runs(agent.Name).FindByID(context.Background(), run.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.ErrorCode != "tool_limit_reached" {
+		t.Fatalf("error code: got %q", stored.ErrorCode)
+	}
+}
+
 func TestManagerEmitsStructuredToolExecutionLog(t *testing.T) {
 	t.Parallel()
 
@@ -567,6 +822,77 @@ func (p *capturingProvider) prompt() string {
 	return p.lastPrompt
 }
 
+type contractFinalizingProvider struct {
+	name      string
+	output    string
+	finalJSON json.RawMessage
+
+	mu            sync.Mutex
+	finalizeCalls int
+}
+
+func (p *contractFinalizingProvider) Name() string {
+	return p.name
+}
+
+func (p *contractFinalizingProvider) Execute(
+	_ context.Context,
+	_ appruntime.ProviderRequest,
+) (appruntime.ProviderResponse, error) {
+	return appruntime.ProviderResponse{RequestID: "request-1", Output: p.output}, nil
+}
+
+func (p *contractFinalizingProvider) Finalize(
+	_ context.Context,
+	request appruntime.StructuredOutputRequest,
+) (appruntime.StructuredOutputResponse, error) {
+	p.mu.Lock()
+	p.finalizeCalls++
+	p.mu.Unlock()
+	if request.OutputSchemaRaw == "" || request.PlainTextResult == "" {
+		return appruntime.StructuredOutputResponse{}, errors.New("missing structured output request fields")
+	}
+
+	return appruntime.StructuredOutputResponse{
+		RequestID:  "final-request-1",
+		OutputJSON: append(json.RawMessage(nil), p.finalJSON...),
+	}, nil
+}
+
+type reActLoopProvider struct {
+	decisions []appruntime.ReActResponse
+
+	mu          sync.Mutex
+	decideCalls int
+}
+
+func (p *reActLoopProvider) Name() string {
+	return "openai"
+}
+
+func (p *reActLoopProvider) Execute(
+	context.Context,
+	appruntime.ProviderRequest,
+) (appruntime.ProviderResponse, error) {
+	return appruntime.ProviderResponse{}, errors.New("plain Execute should not be used for ReAct provider")
+}
+
+func (p *reActLoopProvider) Decide(
+	_ context.Context,
+	_ appruntime.ReActRequest,
+) (appruntime.ReActResponse, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.decideCalls++
+	if len(p.decisions) == 0 {
+		return appruntime.ReActResponse{Decision: domain.ReActDecisionFail, Failure: "no decision"}, nil
+	}
+	decision := p.decisions[0]
+	p.decisions = p.decisions[1:]
+
+	return decision, nil
+}
+
 type recordingToolExecutor struct {
 	t             *testing.T
 	failOnExecute bool
@@ -575,11 +901,13 @@ type recordingToolExecutor struct {
 
 	mu          sync.Mutex
 	lastRequest appruntime.ToolRequest
+	calls       int
 }
 
 func (e *recordingToolExecutor) Execute(_ context.Context, request appruntime.ToolRequest) (appruntime.ToolResult, error) {
 	e.mu.Lock()
 	e.lastRequest = request
+	e.calls++
 	e.mu.Unlock()
 	if e.failOnExecute {
 		e.t.Fatal("undeclared tool was executed")
@@ -593,6 +921,13 @@ func (e *recordingToolExecutor) request() appruntime.ToolRequest {
 	defer e.mu.Unlock()
 
 	return e.lastRequest
+}
+
+func (e *recordingToolExecutor) count() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	return e.calls
 }
 
 func testAgent(name string) domain.Agent {

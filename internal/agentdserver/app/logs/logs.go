@@ -2,6 +2,7 @@ package logs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
@@ -45,38 +46,60 @@ func NewUseCase(
 }
 
 func (u *UseCase) Read(ctx context.Context, query Query) (Result, error) {
-	agent, err := u.agents.FindByName(ctx, query.AgentName)
+	if query.RunID == "" {
+		return Result{}, fmt.Errorf("run ID is required")
+	}
+
+	agents, err := u.agents.List(ctx)
 	if err != nil {
 		return Result{}, err
 	}
+	for _, agent := range agents {
+		if err := u.runtimeDBs.EnsureAgent(ctx, agent.Name); err != nil {
+			return Result{}, err
+		}
+		repo := u.runtimeDBs.Runs(agent.Name)
+		if repo == nil {
+			continue
+		}
 
-	repo := u.runtimeDBs.Runs(agent.Name)
-	if repo == nil {
-		return Result{}, domain.ErrNotFound
+		run, err := repo.FindByID(ctx, query.RunID)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				continue
+			}
+			return Result{}, err
+		}
+
+		return u.readRunLogs(ctx, agent, run, query.Tail)
 	}
 
-	run, err := findRun(ctx, repo, query.RunID)
-	if err != nil {
-		return Result{}, err
-	}
+	return Result{}, domain.ErrNotFound
+}
 
+func (u *UseCase) readRunLogs(
+	ctx context.Context,
+	agent domain.Agent,
+	run domain.AgentRun,
+	tail int,
+) (Result, error) {
 	entries, err := u.reader.Read(ctx, app.LogQuery{
 		AgentName: agent.Name,
 		RunID:     run.ID,
 		LogPath:   run.LogPath,
-		Tail:      query.Tail,
+		Tail:      tail,
 	})
 	if err != nil {
 		return Result{}, err
 	}
 	if events := u.runtimeDBs.Events(agent.Name); events != nil {
-		actionEvents, err := events.ListByRun(ctx, run.ID, query.Tail)
+		actionEvents, err := events.ListByRun(ctx, run.ID, tail)
 		if err != nil {
 			return Result{}, err
 		}
 		entries = append(runtimeEventsToLogEntries(actionEvents), entries...)
-		if query.Tail > 0 && len(entries) > query.Tail {
-			entries = entries[:query.Tail]
+		if tail > 0 && len(entries) > tail {
+			entries = entries[:tail]
 		}
 	}
 
@@ -96,12 +119,4 @@ func runtimeEventsToLogEntries(events []domain.RuntimeEvent) []app.LogEntry {
 	}
 
 	return entries
-}
-
-func findRun(ctx context.Context, repo app.AgentRunRepository, runID string) (domain.AgentRun, error) {
-	if runID != "" {
-		return repo.FindByID(ctx, runID)
-	}
-
-	return repo.FindLatest(ctx)
 }

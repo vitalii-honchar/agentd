@@ -1,6 +1,7 @@
 package definition
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -21,6 +22,9 @@ func ParseMarkdown(sourcePath string, markdown string) (domain.AgentDefinition, 
 	}
 
 	definition := raw.toDomain(sourcePath, markdown, prompt)
+	if err := validateContractSchemaText(definition.Contract); err != nil {
+		return domain.AgentDefinition{}, err
+	}
 	if err := definition.Validate(); err != nil {
 		return domain.AgentDefinition{}, err
 	}
@@ -35,6 +39,7 @@ type definitionFrontMatter struct {
 	Vendor      vendorFrontMatter      `yaml:"vendor"`
 	Environment environmentFrontMatter `yaml:"environment"`
 	Inputs      []inputFrontMatter     `yaml:"inputs"`
+	Contract    contractFrontMatter    `yaml:"contract"`
 	Tools       []toolFrontMatter      `yaml:"tools"`
 	MCPServers  []toolFrontMatter      `yaml:"mcp_servers"`
 	Access      accessFrontMatter      `yaml:"access"`
@@ -59,6 +64,11 @@ type inputFrontMatter struct {
 	Name        string `yaml:"name"`
 	Required    bool   `yaml:"required"`
 	Description string `yaml:"description"`
+}
+
+type contractFrontMatter struct {
+	Input  string `yaml:"input"`
+	Output string `yaml:"output"`
 }
 
 type toolFrontMatter struct {
@@ -129,6 +139,12 @@ func (f definitionFrontMatter) toDomain(
 		SourcePath:  sourcePath,
 		RawMarkdown: rawMarkdown,
 	}
+	if strings.TrimSpace(f.Contract.Input) != "" || strings.TrimSpace(f.Contract.Output) != "" {
+		definition.Contract = &domain.AgentContract{
+			InputSchemaRaw:  f.Contract.Input,
+			OutputSchemaRaw: f.Contract.Output,
+		}
+	}
 	for _, input := range f.Inputs {
 		definition.Inputs = append(definition.Inputs, input.toDomain())
 	}
@@ -143,6 +159,26 @@ func (f definitionFrontMatter) toDomain(
 	}
 
 	return definition
+}
+
+func validateContractSchemaText(contract *domain.AgentContract) error {
+	if contract == nil {
+		return nil
+	}
+	if strings.TrimSpace(contract.InputSchemaRaw) == "" {
+		return fmt.Errorf("%w: contract.input is required when contract is specified", domain.ErrInvalidDefinition)
+	}
+	if strings.TrimSpace(contract.OutputSchemaRaw) == "" {
+		return fmt.Errorf("%w: contract.output is required when contract is specified", domain.ErrInvalidDefinition)
+	}
+	if !json.Valid([]byte(contract.InputSchemaRaw)) {
+		return fmt.Errorf("%w: contract.input must be valid JSON schema text", domain.ErrInvalidDefinition)
+	}
+	if !json.Valid([]byte(contract.OutputSchemaRaw)) {
+		return fmt.Errorf("%w: contract.output must be valid JSON schema text", domain.ErrInvalidDefinition)
+	}
+
+	return nil
 }
 
 func normalizeToolKind(kind string) domain.ToolKind {

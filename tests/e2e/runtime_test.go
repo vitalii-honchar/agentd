@@ -109,6 +109,43 @@ func TestRuntimeUsesRevisionEnvAfterSourceDeletionWithoutHostEnvLeak(t *testing.
 	}
 }
 
+func TestRuntimeExecutesReActToolObservationBeforeFinalResult(t *testing.T) {
+	t.Parallel()
+
+	provider := &reactE2EProvider{decisions: []appruntime.ReActResponse{
+		{
+			Decision:     domain.ReActDecisionToolCall,
+			ToolName:     "lookup",
+			ToolArgsJSON: `{"topic":"agentd"}`,
+		},
+		{
+			Decision:  domain.ReActDecisionFinal,
+			FinalText: "final answer from observation",
+			Message:   appruntime.ProviderMessage{Role: appruntime.ProviderRoleAssistant, Content: "final answer from observation"},
+		},
+	}}
+	stack := newRuntimeStackWithProvider(t, provider)
+	toolExecutor := &reactE2EToolExecutor{result: appruntime.ToolResult{StdoutSummary: "observation evidence"}}
+	stack.manager.SetToolExecutor(toolExecutor)
+	postApply(t, stack.server, "react-agent.md", reactToolDefinition())
+
+	run := postRun(t, stack.server, "react-e2e-agent")
+	waitForE2ERunStatus(t, stack.runtimeDBs, "react-e2e-agent", run.RunID, domain.AgentRunStatusCompleted)
+	stored, err := stack.runtimeDBs.Runs("react-e2e-agent").FindByID(context.Background(), run.RunID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if stored.Result != "final answer from observation" {
+		t.Fatalf("result: got %q", stored.Result)
+	}
+	if provider.calls != 2 {
+		t.Fatalf("provider calls: got %d want 2", provider.calls)
+	}
+	if toolExecutor.calls != 1 || toolExecutor.lastTool != "lookup" {
+		t.Fatalf("tool executor: calls=%d last=%q", toolExecutor.calls, toolExecutor.lastTool)
+	}
+}
+
 type runtimeStack struct {
 	server     *daemonhttp.Server
 	manager    *infraruntime.Manager
@@ -273,6 +310,52 @@ func (blockingE2EProvider) Execute(
 	return appruntime.ProviderResponse{}, nil
 }
 
+type reactE2EProvider struct {
+	decisions []appruntime.ReActResponse
+	calls     int
+}
+
+func (p *reactE2EProvider) Name() string {
+	return "openai"
+}
+
+func (p *reactE2EProvider) Execute(
+	context.Context,
+	appruntime.ProviderRequest,
+) (appruntime.ProviderResponse, error) {
+	return appruntime.ProviderResponse{}, errors.New("plain Execute should not run for ReAct e2e provider")
+}
+
+func (p *reactE2EProvider) Decide(
+	context.Context,
+	appruntime.ReActRequest,
+) (appruntime.ReActResponse, error) {
+	p.calls++
+	if len(p.decisions) == 0 {
+		return appruntime.ReActResponse{Decision: domain.ReActDecisionFail, Failure: "no decision"}, nil
+	}
+	decision := p.decisions[0]
+	p.decisions = p.decisions[1:]
+
+	return decision, nil
+}
+
+type reactE2EToolExecutor struct {
+	result   appruntime.ToolResult
+	calls    int
+	lastTool string
+}
+
+func (e *reactE2EToolExecutor) Execute(
+	_ context.Context,
+	request appruntime.ToolRequest,
+) (appruntime.ToolResult, error) {
+	e.calls++
+	e.lastTool = request.Tool.Name
+
+	return e.result, nil
+}
+
 func postRun(t *testing.T, server *daemonhttp.Server, agentName string) model.RunResponse {
 	t.Helper()
 
@@ -390,4 +473,28 @@ access:
     allow: []
 ---
 Run the env tool.`
+}
+
+func reactToolDefinition() string {
+	return `---
+name: react-e2e-agent
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+tools:
+  - name: lookup
+    kind: host_tool
+    command: sh
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+Use ReAct and call lookup before the final answer.`
 }

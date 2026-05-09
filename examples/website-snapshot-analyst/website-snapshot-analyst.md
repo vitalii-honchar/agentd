@@ -6,6 +6,48 @@ schedule:
 vendor:
   name: openai
   model: gpt-5.4-mini
+contract:
+  input: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Website URL to screenshot and summarize"
+        }
+      },
+      "required": ["url"]
+    }
+  output: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "website_summary": { "type": "string" },
+        "audience_and_value": { "type": "string" },
+        "important_visible_content": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ux_or_trust_issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "follow_up_questions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": [
+        "website_summary",
+        "audience_and_value",
+        "important_visible_content",
+        "ux_or_trust_issues",
+        "follow_up_questions"
+      ]
+    }
 inputs:
   - name: url
     required: true

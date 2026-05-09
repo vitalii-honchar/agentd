@@ -52,7 +52,9 @@ func toResultModel(result appresult.RunResult) model.RunResult {
 			StartedAt:   result.StartedAt,
 			CompletedAt: result.CompletedAt,
 		},
+		ResultFormat:  string(result.ResultFormat),
 		Result:        result.Result,
+		ResultJSON:    result.ResultJSON,
 		ResultSummary: result.ResultSummary,
 	}
 	if result.Failure != nil {

@@ -1,0 +1,9 @@
+{
+  "name": "release-notes-writer",
+  "revision": "7f6a8368f5b9c19d",
+  "status": "finalized",
+  "contract": {
+    "input_schema_digest": "sha256:7d22bff7b8c9efed2a7f7e28f2a70c6d8bc0db95b8586f54f5b9f0f7b2c7df4a",
+    "output_schema_digest": "sha256:640eb7ed541070f9f2aa49ed2ec67e94456b8ac4e705b5c85e3fa126c709b72f"
+  }
+}

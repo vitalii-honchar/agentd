@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -20,15 +21,21 @@ type QueryClient interface {
 }
 
 type AgentSummary struct {
-	Name          string `json:"name"`
-	Enabled       bool   `json:"enabled"`
-	Status        string `json:"status"`
-	ScheduleType  string `json:"schedule_type"`
-	LastRunStatus string `json:"last_run_status,omitempty"`
+	Name          string           `json:"name"`
+	Enabled       bool             `json:"enabled"`
+	Status        string           `json:"status"`
+	ScheduleType  string           `json:"schedule_type"`
+	LastRunStatus string           `json:"last_run_status,omitempty"`
+	Contract      *ContractSummary `json:"contract,omitempty"`
 }
 
 type ListResponse struct {
 	Agents []AgentSummary `json:"agents"`
+}
+
+type ContractSummary struct {
+	InputSchemaDigest  string `json:"input_schema_digest,omitempty"`
+	OutputSchemaDigest string `json:"output_schema_digest,omitempty"`
 }
 
 type RevisionSummary struct {
@@ -102,9 +109,11 @@ type AgentResultsResponse struct {
 
 type RunResult struct {
 	RunSummary
-	Result        string   `json:"result,omitempty"`
-	ResultSummary string   `json:"result_summary,omitempty"`
-	Failure       *Failure `json:"failure,omitempty"`
+	ResultFormat  string          `json:"result_format,omitempty"`
+	Result        string          `json:"result,omitempty"`
+	ResultJSON    json.RawMessage `json:"result_json,omitempty"`
+	ResultSummary string          `json:"result_summary,omitempty"`
+	Failure       *Failure        `json:"failure,omitempty"`
 }
 
 type Failure struct {
@@ -131,11 +140,12 @@ func NewListCommand(client QueryClient, output Output) *cobra.Command {
 			for _, agent := range response.Agents {
 				if _, err := fmt.Fprintf(
 					output.writer,
-					"%s\t%s\t%s\t%t\n",
+					"%s\t%s\t%s\t%t\t%s\n",
 					agent.Name,
 					agent.Status,
 					agent.ScheduleType,
 					agent.Enabled,
+					contractStatus(agent.Contract),
 				); err != nil {
 					return err
 				}
@@ -144,6 +154,14 @@ func NewListCommand(client QueryClient, output Output) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func contractStatus(contract *ContractSummary) string {
+	if contract == nil {
+		return "no-contract"
+	}
+
+	return "contract"
 }
 
 func NewRevisionsCommand(client QueryClient, output Output) *cobra.Command {

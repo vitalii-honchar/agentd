@@ -16,45 +16,9 @@ type ApplyResponse struct {
 	RevisionReused bool        `json:"revision_reused"`
 }
 
-type ExecuteRequest struct {
-	Inputs map[string]string `json:"inputs,omitempty"`
-}
-
-type RunResponse struct {
-	RunID         string `json:"run_id"`
-	AgentName     string `json:"agent_name"`
-	AgentRevision string `json:"agent_revision,omitempty"`
-	Status        string `json:"status"`
-}
-
-type RunListResponse struct {
-	Runs []RunSummary `json:"runs"`
-}
-
 type AgentResultsResponse struct {
 	AgentName string      `json:"agent_name"`
 	Results   []RunResult `json:"results"`
-}
-
-type RunResult struct {
-	RunSummary
-	Result        string   `json:"result,omitempty"`
-	ResultSummary string   `json:"result_summary,omitempty"`
-	Failure       *Failure `json:"failure,omitempty"`
-}
-
-type Failure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type RunSummary struct {
-	RunID       string     `json:"run_id"`
-	AgentName   string     `json:"agent_name"`
-	Status      string     `json:"status"`
-	Trigger     string     `json:"trigger"`
-	StartedAt   *time.Time `json:"started_at,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 type ListResponse struct {
@@ -62,12 +26,13 @@ type ListResponse struct {
 }
 
 type AgentSummary struct {
-	Name          string     `json:"name"`
-	Enabled       bool       `json:"enabled"`
-	Status        string     `json:"status"`
-	ScheduleType  string     `json:"schedule_type"`
-	NextRunAt     *time.Time `json:"next_run_at,omitempty"`
-	LastRunStatus string     `json:"last_run_status,omitempty"`
+	Name          string           `json:"name"`
+	Enabled       bool             `json:"enabled"`
+	Status        string           `json:"status"`
+	ScheduleType  string           `json:"schedule_type"`
+	NextRunAt     *time.Time       `json:"next_run_at,omitempty"`
+	LastRunStatus string           `json:"last_run_status,omitempty"`
+	Contract      *ContractSummary `json:"contract,omitempty"`
 }
 
 type AgentDetail struct {
@@ -77,6 +42,11 @@ type AgentDetail struct {
 	VendorModel string `json:"vendor_model"`
 	LastRunID   string `json:"last_run_id,omitempty"`
 	RecentError string `json:"recent_error,omitempty"`
+}
+
+type ContractSummary struct {
+	InputSchemaDigest  string `json:"input_schema_digest,omitempty"`
+	OutputSchemaDigest string `json:"output_schema_digest,omitempty"`
 }
 
 type RevisionListResponse struct {

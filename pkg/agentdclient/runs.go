@@ -2,6 +2,7 @@ package agentdclient
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -18,6 +19,27 @@ func (c *Client) Execute(ctx context.Context, name string, inputs map[string]str
 	}
 
 	return response, nil
+}
+
+func (c *Client) ExecuteWithInput(ctx context.Context, name string, input RunInput) (RunSummary, error) {
+	var response RunSummary
+	var body any
+	if len(input.Input) > 0 || len(input.LegacyInputs) > 0 {
+		body = executeInputBody{
+			Input:        input.Input,
+			LegacyInputs: input.LegacyInputs,
+		}
+	}
+	if err := c.doJSON(ctx, http.MethodPost, fmt.Sprintf("/v1/agents/%s/runs", url.PathEscape(name)), body, &response); err != nil {
+		return RunSummary{}, err
+	}
+
+	return response, nil
+}
+
+type executeInputBody struct {
+	Input        json.RawMessage   `json:"input,omitempty"`
+	LegacyInputs map[string]string `json:"legacy_inputs,omitempty"`
 }
 
 func (c *Client) Stop(ctx context.Context, agentName string, runID string) (RunSummary, error) {

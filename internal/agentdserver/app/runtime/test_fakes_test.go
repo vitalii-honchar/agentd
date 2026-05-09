@@ -9,12 +9,14 @@ import (
 
 type fakeManager struct {
 	executeRequest ExecuteRequest
+	executeCalled  bool
 	stopRequest    StopRequest
 	run            domain.AgentRun
 	err            error
 }
 
 func (m *fakeManager) Execute(_ context.Context, request ExecuteRequest) (domain.AgentRun, error) {
+	m.executeCalled = true
 	m.executeRequest = request
 	if m.err != nil {
 		return domain.AgentRun{}, m.err

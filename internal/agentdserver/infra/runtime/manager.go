@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,8 @@ import (
 	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	appruntime "github.com/vitalii-honchar/agentd/internal/agentdserver/app/runtime"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
+	goagentagent "github.com/vitalii-honchar/go-agent/pkg/goagent/agent"
+	goagentllm "github.com/vitalii-honchar/go-agent/pkg/goagent/llm"
 
 	"github.com/google/uuid"
 )
@@ -119,16 +122,26 @@ func (m *Manager) Execute(
 	}
 
 	startedAt := m.now()
+	runtimeInput := request.RuntimeInput
+	if runtimeInput.LegacyInputs == nil {
+		runtimeInput.LegacyInputs = request.Inputs
+	}
 	run := domain.AgentRun{
-		ID:            runID,
-		AgentName:     request.Agent.Name,
-		AgentRevision: request.Agent.Revision,
-		Trigger:       request.Trigger,
-		Status:        domain.AgentRunStatusRunning,
-		StartedAt:     &startedAt,
-		DueAt:         request.DueAt,
-		WorkDir:       env.WorkDir,
-		LogPath:       logWriter.Path(),
+		ID:                         runID,
+		AgentName:                  request.Agent.Name,
+		AgentRevision:              request.Agent.Revision,
+		Trigger:                    request.Trigger,
+		Status:                     domain.AgentRunStatusRunning,
+		StartedAt:                  &startedAt,
+		DueAt:                      request.DueAt,
+		WorkDir:                    env.WorkDir,
+		LogPath:                    logWriter.Path(),
+		InputJSON:                  runtimeInputJSONForRun(runtimeInput),
+		ProviderName:               request.Agent.Vendor.Name,
+		ProviderModel:              request.Agent.Vendor.Model,
+		ResultFormat:               domain.ResultFormatText,
+		ContractInputSchemaDigest:  contractInputDigest(request.Agent.Contract),
+		ContractOutputSchemaDigest: contractOutputDigest(request.Agent.Contract),
 	}
 	repo := m.runtimeDBs.Runs(request.Agent.Name)
 	if repo == nil {
@@ -143,13 +156,16 @@ func (m *Manager) Execute(
 
 		return domain.AgentRun{}, err
 	}
+	if request.Agent.Contract != nil {
+		m.appendRunEvent(run, domain.RunActionContractInputValidated, domain.EventLevelInfo, "contract input validated")
+	}
 
 	active := &activeRun{run: run, cancel: cancel, completed: make(chan struct{})}
 	m.mu.Lock()
 	m.active[run.ID] = active
 	m.mu.Unlock()
 
-	go m.runProvider(runCtx, provider, request.Agent, request.Revision, run, request.Inputs, logWriter, active)
+	go m.runProvider(runCtx, provider, request.Agent, request.Revision, run, runtimeInput, logWriter, active)
 
 	return run, nil
 }
@@ -240,7 +256,7 @@ func (m *Manager) runProvider(
 	agent domain.Agent,
 	revision domain.AgentRevision,
 	run domain.AgentRun,
-	inputs map[string]string,
+	input domain.RuntimeInput,
 	logWriter app.RunLogWriter,
 	active *activeRun,
 ) {
@@ -248,7 +264,7 @@ func (m *Manager) runProvider(
 	defer logWriter.Close()
 	defer m.removeActive(run.ID)
 
-	preparedAgent, inputErr := applyRunInputs(agent, inputs)
+	preparedAgent, inputErr := applyRunInputs(agent, input.LegacyInputs)
 	if inputErr != nil {
 		completedAt := m.now()
 		run.CompletedAt = &completedAt
@@ -267,6 +283,36 @@ func (m *Manager) runProvider(
 	}
 
 	prompt := preparedAgent.Prompt
+	if reactProvider, ok := provider.(appruntime.ReActProvider); ok {
+		m.runReActProvider(ctx, reactProvider, preparedAgent, revision, &run, input, logWriter)
+		if run.Status == domain.AgentRunStatusCompleted &&
+			preparedAgent.Contract != nil &&
+			preparedAgent.Contract.OutputSchemaRaw != "" {
+			if err := m.finalizeContractedOutput(ctx, provider, preparedAgent, &run, prompt, run.Result, logWriter); err != nil {
+				run.Status = domain.AgentRunStatusFailed
+				run.ErrorCode = "contract_output_invalid"
+				run.ErrorMessage = err.Error()
+				run.Result = fmt.Sprintf("run failed: %s", err.Error())
+				run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+			}
+		}
+		if run.Status == domain.AgentRunStatusStopped && run.Result == "" {
+			run.Result = "run stopped before completion"
+			run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+		}
+		if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
+			_ = repo.Update(context.Background(), run)
+		}
+		m.appendRunEvent(run, domain.RunActionResultPersisted, domain.EventLevelInfo, "persisted run result")
+		if run.Status == domain.AgentRunStatusCompleted {
+			m.appendRunEvent(run, domain.RunActionComplete, domain.EventLevelInfo, "run completed")
+		} else {
+			m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed or stopped")
+		}
+
+		return
+	}
+
 	toolOutput, toolErr := m.executeDeclaredTools(ctx, preparedAgent, revision, run)
 	if toolErr != nil {
 		completedAt := m.now()
@@ -306,15 +352,27 @@ func (m *Manager) runProvider(
 			run.ErrorMessage = err.Error()
 			run.Result = fmt.Sprintf("run failed: %s", err.Error())
 			run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+			m.appendRunEvent(run, domain.RunActionProviderFail, domain.EventLevelError, err.Error())
 		}
 	} else {
 		run.Status = domain.AgentRunStatusCompleted
 		run.ProviderRequestID = response.RequestID
 		m.appendRunEvent(run, domain.RunActionLLMResponseReceive, domain.EventLevelInfo, "received LLM provider response")
 		if response.Output != "" {
-			run.Result = response.Output
-			run.ResultSummary = appresult.Summarize(response.Output, appresult.DefaultSummaryLimit)
-			_, _ = io.WriteString(logWriter, response.Output)
+			if agent.Contract != nil && agent.Contract.OutputSchemaRaw != "" {
+				run.ResultFormat = domain.ResultFormatJSON
+				if err := m.finalizeContractedOutput(ctx, provider, agent, &run, prompt, response.Output, logWriter); err != nil {
+					run.Status = domain.AgentRunStatusFailed
+					run.ErrorCode = "contract_output_invalid"
+					run.ErrorMessage = err.Error()
+					run.Result = fmt.Sprintf("run failed: %s", err.Error())
+					run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+				}
+			} else {
+				run.Result = response.Output
+				run.ResultSummary = appresult.Summarize(response.Output, appresult.DefaultSummaryLimit)
+				_, _ = io.WriteString(logWriter, response.Output)
+			}
 		}
 	}
 	if run.Status == domain.AgentRunStatusStopped && run.Result == "" {
@@ -330,6 +388,268 @@ func (m *Manager) runProvider(
 	} else {
 		m.appendRunEvent(run, domain.RunActionFail, domain.EventLevelError, "run failed or stopped")
 	}
+}
+
+func (m *Manager) finalizeContractedOutput(
+	ctx context.Context,
+	provider appruntime.Provider,
+	agent domain.Agent,
+	run *domain.AgentRun,
+	prompt string,
+	plainTextResult string,
+	logWriter app.RunLogWriter,
+) error {
+	structuredProvider, ok := provider.(appruntime.StructuredOutputProvider)
+	if !ok {
+		return fmt.Errorf("provider %q does not support structured output", provider.Name())
+	}
+	m.appendRunEvent(*run, domain.RunActionOutputFinalizeStart, domain.EventLevelInfo, "finalize structured output")
+	finalizer := appruntime.NewOutputFinalizer(structuredProvider, NewContractValidator(), 1)
+	result, err := finalizer.Finalize(ctx, appruntime.OutputFinalizationRequest{
+		RunID:           run.ID,
+		AgentName:       agent.Name,
+		RevisionID:      agent.Revision,
+		Model:           agent.Vendor.Model,
+		OutputSchemaRaw: agent.Contract.OutputSchemaRaw,
+		PlainTextResult: plainTextResult,
+		History: []appruntime.ProviderMessage{
+			{Role: appruntime.ProviderRoleUser, Content: prompt},
+			{Role: appruntime.ProviderRoleAssistant, Content: plainTextResult},
+		},
+	})
+	if err != nil {
+		m.appendRunEvent(*run, domain.RunActionOutputFinalizeFail, domain.EventLevelError, err.Error())
+
+		return err
+	}
+	run.ResultFormat = domain.ResultFormatJSON
+	run.Result = string(result.OutputJSON)
+	run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+	_, _ = io.WriteString(logWriter, run.Result)
+	m.appendRunEvent(*run, domain.RunActionOutputFinalizeDone, domain.EventLevelInfo, "structured output finalized")
+
+	return nil
+}
+
+type reActFinalOutput struct {
+	FinalText string `json:"final_text"`
+}
+
+func (m *Manager) runReActProvider(
+	ctx context.Context,
+	provider appruntime.ReActProvider,
+	agent domain.Agent,
+	revision domain.AgentRevision,
+	run *domain.AgentRun,
+	input domain.RuntimeInput,
+	logWriter app.RunLogWriter,
+) {
+	adapter := appruntime.NewReActAdapterWithRequest(provider, appruntime.ReActRequest{
+		RunID:      run.ID,
+		AgentName:  agent.Name,
+		RevisionID: agent.Revision,
+		Model:      agent.Vendor.Model,
+		Prompt:     agent.Prompt,
+		MCPServers: agent.MCPServers,
+		Access:     domain.AccessPolicy{},
+		MaxSteps:   8,
+	})
+	dynamicTools := m.dynamicToolsForRun(agent, revision, run)
+	inputJSON := runtimeInputJSONForRun(input)
+	if len(inputJSON) == 0 {
+		inputJSON = json.RawMessage(`{}`)
+	}
+	runner, err := goagentagent.NewDynamicAgent(goagentagent.DynamicAgentConfig{
+		Name:            dynamicAgentName(agent.Name),
+		Behavior:        agent.Prompt,
+		LLM:             adapter,
+		Tools:           dynamicTools,
+		OutputSchemaRaw: json.RawMessage(`{"type":"object","required":["final_text"],"properties":{"final_text":{"type":"string"}}}`),
+		MaxSteps:        8,
+	})
+	if err != nil {
+		m.failRun(run, "react_configuration_invalid", err)
+
+		return
+	}
+	result, err := runner.Run(ctx, inputJSON)
+	if err != nil {
+		switch {
+		case errors.Is(err, goagentagent.ErrToolNotFound):
+			m.failRun(run, "tool_denied", err)
+		case errors.Is(err, goagentagent.ErrLimitReached):
+			m.failRun(run, "tool_limit_reached", err)
+		case errors.Is(err, appruntime.ErrReActFailed):
+			m.failRun(run, "react_failed", err)
+		case errors.Is(err, context.Canceled):
+			run.Status = domain.AgentRunStatusStopped
+		default:
+			m.failRun(run, "react_failed", err)
+		}
+		m.appendRunEvent(*run, domain.RunActionProviderFail, domain.EventLevelError, err.Error())
+
+		return
+	}
+	var output reActFinalOutput
+	if err := json.Unmarshal(result.OutputJSON, &output); err != nil {
+		m.failRun(run, "react_failed", err)
+
+		return
+	}
+	run.Status = domain.AgentRunStatusCompleted
+	run.ResultFormat = domain.ResultFormatText
+	run.Result = output.FinalText
+	run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+	_, _ = io.WriteString(logWriter, run.Result)
+	m.appendRunEvent(*run, domain.RunActionReActStep, domain.EventLevelInfo, "react loop completed")
+}
+
+func (m *Manager) failRun(run *domain.AgentRun, code string, err error) {
+	run.Status = domain.AgentRunStatusFailed
+	run.ErrorCode = code
+	run.ErrorMessage = err.Error()
+	run.Result = fmt.Sprintf("run failed: %s", err.Error())
+	run.ResultSummary = appresult.Summarize(run.Result, appresult.DefaultSummaryLimit)
+}
+
+func (m *Manager) dynamicToolsForRun(
+	agent domain.Agent,
+	revision domain.AgentRevision,
+	run *domain.AgentRun,
+) []goagentllm.DynamicTool {
+	tools := make([]goagentllm.DynamicTool, 0, len(agent.Tools))
+	usage := make(map[string]int)
+	for _, tool := range agent.Tools {
+		toolForRun := tool
+		toolForRun.Command = resolveToolCommandForRun(agent, revision, tool)
+		toolForRun.Env = buildToolProcessEnv(revision.Environment, tool.Env)
+		tools = append(tools, goagentllm.DynamicTool{
+			Name:                tool.Name,
+			Description:         "Execute " + tool.Name,
+			ParametersSchemaRaw: json.RawMessage(`{"type":"object","additionalProperties":true}`),
+			Callback: func(ctx context.Context, call goagentllm.DynamicToolCall) (goagentllm.DynamicToolResult, error) {
+				usage[call.ToolName]++
+				if usage[call.ToolName] > 1 {
+					return goagentllm.DynamicToolResult{}, goagentagent.ErrLimitReached
+				}
+				result, err := m.executeReActTool(ctx, agent, revision, *run, toolForRun)
+				if err != nil {
+					return goagentllm.DynamicToolResult{}, err
+				}
+				body, err := ToolResultObservationJSON(result)
+				if err != nil {
+					return goagentllm.DynamicToolResult{}, err
+				}
+
+				return goagentllm.DynamicToolResult{
+					ToolCallID:  call.ID,
+					ContentJSON: body,
+				}, nil
+			},
+		})
+	}
+
+	return tools
+}
+
+func (m *Manager) executeReActTool(
+	ctx context.Context,
+	agent domain.Agent,
+	revision domain.AgentRevision,
+	run domain.AgentRun,
+	tool domain.ToolPermission,
+) (appruntime.ToolResult, error) {
+	if m.tools == nil {
+		return appruntime.ToolResult{}, fmt.Errorf("tool executor is required")
+	}
+	if err := validateCustomToolArtifact(revision, tool); err != nil {
+		return appruntime.ToolResult{}, err
+	}
+	if err := validateHostToolExecutable(tool); err != nil {
+		return appruntime.ToolResult{}, err
+	}
+	m.appendRunEvent(run, domain.RunActionToolExecuteStart, domain.EventLevelInfo, "execute tool "+tool.Name)
+	startedAt := m.now()
+	result, err := m.tools.Execute(ctx, appruntime.ToolRequest{
+		RunID:   run.ID,
+		Agent:   agent,
+		Tool:    tool,
+		WorkDir: run.WorkDir,
+	})
+	completedAt := m.now()
+	if repo := m.runtimeDBs.Runs(run.AgentName); repo != nil {
+		_ = repo.CreateToolExecution(context.Background(), domain.ToolExecution{
+			ID:             uuid.NewString(),
+			RunID:          run.ID,
+			AgentName:      run.AgentName,
+			ToolName:       tool.Name,
+			CommandSummary: tool.Command,
+			StartedAt:      startedAt,
+			CompletedAt:    &completedAt,
+			ExitCode:       result.ExitCode,
+			TimedOut:       result.TimedOut,
+			StdoutSummary:  result.StdoutSummary,
+			StderrSummary:  result.StderrSummary,
+		})
+	}
+	if err != nil {
+		emitToolExecutionLog(run, tool, result, err)
+		m.appendRunEvent(run, domain.RunActionToolExecuteFail, domain.EventLevelError, toolLogMessage("tool failed", tool.Name, result, err))
+
+		return result, err
+	}
+	emitToolExecutionLog(run, tool, result, nil)
+	m.appendRunEvent(run, domain.RunActionToolExecuteComplete, domain.EventLevelInfo, toolLogMessage("tool completed", tool.Name, result, nil))
+	m.appendRunEvent(run, domain.RunActionReActToolObservation, domain.EventLevelInfo, "react observed tool "+tool.Name)
+
+	return result, nil
+}
+
+func dynamicAgentName(name string) string {
+	var builder strings.Builder
+	for _, char := range name {
+		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '_' {
+			builder.WriteRune(char)
+		} else {
+			builder.WriteByte('_')
+		}
+	}
+	result := strings.Trim(builder.String(), "_")
+	if result == "" {
+		return "agent"
+	}
+
+	return result
+}
+
+func runtimeInputJSONForRun(input domain.RuntimeInput) json.RawMessage {
+	if len(input.RawJSON) > 0 {
+		return append(json.RawMessage(nil), input.RawJSON...)
+	}
+	if input.LegacyInputs != nil {
+		body, err := json.Marshal(input.LegacyInputs)
+		if err == nil {
+			return body
+		}
+	}
+
+	return nil
+}
+
+func contractInputDigest(contract *domain.AgentContract) string {
+	if contract == nil {
+		return ""
+	}
+
+	return contract.InputSchemaDigest
+}
+
+func contractOutputDigest(contract *domain.AgentContract) string {
+	if contract == nil {
+		return ""
+	}
+
+	return contract.OutputSchemaDigest
 }
 
 var inputPlaceholderPattern = regexp.MustCompile(`\{\{inputs\.([A-Za-z0-9_-]+)\}\}`)

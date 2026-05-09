@@ -7,6 +7,59 @@ schedule:
 vendor:
   name: openai
   model: gpt-5.4-mini
+contract:
+  input: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    }
+  output: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string" },
+        "important_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "url": { "type": "string" },
+              "why_it_matters": { "type": "string" }
+            },
+            "required": ["title", "url", "why_it_matters"]
+          }
+        },
+        "engineering_implications": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tools_or_libraries": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "risks_or_security_notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "skip_list": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": [
+        "summary",
+        "important_items",
+        "engineering_implications",
+        "tools_or_libraries",
+        "risks_or_security_notes",
+        "skip_list"
+      ]
+    }
 tools:
   - name: fetch_hacker_news
     kind: custom_tool

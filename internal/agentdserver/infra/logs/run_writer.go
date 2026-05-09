@@ -2,6 +2,7 @@ package logs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,3 +55,36 @@ func (f *RunLogFactory) Create(_ context.Context, agentName, runID string) (app.
 func (w *RunLogWriter) Path() string {
 	return w.path
 }
+
+func (w *RunLogWriter) WriteEntry(entry app.LogEntry) error {
+	if w == nil || w.File == nil {
+		return fmt.Errorf("run log writer is closed")
+	}
+	body, err := json.Marshal(logLine{
+		Timestamp: entry.Timestamp.Format(timeFormatRFC3339Nano),
+		RunID:     entry.RunID,
+		Action:    entry.Action,
+		Message:   entry.Message,
+		Line:      entry.Line,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal run log entry: %w", err)
+	}
+	body = append(body, '\n')
+	if _, err := w.Write(body); err != nil {
+		return fmt.Errorf("write run log entry: %w", err)
+	}
+
+	return nil
+}
+
+type logLine struct {
+	Timestamp string `json:"timestamp,omitempty"`
+	RunID     string `json:"run_id,omitempty"`
+	Action    string `json:"action,omitempty"`
+	Event     string `json:"event,omitempty"`
+	Message   string `json:"message,omitempty"`
+	Line      string `json:"line,omitempty"`
+}
+
+const timeFormatRFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"

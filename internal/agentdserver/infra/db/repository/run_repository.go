@@ -40,9 +40,11 @@ func (r *AgentRunRepository) Create(ctx context.Context, run domain.AgentRun) er
 	const query = `INSERT INTO agent_runs (
 	           id, agent_name, agent_revision, trigger, status, due_at,
 	           started_at, completed_at, work_dir, log_path, provider_request_id,
+	           input_json, contract_input_schema_digest, contract_output_schema_digest,
+	           provider_name, provider_model, result_format,
 	           result, result_summary, error_code, error_message, stop_requested_at,
 	           created_at, updated_at
-	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	if _, err := r.db.ExecContext(ctx, query,
 		run.ID,
 		run.AgentName,
@@ -55,6 +57,12 @@ func (r *AgentRunRepository) Create(ctx context.Context, run domain.AgentRun) er
 		run.WorkDir,
 		run.LogPath,
 		nullString(run.ProviderRequestID),
+		nullRawJSON(run.InputJSON),
+		nullString(run.ContractInputSchemaDigest),
+		nullString(run.ContractOutputSchemaDigest),
+		nullString(run.ProviderName),
+		nullString(run.ProviderModel),
+		normalizedResultFormat(run.ResultFormat),
 		run.Result,
 		run.ResultSummary,
 		nullString(run.ErrorCode),
@@ -80,6 +88,12 @@ func (r *AgentRunRepository) Update(ctx context.Context, run domain.AgentRun) er
 	           work_dir = ?,
 	           log_path = ?,
 	           provider_request_id = ?,
+	           input_json = ?,
+	           contract_input_schema_digest = ?,
+	           contract_output_schema_digest = ?,
+	           provider_name = ?,
+	           provider_model = ?,
+	           result_format = ?,
 	           result = ?,
 	           result_summary = ?,
 	           error_code = ?,
@@ -97,6 +111,12 @@ func (r *AgentRunRepository) Update(ctx context.Context, run domain.AgentRun) er
 		run.WorkDir,
 		run.LogPath,
 		nullString(run.ProviderRequestID),
+		nullRawJSON(run.InputJSON),
+		nullString(run.ContractInputSchemaDigest),
+		nullString(run.ContractOutputSchemaDigest),
+		nullString(run.ProviderName),
+		nullString(run.ProviderModel),
+		normalizedResultFormat(run.ResultFormat),
 		run.Result,
 		run.ResultSummary,
 		nullString(run.ErrorCode),
@@ -122,6 +142,8 @@ func (r *AgentRunRepository) Update(ctx context.Context, run domain.AgentRun) er
 func (r *AgentRunRepository) FindByID(ctx context.Context, runID string) (domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       input_json, contract_input_schema_digest, contract_output_schema_digest,
+	       provider_name, provider_model, result_format,
 	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs WHERE id = ?`
 
@@ -131,6 +153,8 @@ func (r *AgentRunRepository) FindByID(ctx context.Context, runID string) (domain
 func (r *AgentRunRepository) FindLatest(ctx context.Context) (domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       input_json, contract_input_schema_digest, contract_output_schema_digest,
+	       provider_name, provider_model, result_format,
 	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs ORDER BY created_at DESC LIMIT 1`
 
@@ -140,6 +164,8 @@ func (r *AgentRunRepository) FindLatest(ctx context.Context) (domain.AgentRun, e
 func (r *AgentRunRepository) FindActive(ctx context.Context) (domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       input_json, contract_input_schema_digest, contract_output_schema_digest,
+	       provider_name, provider_model, result_format,
 	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       WHERE status IN ('queued', 'running', 'stopping')
@@ -151,6 +177,8 @@ func (r *AgentRunRepository) FindActive(ctx context.Context) (domain.AgentRun, e
 func (r *AgentRunRepository) ListActive(ctx context.Context) ([]domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       input_json, contract_input_schema_digest, contract_output_schema_digest,
+	       provider_name, provider_model, result_format,
 	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       WHERE status IN ('queued', 'running', 'stopping')
@@ -168,6 +196,8 @@ func (r *AgentRunRepository) ListActive(ctx context.Context) ([]domain.AgentRun,
 func (r *AgentRunRepository) List(ctx context.Context) ([]domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       input_json, contract_input_schema_digest, contract_output_schema_digest,
+	       provider_name, provider_model, result_format,
 	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       ORDER BY created_at DESC`
@@ -184,6 +214,8 @@ func (r *AgentRunRepository) List(ctx context.Context) ([]domain.AgentRun, error
 func (r *AgentRunRepository) ListTerminal(ctx context.Context) ([]domain.AgentRun, error) {
 	const query = `SELECT id, agent_name, agent_revision, trigger, status, due_at,
 	       started_at, completed_at, work_dir, log_path, provider_request_id,
+	       input_json, contract_input_schema_digest, contract_output_schema_digest,
+	       provider_name, provider_model, result_format,
 	       result, result_summary, error_code, error_message, stop_requested_at
 	       FROM agent_runs
 	       WHERE status IN ('completed', 'failed', 'stopped', 'interrupted')
@@ -318,6 +350,9 @@ func scanRun(scanner runScanner) (domain.AgentRun, error) {
 		run                                        domain.AgentRun
 		dueAt, startedAt, completedAt, stoppedAt   sql.NullString
 		providerRequestID, errorCode, errorMessage sql.NullString
+		inputJSON                                  sql.NullString
+		contractInputDigest, contractOutputDigest  sql.NullString
+		providerName, providerModel, resultFormat  sql.NullString
 	)
 
 	err := scanner.Scan(
@@ -332,6 +367,12 @@ func scanRun(scanner runScanner) (domain.AgentRun, error) {
 		&run.WorkDir,
 		&run.LogPath,
 		&providerRequestID,
+		&inputJSON,
+		&contractInputDigest,
+		&contractOutputDigest,
+		&providerName,
+		&providerModel,
+		&resultFormat,
 		&run.Result,
 		&run.ResultSummary,
 		&errorCode,
@@ -360,10 +401,37 @@ func scanRun(scanner runScanner) (domain.AgentRun, error) {
 		return domain.AgentRun{}, errParse
 	}
 	run.ProviderRequestID = providerRequestID.String
+	if inputJSON.Valid && inputJSON.String != "" {
+		run.InputJSON = append([]byte(nil), inputJSON.String...)
+	}
+	run.ContractInputSchemaDigest = contractInputDigest.String
+	run.ContractOutputSchemaDigest = contractOutputDigest.String
+	run.ProviderName = providerName.String
+	run.ProviderModel = providerModel.String
+	run.ResultFormat = domain.ResultFormat(resultFormat.String)
+	if run.ResultFormat == "" {
+		run.ResultFormat = domain.ResultFormatText
+	}
 	run.ErrorCode = errorCode.String
 	run.ErrorMessage = errorMessage.String
 
 	return run, nil
+}
+
+func nullRawJSON(value []byte) any {
+	if len(value) == 0 {
+		return nil
+	}
+
+	return string(value)
+}
+
+func normalizedResultFormat(format domain.ResultFormat) string {
+	if format == "" {
+		return string(domain.ResultFormatText)
+	}
+
+	return string(format)
 }
 
 func scanRuns(rows *sql.Rows) ([]domain.AgentRun, error) {

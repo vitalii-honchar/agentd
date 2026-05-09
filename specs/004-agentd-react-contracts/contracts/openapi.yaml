@@ -1,0 +1,264 @@
+openapi: 3.1.0
+info:
+  title: Agentd Unified ReAct Contracts API
+  version: 0.1.0
+paths:
+  /v1/agents/apply:
+    post:
+      summary: Apply an agent definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                path:
+                  type: string
+                markdown:
+                  type: string
+              oneOf:
+                - required: [path]
+                - required: [markdown]
+      responses:
+        "200":
+          description: Agent applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentApplyResponse"
+        "400":
+          description: Invalid definition or contract schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/agents/{name}/runs:
+    post:
+      summary: Start an agent run
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                input:
+                  type: object
+                  additionalProperties: true
+                  description: JSON object validated against contract.input when present.
+                legacy_inputs:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "202":
+          description: Run accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+        "400":
+          description: Invalid contracted input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/runs:
+    get:
+      summary: List runs
+      parameters:
+        - name: all
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Run list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RunSummary"
+                required: [runs]
+  /v1/runs/{run_id}/result:
+    get:
+      summary: Get one run result
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResult"
+        "404":
+          description: Unknown run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/runs/{run_id}/logs:
+    get:
+      summary: Get logs for one run
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tail
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Run-scoped logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogsResponse"
+        "404":
+          description: Unknown run identifier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    AgentApplyResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        revision:
+          type: string
+        status:
+          type: string
+        contract:
+          $ref: "#/components/schemas/ContractSummary"
+      required: [name, revision, status]
+    ContractSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        input_schema_digest:
+          type: string
+        output_schema_digest:
+          type: string
+      required: [input_schema_digest, output_schema_digest]
+    RunResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        run_id:
+          type: string
+        agent_name:
+          type: string
+        revision:
+          type: string
+        status:
+          type: string
+      required: [run_id, agent_name, status]
+    RunSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        run_id:
+          type: string
+        agent_name:
+          type: string
+        revision:
+          type: string
+        status:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+      required: [run_id, agent_name, status]
+    RunResult:
+      type: object
+      additionalProperties: false
+      properties:
+        run_id:
+          type: string
+        agent_name:
+          type: string
+        status:
+          type: string
+        result_format:
+          type: string
+          enum: [text, json]
+        result:
+          description: String for legacy runs, JSON value for contracted runs.
+        error_code:
+          type: string
+        error_message:
+          type: string
+      required: [run_id, agent_name, status, result_format]
+    LogsResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        run_id:
+          type: string
+        agent_name:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogEntry"
+      required: [run_id, agent_name, entries]
+    LogEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        run_id:
+          type: string
+        action:
+          type: string
+        message:
+          type: string
+        line:
+          type: string
+      required: [timestamp, run_id, line]
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+      required: [code, message]

@@ -143,7 +143,7 @@ func (s *RevisionArtifactService) Create(
 	}
 	finalizedAt := createdAt
 
-	return RevisionArtifactResult{Revision: domain.AgentRevision{
+	revision := domain.AgentRevision{
 		AgentName:       request.Definition.Name,
 		RevisionID:      request.RevisionID,
 		ContentDigest:   artifactContentDigest(request.Definition),
@@ -158,7 +158,10 @@ func (s *RevisionArtifactService) Create(
 		FinalizedAt:     &finalizedAt,
 		Tools:           tools,
 		ArtifactFiles:   artifactFiles,
-	}}, nil
+	}
+	applyRevisionContractMetadata(&revision, request.Definition.Contract)
+
+	return RevisionArtifactResult{Revision: revision}, nil
 }
 
 func (s *RevisionArtifactService) ArtifactPath(agentName, revisionID string) (string, error) {
@@ -363,7 +366,39 @@ func writeArtifactManifest(artifactPath string, files []domain.RevisionArtifactF
 }
 
 func artifactContentDigest(definition domain.AgentDefinition) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(definition.RawMarkdown)))
+	parts := []string{strings.TrimSpace(definition.RawMarkdown)}
+	if definition.Contract != nil {
+		parts = append(parts,
+			strings.TrimSpace(definition.Contract.InputSchemaRaw),
+			strings.TrimSpace(definition.Contract.OutputSchemaRaw),
+		)
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+
+	return hex.EncodeToString(sum[:])
+}
+
+func applyRevisionContractMetadata(revision *domain.AgentRevision, contract *domain.AgentContract) {
+	if revision == nil || contract == nil {
+		return
+	}
+	inputDigest := contract.InputSchemaDigest
+	if inputDigest == "" {
+		inputDigest = digestArtifactString(contract.InputSchemaRaw)
+	}
+	outputDigest := contract.OutputSchemaDigest
+	if outputDigest == "" {
+		outputDigest = digestArtifactString(contract.OutputSchemaRaw)
+	}
+	revision.ContractInputSchemaRaw = contract.InputSchemaRaw
+	revision.ContractOutputSchemaRaw = contract.OutputSchemaRaw
+	revision.ContractInputSchemaDigest = inputDigest
+	revision.ContractOutputSchemaDigest = outputDigest
+	revision.ContractDigest = digestArtifactString(inputDigest + "\x00" + outputDigest)
+}
+
+func digestArtifactString(value string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(value)))
 
 	return hex.EncodeToString(sum[:])
 }

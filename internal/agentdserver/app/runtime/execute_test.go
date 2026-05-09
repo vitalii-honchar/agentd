@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -59,6 +60,33 @@ func TestExecuteUseCasePassesDeclaredToolsToManager(t *testing.T) {
 	}
 	if manager.executeRequest.Inputs["url"] != "https://example.com" {
 		t.Fatalf("inputs: %#v", manager.executeRequest.Inputs)
+	}
+}
+
+func TestExecuteUseCaseRejectsInvalidContractedInputBeforeManager(t *testing.T) {
+	t.Parallel()
+
+	agent := testRuntimeAgent("contracted-agent")
+	agent.Contract = &domain.AgentContract{
+		InputSchemaRaw: `{"type":"object","required":["topic"],"properties":{"topic":{"type":"string"}}}`,
+	}
+	repo := newRuntimeAgentRepo(agent)
+	manager := &fakeManager{run: domain.AgentRun{
+		ID:        "run-1",
+		AgentName: agent.Name,
+		Status:    domain.AgentRunStatusRunning,
+	}}
+	useCase := NewExecuteUseCase(repo, manager)
+
+	_, err := useCase.ExecuteWithRuntimeInput(context.Background(), agent.Name, domain.RuntimeInput{
+		RawJSON: json.RawMessage(`{"topic":7}`),
+		Source:  domain.RuntimeInputSourceCLI,
+	})
+	if !errors.Is(err, domain.ErrContractInputInvalid) {
+		t.Fatalf("ExecuteWithRuntimeInput error: got %v want %v", err, domain.ErrContractInputInvalid)
+	}
+	if manager.executeCalled {
+		t.Fatalf("manager was called for invalid contracted input: %#v", manager.executeRequest)
 	}
 }
 

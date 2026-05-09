@@ -21,7 +21,24 @@ func NewInspectUseCase(agents app.AgentRepository) (*InspectUseCase, error) {
 }
 
 func (u *InspectUseCase) Inspect(ctx context.Context, name string) (domain.Agent, error) {
-	return u.agents.FindByName(ctx, name)
+	agent, err := u.agents.FindByName(ctx, name)
+	if err != nil {
+		return domain.Agent{}, err
+	}
+	agent.Contract = maskContractForInspect(agent.Contract)
+
+	return agent, nil
+}
+
+func maskContractForInspect(contract *domain.AgentContract) *domain.AgentContract {
+	if contract == nil {
+		return nil
+	}
+	masked := *contract
+	masked.InputSchemaRaw = ""
+	masked.OutputSchemaRaw = ""
+
+	return &masked
 }
 
 type ListUseCase struct {

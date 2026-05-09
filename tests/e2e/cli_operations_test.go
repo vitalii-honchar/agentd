@@ -70,7 +70,7 @@ func TestCLIOperationsAgainstDaemonAPI(t *testing.T) {
 		domain.AgentRunStatusCompleted,
 	)
 
-	logsOut := runCLI(t, cfg, client, "logs", "release-notes-helper")
+	logsOut := runCLI(t, cfg, client, "logs", run.ID)
 	if !strings.Contains(logsOut, "output for release-notes-helper") {
 		t.Fatalf("logs output: %q", logsOut)
 	}

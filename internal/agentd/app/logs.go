@@ -28,20 +28,22 @@ type LogEntry struct {
 }
 
 func NewLogsCommand(client QueryClient, output Output) *cobra.Command {
-	var runID string
 	var tail int
 	cmd := &cobra.Command{
-		Use:   "logs <agent_name>",
-		Short: "Read isolated Agent logs",
+		Use:   "logs <run_id>",
+		Short: "Read logs for a single Agent run",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client == nil {
 				return fmt.Errorf("query client is required")
 			}
+			runID := args[0]
+			if !uuidPattern.MatchString(runID) {
+				return fmt.Errorf("logs require an agent run ID")
+			}
 			response, err := client.Logs(cmd.Context(), LogsRequest{
-				AgentName: args[0],
-				RunID:     runID,
-				Tail:      tail,
+				RunID: runID,
+				Tail:  tail,
 			})
 			if err != nil {
 				return err
@@ -66,7 +68,6 @@ func NewLogsCommand(client QueryClient, output Output) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&runID, "run", "", "run ID to read logs for")
 	cmd.Flags().IntVar(&tail, "tail", 0, "number of log lines to read")
 
 	return cmd

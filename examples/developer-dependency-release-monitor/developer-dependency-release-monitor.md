@@ -7,6 +7,54 @@ schedule:
 vendor:
   name: openai
   model: gpt-5.4-mini
+contract:
+  input: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    }
+  output: |
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string" },
+        "releases_requiring_attention": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "dependency": { "type": "string" },
+              "version": { "type": "string" },
+              "url": { "type": "string" },
+              "why_it_matters": { "type": "string" },
+              "upgrade_priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "urgent"]
+              },
+              "migration_or_test_impact": { "type": "string" }
+            },
+            "required": [
+              "dependency",
+              "version",
+              "url",
+              "why_it_matters",
+              "upgrade_priority",
+              "migration_or_test_impact"
+            ]
+          }
+        },
+        "routine_releases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "no_action_note": { "type": "string" }
+      },
+      "required": ["summary", "releases_requiring_attention", "routine_releases", "no_action_note"]
+    }
 tools:
   - name: fetch_dependency_releases
     kind: custom_tool

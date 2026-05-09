@@ -79,6 +79,80 @@ func TestResultHandlerReturnsFullRunResult(t *testing.T) {
 	}
 }
 
+func TestResultHandlerReturnsStructuredJSONResult(t *testing.T) {
+	t.Parallel()
+
+	useCase := &fakeResultUseCase{runResult: appresult.RunResult{
+		RunID:         "run-json",
+		AgentName:     "contracted-agent",
+		Status:        domain.AgentRunStatusCompleted,
+		Trigger:       domain.RunTriggerManual,
+		ResultFormat:  domain.ResultFormatJSON,
+		Result:        `{"summary":"done","score":0.91}`,
+		ResultJSON:    json.RawMessage(`{"summary":"done","score":0.91}`),
+		ResultSummary: "done",
+	}}
+	server := NewServer(Config{}, WithResultUseCase(useCase))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodGet, "/v1/runs/run-json/result", nil)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusOK, response.Body.String())
+	}
+	var body model.RunResult
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if body.ResultFormat != string(domain.ResultFormatJSON) {
+		t.Fatalf("result format: got %q", body.ResultFormat)
+	}
+	var resultJSON map[string]any
+	if err := json.Unmarshal(body.ResultJSON, &resultJSON); err != nil {
+		t.Fatalf("result_json is not JSON object: %v raw=%s", err, body.ResultJSON)
+	}
+	if resultJSON["summary"] != "done" || resultJSON["score"] != 0.91 {
+		t.Fatalf("result_json: %#v", resultJSON)
+	}
+}
+
+func TestResultHandlerReturnsLegacyTextResult(t *testing.T) {
+	t.Parallel()
+
+	useCase := &fakeResultUseCase{runResult: appresult.RunResult{
+		RunID:         "run-text",
+		AgentName:     "legacy-agent",
+		Status:        domain.AgentRunStatusCompleted,
+		Trigger:       domain.RunTriggerManual,
+		ResultFormat:  domain.ResultFormatText,
+		Result:        "plain result",
+		ResultSummary: "plain result",
+	}}
+	server := NewServer(Config{}, WithResultUseCase(useCase))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodGet, "/v1/runs/run-text/result", nil)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusOK, response.Body.String())
+	}
+	var body model.RunResult
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if body.ResultFormat != string(domain.ResultFormatText) {
+		t.Fatalf("result format: got %q", body.ResultFormat)
+	}
+	if body.Result != "plain result" {
+		t.Fatalf("result: got %q", body.Result)
+	}
+	if len(body.ResultJSON) != 0 {
+		t.Fatalf("legacy result should not include result_json: %s", body.ResultJSON)
+	}
+}
+
 type fakeResultUseCase struct {
 	agentName    string
 	runID        string

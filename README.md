@@ -2,10 +2,11 @@
 
 agentd is a local daemon and CLI for running AI Agents from Markdown Agent Definition files. It treats an Agent Definition as code: validate it, apply it to a local daemon, inspect stored state, trigger manual runs, and read isolated run logs.
 
-The project currently targets a single-user developer machine. It is built as one Go module with two binaries:
+The project currently targets a single-user developer machine. Normal local usage needs one binary:
 
-- `agentd`: CLI for apply, list, inspect, execute, stop, and logs operations.
-- `agentdserver`: local daemon that validates definitions, stores state, schedules and runs Agents, and exposes a local REST API.
+- `agentd`: starts the local daemon with `--daemon`, `-d`, or compatibility alias `--deamon`; without those flags it runs client commands such as apply, list, inspect, execute, stop, result, and logs.
+
+`agentdserver` remains as a deprecated compatibility shim for existing scripts.
 
 ## Status
 
@@ -15,11 +16,10 @@ agentd is early-stage software. The daemon, CLI, definition parser, SQLite-backe
 
 agentd requires Go 1.26.2 or newer.
 
-Install the latest published CLI and daemon binaries directly with Go:
+Install the latest published binary directly with Go:
 
 ```bash
 go install github.com/vitalii-honchar/agentd/cmd/agentd@latest
-go install github.com/vitalii-honchar/agentd/cmd/agentdserver@latest
 ```
 
 Make sure Go's binary directory is on your `PATH`:
@@ -27,7 +27,6 @@ Make sure Go's binary directory is on your `PATH`:
 ```bash
 export PATH="$(go env GOPATH)/bin:$PATH"
 agentd --help
-agentdserver --help
 ```
 
 To install from a local checkout instead of the latest published version:
@@ -36,14 +35,13 @@ To install from a local checkout instead of the latest published version:
 git clone git@github.com:vitalii-honchar/agentd.git
 cd agentd
 go mod download
-go install ./cmd/agentd ./cmd/agentdserver
+go install ./cmd/agentd
 ```
 
 You can also use the project `Makefile`:
 
 ```bash
 make install
-make runserver
 ```
 
 ## Quickstart
@@ -59,33 +57,35 @@ cp .env.example .env
 Start the daemon:
 
 ```bash
-make runserver
+agentd --daemon
+# or
+agentd -d
 ```
 
 Apply, list, inspect, execute, and read logs:
 
 ```bash
-go run ./cmd/agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
-go run ./cmd/agentd list
-go run ./cmd/agentd inspect hacker-news-builder-brief
-go run ./cmd/agentd execute hacker-news-builder-brief
-go run ./cmd/agentd ps -a
-go run ./cmd/agentd result hacker-news-builder-brief
-go run ./cmd/agentd logs hacker-news-builder-brief
+agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
+agentd list
+agentd inspect hacker-news-builder-brief
+agentd execute hacker-news-builder-brief
+agentd ps -a
+agentd result hacker-news-builder-brief
+agentd logs hacker-news-builder-brief
 ```
 
 Read a specific run if needed:
 
 ```bash
-go run ./cmd/agentd result <run_id>
-go run ./cmd/agentd logs hacker-news-builder-brief --run <run_id> --tail 100
+agentd result <run_id>
+agentd logs hacker-news-builder-brief --run <run_id> --tail 100
 ```
 
 The manual website snapshot example accepts run-time input:
 
 ```bash
-go run ./cmd/agentd apply examples/website-snapshot-analyst/website-snapshot-analyst.md
-go run ./cmd/agentd execute website-snapshot-analyst --input url=https://example.com
+agentd apply examples/website-snapshot-analyst/website-snapshot-analyst.md
+agentd execute website-snapshot-analyst --input url=https://example.com
 ```
 
 ## Examples
@@ -135,15 +135,15 @@ Never put secret values in Agent Definition files, examples, issues, logs, or co
 
 ## Architecture
 
-agentd follows a daemon-first design. The `agentd` CLI is intentionally thin:
-it parses commands, formats output, and calls the local daemon over HTTP. The
-`agentdserver` daemon owns validation, persistence, scheduling, execution,
-restart recovery, and log access.
+agentd follows a daemon-first design. In daemon mode, the `agentd` process owns
+validation, persistence, scheduling, execution, restart recovery, and log
+access. In client mode, the same executable is intentionally thin: it parses
+commands, formats output, and calls the local daemon over HTTP.
 
 ```mermaid
 flowchart LR
     user[Developer] --> cli[agentd CLI]
-    cli -->|local HTTP| api[agentdserver HTTP API]
+    cli -->|local HTTP| api[agentd daemon HTTP API]
     api --> app[Application use cases]
     app --> settings[(settings SQLite DB)]
     app --> runtime[(per-Agent runtime SQLite DBs)]
@@ -167,7 +167,7 @@ port.
 flowchart TB
     subgraph Commands
         agentdCmd[cmd/agentd]
-        serverCmd[cmd/agentdserver]
+        serverCmd[cmd/agentdserver deprecated shim]
     end
 
     subgraph CLI[internal/agentd]
@@ -194,6 +194,7 @@ flowchart TB
     cliConfig --> cliApp
     httpClient --> http
 
+    agentdCmd --> service
     serverCmd --> service
     service --> usecases
     usecases --> domain

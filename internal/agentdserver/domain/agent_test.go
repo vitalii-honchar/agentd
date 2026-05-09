@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -144,6 +145,117 @@ func TestAgentRunStoresTerminalResult(t *testing.T) {
 	}
 	if run.ResultSummary == "" {
 		t.Fatal("terminal run result summary should be stored")
+	}
+}
+
+func TestAgentContractCapturesSchemasAndDigests(t *testing.T) {
+	t.Parallel()
+
+	contract := AgentContract{
+		InputSchemaRaw:      `{"type":"object","required":["topic"]}`,
+		OutputSchemaRaw:     `{"type":"object","required":["summary"]}`,
+		InputSchemaDigest:   "sha256:input",
+		OutputSchemaDigest:  "sha256:output",
+		CreatedFromRevision: "revision-1",
+	}
+	definition := AgentDefinition{Contract: &contract}
+	agent := Agent{Contract: &contract}
+	revision := AgentRevision{
+		ContractInputSchemaRaw:     contract.InputSchemaRaw,
+		ContractOutputSchemaRaw:    contract.OutputSchemaRaw,
+		ContractInputSchemaDigest:  contract.InputSchemaDigest,
+		ContractOutputSchemaDigest: contract.OutputSchemaDigest,
+		ContractDigest:             "sha256:contract",
+	}
+
+	if definition.Contract == nil || agent.Contract == nil {
+		t.Fatal("contract should be optional but retained when provided")
+	}
+	if revision.ContractInputSchemaDigest != "sha256:input" ||
+		revision.ContractOutputSchemaDigest != "sha256:output" ||
+		revision.ContractDigest != "sha256:contract" {
+		t.Fatalf("revision contract metadata: %#v", revision)
+	}
+}
+
+func TestRuntimeInputCapturesStructuredAndLegacyInputs(t *testing.T) {
+	t.Parallel()
+
+	input := RuntimeInput{
+		RawJSON:      json.RawMessage(`{"topic":"agentd","limit":3}`),
+		LegacyInputs: map[string]string{"topic": "agentd"},
+		Source:       RuntimeInputSourceCLI,
+	}
+
+	if !json.Valid(input.RawJSON) {
+		t.Fatalf("runtime input JSON should be valid: %s", input.RawJSON)
+	}
+	if input.LegacyInputs["topic"] != "agentd" {
+		t.Fatalf("legacy inputs: %#v", input.LegacyInputs)
+	}
+	if input.Source != RuntimeInputSourceCLI {
+		t.Fatalf("source: got %q", input.Source)
+	}
+}
+
+func TestReActStepCapturesModelDecisionAndObservation(t *testing.T) {
+	t.Parallel()
+
+	started := time.Now()
+	completed := started.Add(time.Second)
+	step := ReActStep{
+		StepIndex:          2,
+		RunID:              "run-1",
+		AgentName:          "release-notes-helper",
+		RevisionID:         "revision-1",
+		ModelMessage:       "Need repository data.",
+		Decision:           ReActDecisionToolCall,
+		ToolName:           "fetch_changes",
+		ToolArgsJSON:       `{"repo":"agentd"}`,
+		ObservationSummary: "3 commits",
+		StartedAt:          started,
+		CompletedAt:        &completed,
+	}
+
+	if step.Decision != ReActDecisionToolCall || step.ToolName != "fetch_changes" {
+		t.Fatalf("step decision: %#v", step)
+	}
+	if !json.Valid([]byte(step.ToolArgsJSON)) {
+		t.Fatalf("tool args should be JSON: %s", step.ToolArgsJSON)
+	}
+	if step.CompletedAt == nil {
+		t.Fatal("completed ReAct step should capture completion time")
+	}
+}
+
+func TestProviderMetadataAndRunResultFormat(t *testing.T) {
+	t.Parallel()
+
+	provider := ProviderMetadata{
+		Name:                 "codex",
+		Model:                "gpt-5.2",
+		RequiresDirectAPIKey: false,
+		ConfigJSON:           `{"command":"codex","timeout_seconds":120}`,
+	}
+	run := AgentRun{
+		ID:                         "run-1",
+		ProviderName:               provider.Name,
+		ProviderModel:              provider.Model,
+		ProviderRequestID:          "codex-process-1",
+		ResultFormat:               ResultFormatJSON,
+		Result:                     `{"summary":"done"}`,
+		ContractInputSchemaDigest:  "sha256:input",
+		ContractOutputSchemaDigest: "sha256:output",
+	}
+
+	if provider.RequiresDirectAPIKey {
+		t.Fatal("codex provider should not require a direct API key")
+	}
+	if run.ResultFormat != ResultFormatJSON || !json.Valid([]byte(run.Result)) {
+		t.Fatalf("run result: %#v", run)
+	}
+	if run.ProviderName != "codex" || run.ProviderModel == "" {
+		t.Fatalf("provider metadata was not copied to run: %#v", run)
 	}
 }
 

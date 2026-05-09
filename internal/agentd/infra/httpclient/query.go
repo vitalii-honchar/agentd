@@ -57,9 +57,8 @@ func (c *Client) InspectRevision(
 
 func (c *Client) Logs(ctx context.Context, request app.LogsRequest) (app.LogsResponse, error) {
 	response, err := c.client.Logs(ctx, agentdclient.LogsQuery{
-		AgentName: request.AgentName,
-		RunID:     request.RunID,
-		Tail:      request.Tail,
+		RunID: request.RunID,
+		Tail:  request.Tail,
 	})
 	if err != nil {
 		return app.LogsResponse{}, err

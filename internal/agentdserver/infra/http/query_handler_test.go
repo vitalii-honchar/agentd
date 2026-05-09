@@ -160,7 +160,7 @@ func TestLogsHandlerReturnsEntries(t *testing.T) {
 	response := httptest.NewRecorder()
 	request := localRequest(
 		stdhttp.MethodGet,
-		"/v1/agents/release-notes-helper/logs?run_id=run-1&tail=20",
+		"/v1/runs/run-1/logs?tail=20",
 		nil,
 	)
 
@@ -176,8 +176,55 @@ func TestLogsHandlerReturnsEntries(t *testing.T) {
 	if body.AgentName != "release-notes-helper" || body.RunID != "run-1" || body.Entries[0].Line != "completed" {
 		t.Fatalf("body: %#v", body)
 	}
-	if logsUseCase.query.RunID != "run-1" || logsUseCase.query.Tail != 20 {
+	if logsUseCase.query.AgentName != "" || logsUseCase.query.RunID != "run-1" || logsUseCase.query.Tail != 20 {
 		t.Fatalf("query: %#v", logsUseCase.query)
+	}
+}
+
+func TestRunLogsHandlerReturnsEntries(t *testing.T) {
+	t.Parallel()
+
+	logsUseCase := &fakeLogsUseCase{result: applogs.Result{
+		Agent: testHTTPAgent("release-notes-helper"),
+		Run: domain.AgentRun{
+			ID:        "run-1",
+			AgentName: "release-notes-helper",
+			Status:    domain.AgentRunStatusCompleted,
+		},
+		Entries: []app.LogEntry{{RunID: "run-1", Line: "completed"}},
+	}}
+	server := NewServer(Config{}, WithLogsUseCase(logsUseCase))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodGet, "/v1/runs/run-1/logs?tail=20", nil)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("status: got %d want %d body %s", response.Code, stdhttp.StatusOK, response.Body.String())
+	}
+	var body model.LogsResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.RunID != "run-1" || body.Entries[0].Line != "completed" {
+		t.Fatalf("body: %#v", body)
+	}
+	if logsUseCase.query.AgentName != "" || logsUseCase.query.RunID != "run-1" || logsUseCase.query.Tail != 20 {
+		t.Fatalf("query: %#v", logsUseCase.query)
+	}
+}
+
+func TestAgentNameLogsRouteNoLongerSucceeds(t *testing.T) {
+	t.Parallel()
+
+	server := NewServer(Config{}, WithLogsUseCase(&fakeLogsUseCase{}))
+	response := httptest.NewRecorder()
+	request := localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/logs", nil)
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code == stdhttp.StatusOK {
+		t.Fatalf("agent-name logs route should not succeed: %d body %s", response.Code, response.Body.String())
 	}
 }
 
@@ -186,7 +233,7 @@ func TestLogsHandlerRejectsInvalidTail(t *testing.T) {
 
 	server := NewServer(Config{}, WithLogsUseCase(&fakeLogsUseCase{}))
 	response := httptest.NewRecorder()
-	request := localRequest(stdhttp.MethodGet, "/v1/agents/release-notes-helper/logs?tail=bad", nil)
+	request := localRequest(stdhttp.MethodGet, "/v1/runs/run-1/logs?tail=bad", nil)
 
 	server.Handler().ServeHTTP(response, request)
 

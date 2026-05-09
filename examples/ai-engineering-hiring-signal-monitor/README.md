@@ -15,7 +15,8 @@ agentd apply examples/ai-engineering-hiring-signal-monitor/ai-engineering-hiring
 agentd execute ai-engineering-hiring-signal-monitor
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs ai-engineering-hiring-signal-monitor --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd result ai-engineering-hiring-signal-monitor` to compare hiring themes over time.
+Run results are finalized as JSON matching the example contract, including `summary`, `strong_hiring_signals`, and product/platform opportunities.

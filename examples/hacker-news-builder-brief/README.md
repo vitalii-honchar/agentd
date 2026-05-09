@@ -14,7 +14,8 @@ This example is zero configuration and uses public network access only. API keys
 agentd apply examples/hacker-news-builder-brief/hacker-news-builder-brief.md
 agentd result <agent-name>
 agentd result <run-id>
-agentd logs hacker-news-builder-brief --run <run-id>
+agentd logs <run-id>
 ```
 
 Use `agentd execute hacker-news-builder-brief` to run it manually during local testing even though the normal schedule is daily.
+Run results are finalized as JSON matching the example contract, including `summary`, `important_items`, and `engineering_implications`.
