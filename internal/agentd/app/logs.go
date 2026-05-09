@@ -22,6 +22,8 @@ type LogsResponse struct {
 type LogEntry struct {
 	Timestamp time.Time `json:"timestamp"`
 	RunID     string    `json:"run_id,omitempty"`
+	Action    string    `json:"action,omitempty"`
+	Message   string    `json:"message,omitempty"`
 	Line      string    `json:"line"`
 }
 
@@ -48,7 +50,15 @@ func NewLogsCommand(client QueryClient, output Output) *cobra.Command {
 				return output.Write(response)
 			}
 			for _, entry := range response.Entries {
-				if _, err := fmt.Fprintln(output.writer, entry.Line); err != nil {
+				line := entry.Line
+				if entry.Action != "" {
+					if entry.RunID != "" {
+						line = fmt.Sprintf("%s %s %s %s", entry.Timestamp.Format(time.RFC3339), entry.RunID, entry.Action, entry.Message)
+					} else {
+						line = fmt.Sprintf("%s %s %s", entry.Timestamp.Format(time.RFC3339), entry.Action, entry.Message)
+					}
+				}
+				if _, err := fmt.Fprintln(output.writer, line); err != nil {
 					return err
 				}
 			}

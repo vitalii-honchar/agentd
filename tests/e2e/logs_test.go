@@ -28,15 +28,25 @@ func TestLogsAreIsolatedAcrossConcurrentAgents(t *testing.T) {
 	logsA := getLogs(t, stack.server, "agent-a")
 	logsB := getLogs(t, stack.server, "agent-b")
 
-	if len(logsA.Entries) != 1 || !strings.Contains(logsA.Entries[0].Line, "agent-a") {
+	if !logsContain(logsA.Entries, "output for agent-a") {
 		t.Fatalf("agent-a logs: %#v", logsA.Entries)
 	}
-	if strings.Contains(logsA.Entries[0].Line, "agent-b") {
+	if logsContain(logsA.Entries, "output for agent-b") {
 		t.Fatalf("agent-a logs include agent-b output: %#v", logsA.Entries)
 	}
-	if len(logsB.Entries) != 1 || !strings.Contains(logsB.Entries[0].Line, "agent-b") {
+	if !logsContain(logsB.Entries, "output for agent-b") {
 		t.Fatalf("agent-b logs: %#v", logsB.Entries)
 	}
+}
+
+func logsContain(entries []model.LogEntry, text string) bool {
+	for _, entry := range entries {
+		if strings.Contains(entry.Line, text) || strings.Contains(entry.Message, text) {
+			return true
+		}
+	}
+
+	return false
 }
 
 type outputE2EProvider struct{}
@@ -59,6 +69,7 @@ func getLogs(t *testing.T, server interface{ Handler() http.Handler }, agentName
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodGet, "/v1/agents/"+agentName+"/logs", nil)
+	request.RemoteAddr = "127.0.0.1:12345"
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusOK {

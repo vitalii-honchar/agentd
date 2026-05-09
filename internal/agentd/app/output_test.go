@@ -40,6 +40,43 @@ func TestOutputWritesIndentedJSON(t *testing.T) {
 	}
 }
 
+func TestOutputWritesTrimmedResultTable(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	output := NewOutput(config.OutputText, &out)
+	rows := [][]string{{
+		"run-1",
+		"completed",
+		TrimTableCell("first line\nsecond line with a very long result summary", 28),
+	}}
+	if err := output.WriteTable([]string{"RUN ID", "STATUS", "RESULT"}, rows); err != nil {
+		t.Fatalf("WriteTable: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "RUN ID") || !strings.Contains(got, "STATUS") || !strings.Contains(got, "RESULT") {
+		t.Fatalf("headers missing: %q", got)
+	}
+	if !strings.Contains(got, "first line second line wi...") {
+		t.Fatalf("trimmed cell missing: %q", got)
+	}
+	if strings.Contains(got, "\nsecond line") {
+		t.Fatalf("cell was not normalized: %q", got)
+	}
+}
+
+func TestTrimTableCellHandlesSmallLimits(t *testing.T) {
+	t.Parallel()
+
+	if got := TrimTableCell("abcdef", 3); got != "abc" {
+		t.Fatalf("small trim: got %q want abc", got)
+	}
+	if got := TrimTableCell("already short", 80); got != "already short" {
+		t.Fatalf("short trim: got %q", got)
+	}
+}
+
 func TestInspectTextOutputSnapshot(t *testing.T) {
 	t.Parallel()
 

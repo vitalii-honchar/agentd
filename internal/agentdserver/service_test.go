@@ -2,10 +2,14 @@ package agentdserver
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/config"
+	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
 func TestNewWithConfigStartStop(t *testing.T) {
@@ -37,6 +41,76 @@ func TestNewWithConfigRejectsNilConfig(t *testing.T) {
 	}
 }
 
+func TestRecoverRevisionArtifactsMarksPendingAndMissingArtifactsCorrupt(t *testing.T) {
+	t.Parallel()
+
+	workRoot := t.TempDir()
+	artifactPath := filepath.Join(workRoot, "release-notes-helper", "missing-file")
+	if err := os.MkdirAll(artifactPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	repo := &memoryRevisionArtifactRepository{
+		agents: []domain.Agent{{Name: "release-notes-helper"}},
+		revisions: map[string][]domain.AgentRevision{
+			"release-notes-helper": {
+				{
+					AgentName:  "release-notes-helper",
+					RevisionID: "pending-revision",
+					Status:     domain.AgentRevisionStatusPending,
+				},
+				{
+					AgentName:    "release-notes-helper",
+					RevisionID:   "missing-file",
+					Status:       domain.AgentRevisionStatusFinalized,
+					ArtifactPath: artifactPath,
+					ArtifactFiles: []domain.RevisionArtifactFile{{
+						ArtifactRelativePath: "tools/fetch.py",
+					}},
+				},
+			},
+		},
+	}
+
+	if err := recoverRevisionArtifacts(context.Background(), repo, workRoot); err != nil {
+		t.Fatalf("recoverRevisionArtifacts: %v", err)
+	}
+	if len(repo.corrupt) != 2 {
+		t.Fatalf("corrupt revisions: got %#v", repo.corrupt)
+	}
+	if repo.corrupt[0].revisionID != "pending-revision" ||
+		!strings.Contains(repo.corrupt[0].message, "interrupted") {
+		t.Fatalf("pending corruption: %#v", repo.corrupt[0])
+	}
+	if repo.corrupt[1].revisionID != "missing-file" ||
+		!strings.Contains(repo.corrupt[1].message, "tools/fetch.py") {
+		t.Fatalf("missing artifact corruption: %#v", repo.corrupt[1])
+	}
+}
+
+func TestCleanupStaleExecutionDirsRemovesExecutionsOnly(t *testing.T) {
+	t.Parallel()
+
+	workRoot := t.TempDir()
+	executionDir := filepath.Join(workRoot, "release-notes-helper", "executions", "run-1")
+	revisionDir := filepath.Join(workRoot, "release-notes-helper", "revision-1")
+	if err := os.MkdirAll(executionDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll execution: %v", err)
+	}
+	if err := os.MkdirAll(revisionDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll revision: %v", err)
+	}
+
+	if err := cleanupStaleExecutionDirs(workRoot); err != nil {
+		t.Fatalf("cleanupStaleExecutionDirs: %v", err)
+	}
+	if _, err := os.Stat(executionDir); !os.IsNotExist(err) {
+		t.Fatalf("execution dir still exists or unexpected error: %v", err)
+	}
+	if _, err := os.Stat(revisionDir); err != nil {
+		t.Fatalf("revision artifact dir was removed: %v", err)
+	}
+}
+
 func testConfig(t *testing.T) *config.Config {
 	t.Helper()
 
@@ -62,4 +136,39 @@ func testConfig(t *testing.T) *config.Config {
 			RunStopTimeout:  time.Second,
 		},
 	}
+}
+
+type memoryRevisionArtifactRepository struct {
+	agents    []domain.Agent
+	revisions map[string][]domain.AgentRevision
+	corrupt   []revisionCorruption
+}
+
+type revisionCorruption struct {
+	agentName  string
+	revisionID string
+	message    string
+}
+
+func (r *memoryRevisionArtifactRepository) List(context.Context) ([]domain.Agent, error) {
+	return append([]domain.Agent(nil), r.agents...), nil
+}
+
+func (r *memoryRevisionArtifactRepository) ListRevisions(_ context.Context, agentName string) ([]domain.AgentRevision, error) {
+	return append([]domain.AgentRevision(nil), r.revisions[agentName]...), nil
+}
+
+func (r *memoryRevisionArtifactRepository) MarkRevisionCorrupt(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+	errorMessage string,
+) error {
+	r.corrupt = append(r.corrupt, revisionCorruption{
+		agentName:  agentName,
+		revisionID: revisionID,
+		message:    errorMessage,
+	})
+
+	return nil
 }

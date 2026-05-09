@@ -30,6 +30,72 @@ func TestEmbeddedSettingsMigrations(t *testing.T) {
 	assertObjectExists(t, database, "index", "idx_agents_vendor")
 }
 
+func TestSettingsMigrationsCreateRevisionMetadataTables(t *testing.T) {
+	t.Parallel()
+
+	database, err := New("settings", Config{
+		Path:         t.TempDir() + "/settings.db",
+		MaxOpenConns: 1,
+		Pragmas:      PragmasSettings,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer stopDB(t, database)
+
+	if err := database.Start(context.Background()); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	assertObjectExists(t, database, "table", "agent_revisions")
+	assertObjectExists(t, database, "table", "agent_revision_tools")
+	assertObjectExists(t, database, "table", "agent_revision_artifact_files")
+	assertObjectExists(t, database, "table", "agent_revision_environment")
+	assertObjectExists(t, database, "index", "idx_agent_revisions_agent_digest")
+	assertObjectExists(t, database, "index", "idx_agent_revisions_status")
+	assertObjectExists(t, database, "index", "idx_agent_revision_tools_kind")
+	assertObjectExists(t, database, "index", "idx_agent_revision_environment_key")
+}
+
+func TestSettingsMigrationsEnforceRevisionDigestUniquenessPerAgent(t *testing.T) {
+	t.Parallel()
+
+	database, err := New("settings", Config{
+		Path:         t.TempDir() + "/settings.db",
+		MaxOpenConns: 1,
+		Pragmas:      PragmasSettings,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer stopDB(t, database)
+
+	if err := database.Start(context.Background()); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	insertMigrationTestAgent(t, database, "digest-agent")
+	insertMigrationTestRevision(t, database, "digest-agent", "revision-1", "sha256:abc")
+
+	if _, err := database.ExecContext(context.Background(), `INSERT INTO agent_revisions (
+	    agent_name, revision_id, content_digest, source_path, artifact_path,
+	    prompt, vendor_name, vendor_model, schedule_type, status, created_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"digest-agent",
+		"revision-2",
+		"sha256:abc",
+		"/tmp/agent.md",
+		"/tmp/data/work/digest-agent/revision-2",
+		"Prompt",
+		"openai",
+		"gpt-test",
+		"manual",
+		"finalized",
+		"2026-05-08T00:00:00Z",
+	); err == nil {
+		t.Fatal("expected duplicate revision digest to fail")
+	}
+}
+
 func TestEmbeddedRuntimeMigrations(t *testing.T) {
 	t.Parallel()
 
@@ -51,8 +117,59 @@ func TestEmbeddedRuntimeMigrations(t *testing.T) {
 	assertObjectExists(t, database, "table", "runtime_events")
 	assertObjectExists(t, database, "index", "idx_agent_runs_agent_due")
 	assertObjectExists(t, database, "index", "idx_agent_runs_latest_logs")
+	assertObjectExists(t, database, "index", "idx_agent_runs_terminal_results")
+	assertObjectExists(t, database, "table", "tool_executions")
+	assertObjectExists(t, database, "index", "idx_tool_executions_run_started")
 	assertObjectExists(t, database, "index", "idx_runtime_events_run_created")
 	assertObjectExists(t, database, "index", "idx_runtime_events_type_created")
+}
+
+func insertMigrationTestAgent(t *testing.T, database *DB, agentName string) {
+	t.Helper()
+
+	if _, err := database.ExecContext(context.Background(), `INSERT INTO agents (
+	    name, revision, definition_source_path, definition_markdown, prompt, enabled,
+	    vendor_name, vendor_model, schedule_type, status, created_at, updated_at, applied_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		agentName,
+		"source-revision",
+		"/tmp/agent.md",
+		"# Agent",
+		"Prompt",
+		1,
+		"openai",
+		"gpt-test",
+		"manual",
+		"active",
+		"2026-05-08T00:00:00Z",
+		"2026-05-08T00:00:00Z",
+		"2026-05-08T00:00:00Z",
+	); err != nil {
+		t.Fatalf("insert migration test agent: %v", err)
+	}
+}
+
+func insertMigrationTestRevision(t *testing.T, database *DB, agentName, revisionID, digest string) {
+	t.Helper()
+
+	if _, err := database.ExecContext(context.Background(), `INSERT INTO agent_revisions (
+	    agent_name, revision_id, content_digest, source_path, artifact_path,
+	    prompt, vendor_name, vendor_model, schedule_type, status, created_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		agentName,
+		revisionID,
+		digest,
+		"/tmp/agent.md",
+		"/tmp/data/work/"+agentName+"/"+revisionID,
+		"Prompt",
+		"openai",
+		"gpt-test",
+		"manual",
+		"finalized",
+		"2026-05-08T00:00:00Z",
+	); err != nil {
+		t.Fatalf("insert migration test revision: %v", err)
+	}
 }
 
 func assertObjectExists(t *testing.T, database *DB, objectType, name string) {

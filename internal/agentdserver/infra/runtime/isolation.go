@@ -33,7 +33,7 @@ func (b *IsolationBuilder) Build(agent domain.Agent, runID string) (RunEnvironme
 		return RunEnvironment{}, fmt.Errorf("run id is required")
 	}
 
-	runDir := filepath.Join(b.workDir, agent.Name, runID)
+	runDir := filepath.Join(b.workDir, agent.Name, "executions", runID)
 	if err := os.MkdirAll(runDir, 0o755); err != nil {
 		return RunEnvironment{}, fmt.Errorf("create run work dir: %w", err)
 	}

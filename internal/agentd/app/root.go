@@ -1,8 +1,6 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 
@@ -19,11 +17,6 @@ type RootOptions struct {
 	QueryClient   QueryClient
 	Out           io.Writer
 	Err           io.Writer
-}
-
-type Output struct {
-	format string
-	writer io.Writer
 }
 
 func NewRootCommand(opts RootOptions) *cobra.Command {
@@ -64,7 +57,9 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 		cmd.AddCommand(NewApplyCommand(opts.Client, NewOutput(cfg.OutputFormat, out)))
 	}
 	if opts.ExecuteClient != nil {
-		cmd.AddCommand(NewExecuteCommand(opts.ExecuteClient, NewOutput(cfg.OutputFormat, out)))
+		executeOutput := NewOutput(cfg.OutputFormat, out)
+		cmd.AddCommand(NewExecuteCommand(opts.ExecuteClient, executeOutput))
+		cmd.AddCommand(NewRunCommand(opts.ExecuteClient, executeOutput))
 	}
 	if opts.StopClient != nil {
 		cmd.AddCommand(NewStopCommand(opts.StopClient, NewOutput(cfg.OutputFormat, out)))
@@ -72,34 +67,12 @@ func NewRootCommand(opts RootOptions) *cobra.Command {
 	if opts.QueryClient != nil {
 		queryOutput := NewOutput(cfg.OutputFormat, out)
 		cmd.AddCommand(NewListCommand(opts.QueryClient, queryOutput))
+		cmd.AddCommand(NewRevisionsCommand(opts.QueryClient, queryOutput))
 		cmd.AddCommand(NewInspectCommand(opts.QueryClient, queryOutput))
+		cmd.AddCommand(NewPSCommand(opts.QueryClient, queryOutput))
+		cmd.AddCommand(NewResultCommand(opts.QueryClient, queryOutput))
 		cmd.AddCommand(NewLogsCommand(opts.QueryClient, queryOutput))
 	}
 
 	return cmd
-}
-
-func NewOutput(format string, writer io.Writer) Output {
-	if writer == nil {
-		writer = os.Stdout
-	}
-
-	return Output{format: format, writer: writer}
-}
-
-func (o Output) Write(value any) error {
-	if o.format == config.OutputJSON {
-		encoder := json.NewEncoder(o.writer)
-		encoder.SetIndent("", "  ")
-
-		return encoder.Encode(value)
-	}
-	if text, ok := value.(string); ok {
-		_, err := fmt.Fprintln(o.writer, text)
-
-		return err
-	}
-	_, err := fmt.Fprintln(o.writer, value)
-
-	return err
 }

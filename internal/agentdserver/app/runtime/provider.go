@@ -11,6 +11,10 @@ type Provider interface {
 	Execute(ctx context.Context, request ProviderRequest) (ProviderResponse, error)
 }
 
+type ToolExecutor interface {
+	Execute(ctx context.Context, request ToolRequest) (ToolResult, error)
+}
+
 type ProviderRequest struct {
 	RunID      string
 	AgentName  string
@@ -19,6 +23,21 @@ type ProviderRequest struct {
 	Tools      []domain.ToolPermission
 	MCPServers []domain.ToolPermission
 	Access     domain.AccessPolicy
+}
+
+type ToolRequest struct {
+	RunID   string
+	Agent   domain.Agent
+	Tool    domain.ToolPermission
+	WorkDir string
+}
+
+type ToolResult struct {
+	StdoutSummary string
+	StderrSummary string
+	ResultSummary string
+	ExitCode      int
+	TimedOut      bool
 }
 
 type ProviderResponse struct {

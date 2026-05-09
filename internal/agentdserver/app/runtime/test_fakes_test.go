@@ -49,7 +49,8 @@ func (m *fakeManager) ActiveRuns(context.Context) ([]domain.AgentRun, error) {
 }
 
 type runtimeAgentRepo struct {
-	agents map[string]domain.Agent
+	agents    map[string]domain.Agent
+	revisions []domain.AgentRevision
 }
 
 func newRuntimeAgentRepo(agents ...domain.Agent) *runtimeAgentRepo {
@@ -86,6 +87,57 @@ func (r *runtimeAgentRepo) List(context.Context) ([]domain.Agent, error) {
 	}
 
 	return agents, nil
+}
+
+func (r *runtimeAgentRepo) SaveRevision(context.Context, domain.AgentRevision) error {
+	return nil
+}
+
+func (r *runtimeAgentRepo) ListRevisions(_ context.Context, agentName string) ([]domain.AgentRevision, error) {
+	var revisions []domain.AgentRevision
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName {
+			revisions = append(revisions, revision)
+		}
+	}
+
+	return revisions, nil
+}
+
+func (r *runtimeAgentRepo) FindRevisionByID(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+) (domain.AgentRevision, error) {
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.RevisionID == revisionID {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *runtimeAgentRepo) FindRevisionByDigest(context.Context, string, string) (domain.AgentRevision, error) {
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *runtimeAgentRepo) FindLatestFinalizedRevision(
+	_ context.Context,
+	agentName string,
+) (domain.AgentRevision, error) {
+	for i := len(r.revisions) - 1; i >= 0; i-- {
+		revision := r.revisions[i]
+		if revision.AgentName == agentName && revision.Status == domain.AgentRevisionStatusFinalized {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *runtimeAgentRepo) MarkRevisionCorrupt(context.Context, string, string, string) error {
+	return nil
 }
 
 type memoryRuntimeDBs struct {
@@ -139,8 +191,20 @@ func (r *memoryRunRepo) FindActive(context.Context) (domain.AgentRun, error) {
 	return r.active[0], nil
 }
 
+func (r *memoryRunRepo) List(context.Context) ([]domain.AgentRun, error) {
+	return r.active, nil
+}
+
 func (r *memoryRunRepo) ListActive(context.Context) ([]domain.AgentRun, error) {
 	return r.active, nil
+}
+
+func (r *memoryRunRepo) ListTerminal(context.Context) ([]domain.AgentRun, error) {
+	return nil, nil
+}
+
+func (r *memoryRunRepo) CreateToolExecution(context.Context, domain.ToolExecution) error {
+	return nil
 }
 
 func testRuntimeAgent(name string) domain.Agent {
@@ -152,5 +216,23 @@ func testRuntimeAgent(name string) domain.Agent {
 		Vendor:   domain.Vendor{Name: "openai", Model: "gpt-5"},
 		Schedule: domain.Schedule{Type: domain.ScheduleTypeManual},
 		Prompt:   "prompt",
+	}
+}
+
+func testRuntimeRevision(agentName, revisionID, prompt string) domain.AgentRevision {
+	return domain.AgentRevision{
+		AgentName:    agentName,
+		RevisionID:   revisionID,
+		Prompt:       prompt,
+		Vendor:       domain.Vendor{Name: "openai", Model: "gpt-5"},
+		Schedule:     domain.Schedule{Type: domain.ScheduleTypeManual},
+		Status:       domain.AgentRevisionStatusFinalized,
+		ArtifactPath: "data/work/" + agentName + "/" + revisionID,
+		Tools: []domain.RevisionTool{{
+			Name:             "fetch",
+			Kind:             domain.ToolKindCustomTool,
+			OriginalCommand:  "tools/fetch.py",
+			RewrittenCommand: "artifact/tools/fetch.py",
+		}},
 	}
 }

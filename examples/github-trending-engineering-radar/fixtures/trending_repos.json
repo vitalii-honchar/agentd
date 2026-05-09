@@ -1,0 +1,9 @@
+[
+  {
+    "name": "example/fast-observability",
+    "description": "Lightweight local observability stack for development teams",
+    "url": "https://github.com/example/fast-observability",
+    "stars": 1280,
+    "language": "Go"
+  }
+]

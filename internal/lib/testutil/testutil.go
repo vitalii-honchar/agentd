@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,4 +32,32 @@ func RequireNoError(t *testing.T, err error) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func HostToolDefinitionMarkdown(agentName string) string {
+	if agentName == "" {
+		agentName = "host-tool-agent"
+	}
+
+	return fmt.Sprintf(`---
+name: %s
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+tools:
+  - name: github_api
+    kind: host_tool
+    command: gh
+    args: ["api", "search/repositories"]
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: ["api.github.com"]
+---
+Use the host GitHub CLI to inspect public repositories.`, agentName)
 }

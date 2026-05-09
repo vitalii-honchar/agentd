@@ -1,0 +1,254 @@
+openapi: 3.1.0
+info:
+  title: agentd Immutable Agent Revisions API
+  version: 0.1.0
+paths:
+  /v1/agents/apply:
+    post:
+      summary: Apply an AI Agent definition and create or reuse an immutable revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_path, markdown]
+              properties:
+                source_path:
+                  type: string
+                markdown:
+                  type: string
+      responses:
+        "200":
+          description: Applied agent and revision metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outcome, agent, revision_id, artifact_path, revision_status, revision_reused]
+                properties:
+                  outcome:
+                    type: string
+                    enum: [created, updated, unchanged]
+                  agent:
+                    $ref: "#/components/schemas/AgentDetail"
+                  revision_id:
+                    type: string
+                    format: uuid
+                  artifact_path:
+                    type: string
+                  revision_status:
+                    type: string
+                    enum: [pending, finalized, corrupt]
+                  revision_reused:
+                    type: boolean
+  /v1/agents/{name}/revisions:
+    get:
+      summary: List immutable revisions for an agent
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revision list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revisions]
+                properties:
+                  revisions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgentRevision"
+  /v1/agents/{name}/revisions/{revision_id}:
+    get:
+      summary: Inspect one immutable revision
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: revision_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Revision detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revision]
+                properties:
+                  revision:
+                    $ref: "#/components/schemas/AgentRevisionDetail"
+  /v1/agents/{name}/runs:
+    post:
+      summary: Start a run for latest or explicit agent revision
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Agent name or agent-name:revision-id selector
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inputs:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "202":
+          description: Run accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+components:
+  schemas:
+    AgentDetail:
+      type: object
+      required: [name, enabled, status, schedule_type, revision, vendor_name, vendor_model]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        status:
+          type: string
+        schedule_type:
+          type: string
+        revision:
+          type: string
+        vendor_name:
+          type: string
+        vendor_model:
+          type: string
+        last_run_id:
+          type: string
+        recent_error:
+          type: string
+    RunResponse:
+      type: object
+      required: [run_id, agent_name, status]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        agent_name:
+          type: string
+        agent_revision:
+          type: string
+          format: uuid
+        status:
+          type: string
+    AgentRevision:
+      type: object
+      required: [revision_id, status, created_at, latest]
+      properties:
+        revision_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, finalized, corrupt]
+        created_at:
+          type: string
+          format: date-time
+        finalized_at:
+          type: string
+          format: date-time
+        artifact_path:
+          type: string
+        source_path:
+          type: string
+        latest:
+          type: boolean
+        error_message:
+          type: string
+    AgentRevisionDetail:
+      allOf:
+        - $ref: "#/components/schemas/AgentRevision"
+        - type: object
+          required: [prompt, tools]
+          properties:
+            prompt:
+              type: string
+            tools:
+              type: array
+              items:
+                $ref: "#/components/schemas/RevisionTool"
+            artifact_files:
+              type: array
+              items:
+                $ref: "#/components/schemas/RevisionArtifactFile"
+            environment:
+              type: array
+              items:
+                $ref: "#/components/schemas/RevisionEnvironment"
+    RevisionTool:
+      type: object
+      required: [name, kind]
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [custom_tool, host_tool, mcp_server]
+          description: custom_tool is copied into the artifact; host_tool is a host-installed executable.
+        command:
+          type: string
+        original_command:
+          type: string
+        rewritten_command:
+          type: string
+          description: Artifact-local command for custom_tool when rewritten.
+        host_command:
+          type: string
+          description: Host executable command for host_tool.
+        copied_files:
+          type: array
+          items:
+            type: string
+    RevisionArtifactFile:
+      type: object
+      required: [path, sha256, size_bytes]
+      properties:
+        path:
+          type: string
+        source_path:
+          type: string
+        sha256:
+          type: string
+        mode:
+          type: string
+        size_bytes:
+          type: integer
+    RevisionEnvironment:
+      type: object
+      required: [key, masked]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+          description: Masked by default for secret-bearing values.
+        source:
+          type: string
+          enum: [literal, env_file]
+        masked:
+          type: boolean

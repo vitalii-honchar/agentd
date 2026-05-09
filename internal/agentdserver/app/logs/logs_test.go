@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
@@ -54,6 +55,52 @@ func TestUseCaseReadsSpecificRunLogs(t *testing.T) {
 	}
 	if result.Run.ID != "run-1" || result.Entries[0].Line != "specific" {
 		t.Fatalf("result: %#v", result)
+	}
+}
+
+func TestUseCaseIncludesScopedRuntimeActionLogs(t *testing.T) {
+	t.Parallel()
+
+	run := domain.AgentRun{
+		ID:        "run-1",
+		AgentName: "release-notes-helper",
+		LogPath:   "/tmp/run-1.log",
+		Status:    domain.AgentRunStatusCompleted,
+	}
+	event := domain.RuntimeEvent{
+		ID:        "event-1",
+		AgentName: "release-notes-helper",
+		RunID:     "run-1",
+		EventType: domain.RunActionLLMPromptSend,
+		Level:     domain.EventLevelInfo,
+		Message:   "sent prompt to provider",
+		CreatedAt: time.Date(2026, 5, 8, 10, 0, 0, 0, time.UTC),
+	}
+	useCase, err := NewUseCase(
+		newMemoryAgentRepository(testAgent("release-notes-helper")),
+		&memoryRuntimeDBManager{
+			runs: map[string]app.AgentRunRepository{
+				"release-notes-helper": &memoryRunRepository{runs: []domain.AgentRun{run}},
+			},
+			events: map[string]app.RuntimeEventRepository{
+				"release-notes-helper": &memoryEventRepository{events: []domain.RuntimeEvent{event}},
+			},
+		},
+		&fakeLogReader{},
+	)
+	if err != nil {
+		t.Fatalf("NewUseCase: %v", err)
+	}
+
+	result, err := useCase.Read(context.Background(), Query{AgentName: "release-notes-helper", RunID: "run-1"})
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if len(result.Entries) != 1 || result.Entries[0].Action != domain.RunActionLLMPromptSend {
+		t.Fatalf("entries: %#v", result.Entries)
+	}
+	if result.Entries[0].Message != "sent prompt to provider" {
+		t.Fatalf("message: %#v", result.Entries[0])
 	}
 }
 
@@ -162,7 +209,8 @@ func (r *memoryAgentRepository) List(context.Context) ([]domain.Agent, error) {
 }
 
 type memoryRuntimeDBManager struct {
-	runs map[string]app.AgentRunRepository
+	runs   map[string]app.AgentRunRepository
+	events map[string]app.RuntimeEventRepository
 }
 
 func (m *memoryRuntimeDBManager) EnsureAgent(context.Context, string) error {
@@ -173,8 +221,8 @@ func (m *memoryRuntimeDBManager) Runs(agentName string) app.AgentRunRepository {
 	return m.runs[agentName]
 }
 
-func (m *memoryRuntimeDBManager) Events(string) app.RuntimeEventRepository {
-	return nil
+func (m *memoryRuntimeDBManager) Events(agentName string) app.RuntimeEventRepository {
+	return m.events[agentName]
 }
 
 func (m *memoryRuntimeDBManager) Close(context.Context) error {
@@ -215,8 +263,46 @@ func (r *memoryRunRepository) FindActive(context.Context) (domain.AgentRun, erro
 	return domain.AgentRun{}, domain.ErrNotFound
 }
 
+func (r *memoryRunRepository) List(context.Context) ([]domain.AgentRun, error) {
+	return r.runs, nil
+}
+
 func (r *memoryRunRepository) ListActive(context.Context) ([]domain.AgentRun, error) {
 	return nil, nil
+}
+
+func (r *memoryRunRepository) ListTerminal(context.Context) ([]domain.AgentRun, error) {
+	return nil, nil
+}
+
+func (r *memoryRunRepository) CreateToolExecution(context.Context, domain.ToolExecution) error {
+	return nil
+}
+
+type memoryEventRepository struct {
+	events []domain.RuntimeEvent
+}
+
+func (r *memoryEventRepository) Append(context.Context, domain.RuntimeEvent) error {
+	return nil
+}
+
+func (r *memoryEventRepository) ListByRun(_ context.Context, runID string, limit int) ([]domain.RuntimeEvent, error) {
+	var events []domain.RuntimeEvent
+	for _, event := range r.events {
+		if event.RunID == runID {
+			events = append(events, event)
+		}
+	}
+	if limit > 0 && len(events) > limit {
+		events = events[:limit]
+	}
+
+	return events, nil
+}
+
+func (r *memoryEventRepository) ListRecent(context.Context, int) ([]domain.RuntimeEvent, error) {
+	return r.events, nil
 }
 
 func testAgent(name string) domain.Agent {

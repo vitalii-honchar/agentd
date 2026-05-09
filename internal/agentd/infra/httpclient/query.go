@@ -2,50 +2,83 @@ package httpclient
 
 import (
 	"context"
-	"fmt"
-	stdhttp "net/http"
-	"net/url"
-	"strconv"
 
 	"github.com/vitalii-honchar/agentd/internal/agentd/app"
+	"github.com/vitalii-honchar/agentd/pkg/agentdclient"
 )
 
 func (c *Client) List(ctx context.Context) (app.ListResponse, error) {
-	var response app.ListResponse
-	if err := c.doJSON(ctx, stdhttp.MethodGet, "/v1/agents", nil, &response); err != nil {
+	agents, err := c.client.ListAgents(ctx)
+	if err != nil {
 		return app.ListResponse{}, err
+	}
+	response := app.ListResponse{Agents: make([]app.AgentSummary, 0, len(agents))}
+	for _, agent := range agents {
+		response.Agents = append(response.Agents, toAppAgentSummary(agent))
 	}
 
 	return response, nil
 }
 
 func (c *Client) Inspect(ctx context.Context, agentName string) (app.AgentDetail, error) {
-	var response app.AgentDetail
-	path := fmt.Sprintf("/v1/agents/%s", url.PathEscape(agentName))
-	if err := c.doJSON(ctx, stdhttp.MethodGet, path, nil, &response); err != nil {
+	response, err := c.client.InspectAgent(ctx, agentName)
+	if err != nil {
 		return app.AgentDetail{}, err
+	}
+
+	return toAppAgentDetail(response), nil
+}
+
+func (c *Client) ListRevisions(ctx context.Context, agentName string) (app.RevisionListResponse, error) {
+	revisions, err := c.client.ListRevisions(ctx, agentName)
+	if err != nil {
+		return app.RevisionListResponse{}, err
+	}
+	response := app.RevisionListResponse{Revisions: make([]app.RevisionSummary, 0, len(revisions))}
+	for _, revision := range revisions {
+		response.Revisions = append(response.Revisions, toAppRevisionSummary(revision))
 	}
 
 	return response, nil
 }
 
-func (c *Client) Logs(ctx context.Context, request app.LogsRequest) (app.LogsResponse, error) {
-	query := url.Values{}
-	if request.RunID != "" {
-		query.Set("run_id", request.RunID)
-	}
-	if request.Tail > 0 {
-		query.Set("tail", strconv.Itoa(request.Tail))
-	}
-	path := fmt.Sprintf("/v1/agents/%s/logs", url.PathEscape(request.AgentName))
-	if encoded := query.Encode(); encoded != "" {
-		path += "?" + encoded
+func (c *Client) InspectRevision(
+	ctx context.Context,
+	agentName string,
+	revisionID string,
+) (app.RevisionInspectResponse, error) {
+	revision, err := c.client.InspectRevision(ctx, agentName, revisionID)
+	if err != nil {
+		return app.RevisionInspectResponse{}, err
 	}
 
-	var response app.LogsResponse
-	if err := c.doJSON(ctx, stdhttp.MethodGet, path, nil, &response); err != nil {
+	return app.RevisionInspectResponse{Revision: toAppRevisionDetail(revision)}, nil
+}
+
+func (c *Client) Logs(ctx context.Context, request app.LogsRequest) (app.LogsResponse, error) {
+	response, err := c.client.Logs(ctx, agentdclient.LogsQuery{
+		AgentName: request.AgentName,
+		RunID:     request.RunID,
+		Tail:      request.Tail,
+	})
+	if err != nil {
 		return app.LogsResponse{}, err
 	}
 
-	return response, nil
+	entries := make([]app.LogEntry, 0, len(response.Entries))
+	for _, entry := range response.Entries {
+		entries = append(entries, app.LogEntry{
+			Timestamp: entry.Timestamp,
+			RunID:     entry.RunID,
+			Action:    entry.Action,
+			Message:   entry.Message,
+			Line:      entry.Line,
+		})
+	}
+
+	return app.LogsResponse{
+		AgentName: response.AgentName,
+		RunID:     response.RunID,
+		Entries:   entries,
+	}, nil
 }

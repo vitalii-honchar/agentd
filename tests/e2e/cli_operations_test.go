@@ -39,7 +39,10 @@ func TestCLIOperationsAgainstDaemonAPI(t *testing.T) {
 	}
 
 	applyOut := runCLI(t, cfg, client, "apply", definitionPath)
-	if !strings.Contains(applyOut, "created release-notes-helper") {
+	if !strings.Contains(applyOut, "APPLIED release-notes-helper") ||
+		!strings.Contains(applyOut, "OUTCOME created") ||
+		!strings.Contains(applyOut, "REVISION ") ||
+		!strings.Contains(applyOut, "STATUS finalized") {
 		t.Fatalf("apply output: %q", applyOut)
 	}
 	listOut := runCLI(t, cfg, client, "list")

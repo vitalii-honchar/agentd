@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestAgentDefinitionValidateAcceptsManualDefinition(t *testing.T) {
@@ -124,6 +125,49 @@ func TestAgentRunStatusHelpers(t *testing.T) {
 	}
 	if !terminal.IsTerminal() {
 		t.Fatal("interrupted run should be terminal")
+	}
+}
+
+func TestAgentRunStoresTerminalResult(t *testing.T) {
+	t.Parallel()
+
+	run := AgentRun{
+		Status:        AgentRunStatusCompleted,
+		Result:        "Full untrimmed result",
+		ResultSummary: "Full untrimmed...",
+	}
+	if !run.IsTerminal() {
+		t.Fatal("completed run should be terminal")
+	}
+	if run.Result == "" {
+		t.Fatal("terminal run result should be stored")
+	}
+	if run.ResultSummary == "" {
+		t.Fatal("terminal run result summary should be stored")
+	}
+}
+
+func TestToolExecutionCapturesProcessOutcome(t *testing.T) {
+	t.Parallel()
+
+	started := time.Now()
+	completed := started.Add(time.Second)
+	execution := ToolExecution{
+		ID:             "tool-run-1",
+		RunID:          "run-1",
+		AgentName:      "agent",
+		ToolName:       "fetch",
+		CommandSummary: "tools/fetch.py",
+		StartedAt:      started,
+		CompletedAt:    &completed,
+		ExitCode:       0,
+		StdoutSummary:  "ok",
+	}
+	if execution.RunID != "run-1" || execution.ToolName != "fetch" {
+		t.Fatalf("execution identity: %#v", execution)
+	}
+	if execution.CompletedAt == nil {
+		t.Fatal("completed tool execution should capture completion time")
 	}
 }
 

@@ -2,24 +2,26 @@ package httpclient
 
 import (
 	"context"
-	stdhttp "net/http"
 
 	"github.com/vitalii-honchar/agentd/internal/agentd/app"
+	"github.com/vitalii-honchar/agentd/pkg/agentdclient"
 )
 
 func (c *Client) Apply(ctx context.Context, request app.ApplyRequest) (app.ApplyResponse, error) {
-	var response app.ApplyResponse
-	if err := c.doJSON(ctx, stdhttp.MethodPost, "/v1/agents/apply", applyRequest{
+	response, err := c.client.Apply(ctx, agentdclient.ApplyRequest{
 		SourcePath: request.SourcePath,
 		Markdown:   request.Markdown,
-	}, &response); err != nil {
+	})
+	if err != nil {
 		return app.ApplyResponse{}, err
 	}
 
-	return response, nil
-}
-
-type applyRequest struct {
-	SourcePath string `json:"source_path"`
-	Markdown   string `json:"markdown"`
+	return app.ApplyResponse{
+		Outcome:        response.Outcome,
+		Agent:          toAppAgentDetail(response.Agent),
+		RevisionID:     response.RevisionID,
+		ArtifactPath:   response.ArtifactPath,
+		RevisionStatus: response.RevisionStatus,
+		RevisionReused: response.RevisionReused,
+	}, nil
 }

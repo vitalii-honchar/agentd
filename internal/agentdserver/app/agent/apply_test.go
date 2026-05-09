@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/app"
@@ -57,6 +59,163 @@ func TestApplyUseCaseCreatedUpdatedUnchanged(t *testing.T) {
 	}
 	if updated.Agent.Revision == created.Agent.Revision {
 		t.Fatalf("updated revision should differ from created revision %q", created.Agent.Revision)
+	}
+}
+
+func TestApplyUseCaseCreatesRevisionAndReusesUnchangedRevision(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	created, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   manualDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply created: %v", err)
+	}
+	if created.Outcome != ApplyOutcomeCreated {
+		t.Fatalf("created outcome: got %q want %q", created.Outcome, ApplyOutcomeCreated)
+	}
+	if created.RevisionID == "" || created.ArtifactPath == "" || created.RevisionStatus != domain.AgentRevisionStatusFinalized || created.RevisionReused {
+		t.Fatalf("created revision metadata: %#v", created)
+	}
+	if len(repo.revisions) != 1 {
+		t.Fatalf("created revisions: got %d want 1", len(repo.revisions))
+	}
+	firstRevisionID := repo.revisions[0].RevisionID
+	if firstRevisionID == "" {
+		t.Fatal("created revision id is empty")
+	}
+	if repo.revisions[0].Status != domain.AgentRevisionStatusFinalized {
+		t.Fatalf("created revision status: got %q", repo.revisions[0].Status)
+	}
+
+	unchanged, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "release-notes-helper.md",
+		Markdown:   manualDefinition("Summarize changes."),
+	})
+	if err != nil {
+		t.Fatalf("Apply unchanged: %v", err)
+	}
+	if unchanged.Outcome != ApplyOutcomeUnchanged {
+		t.Fatalf("unchanged outcome: got %q want %q", unchanged.Outcome, ApplyOutcomeUnchanged)
+	}
+	if unchanged.RevisionID != firstRevisionID || !unchanged.RevisionReused {
+		t.Fatalf("unchanged revision metadata: %#v", unchanged)
+	}
+	if len(repo.revisions) != 1 {
+		t.Fatalf("unchanged revisions: got %d want 1", len(repo.revisions))
+	}
+	if repo.revisions[0].RevisionID != firstRevisionID {
+		t.Fatalf("unchanged revision id: got %q want %q", repo.revisions[0].RevisionID, firstRevisionID)
+	}
+}
+
+func TestApplyUseCaseCreatesDistinctRevisionsForPromptAndToolMutation(t *testing.T) {
+	t.Parallel()
+
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "examples/revisioned/revisioned.md",
+		Markdown:   toolDefinition("Summarize public repos.", "tools/fetch.py"),
+	}); err != nil {
+		t.Fatalf("Apply initial: %v", err)
+	}
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "examples/revisioned/revisioned.md",
+		Markdown:   toolDefinition("Summarize public repos with more detail.", "tools/fetch.py"),
+	}); err != nil {
+		t.Fatalf("Apply prompt mutation: %v", err)
+	}
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: "examples/revisioned/revisioned.md",
+		Markdown:   toolDefinition("Summarize public repos with more detail.", "tools/fetch_v2.py"),
+	}); err != nil {
+		t.Fatalf("Apply tool mutation: %v", err)
+	}
+
+	if len(repo.revisions) != 3 {
+		t.Fatalf("revisions: got %d want 3", len(repo.revisions))
+	}
+	if repo.revisions[0].Prompt == repo.revisions[1].Prompt {
+		t.Fatalf("prompt mutation was not captured: %#v", repo.revisions)
+	}
+	if len(repo.revisions[2].Tools) != 1 || repo.revisions[2].Tools[0].OriginalCommand != "tools/fetch_v2.py" {
+		t.Fatalf("tool mutation was not captured: %#v", repo.revisions[2].Tools)
+	}
+}
+
+func TestApplyUseCaseRevisionRetainsPromptAndToolsAfterSourceDeletion(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	sourcePath := filepath.Join(sourceDir, "revisioned.md")
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: sourcePath,
+		Markdown:   toolDefinition("Keep this prompt in the revision.", "tools/fetch.py"),
+	}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := os.RemoveAll(sourceDir); err != nil {
+		t.Fatalf("RemoveAll source dir: %v", err)
+	}
+
+	if len(repo.revisions) != 1 {
+		t.Fatalf("revisions: got %d want 1", len(repo.revisions))
+	}
+	revision := repo.revisions[0]
+	if revision.Prompt != "Keep this prompt in the revision." {
+		t.Fatalf("revision prompt: got %q", revision.Prompt)
+	}
+	if len(revision.Tools) != 1 || revision.Tools[0].OriginalCommand != "tools/fetch.py" {
+		t.Fatalf("revision tools: %#v", revision.Tools)
+	}
+}
+
+func TestApplyUseCaseCapturesEnvironmentVariablesAndFiles(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	sourcePath := filepath.Join(sourceDir, "env-agent.md")
+	if err := os.WriteFile(filepath.Join(sourceDir, ".env"), []byte("TOKEN=from-file\nSHARED=from-file\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile .env: %v", err)
+	}
+	repo := newMemoryAgentRepository()
+	runtimeDBs := &memoryRuntimeDBManager{}
+	useCase := newApplyUseCaseForTest(t, repo, runtimeDBs)
+
+	if _, err := useCase.Apply(context.Background(), ApplyRequest{
+		SourcePath: sourcePath,
+		Markdown:   environmentDefinition("Use captured environment."),
+	}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	if len(repo.revisions) != 1 {
+		t.Fatalf("revisions: got %d want 1", len(repo.revisions))
+	}
+	values := revisionEnvironmentToMap(repo.revisions[0].Environment)
+	if values["TOKEN"] != "from-file" {
+		t.Fatalf("TOKEN: got %q", values["TOKEN"])
+	}
+	if values["SHARED"] != "from-literal" {
+		t.Fatalf("SHARED: got %q", values["SHARED"])
+	}
+	if values["REPORT_LIMIT"] != "10" {
+		t.Fatalf("REPORT_LIMIT: got %q", values["REPORT_LIMIT"])
+	}
+	if len(repo.revisions[0].ArtifactFiles) != 1 || repo.revisions[0].ArtifactFiles[0].ArtifactRelativePath != ".env" {
+		t.Fatalf("artifact env files: %#v", repo.revisions[0].ArtifactFiles)
 	}
 }
 
@@ -220,7 +379,8 @@ func parseLogRecords(t *testing.T, logs []byte) []map[string]any {
 }
 
 type memoryAgentRepository struct {
-	agents map[string]domain.Agent
+	agents    map[string]domain.Agent
+	revisions []domain.AgentRevision
 }
 
 func newMemoryAgentRepository() *memoryAgentRepository {
@@ -254,6 +414,87 @@ func (r *memoryAgentRepository) List(context.Context) ([]domain.Agent, error) {
 	}
 
 	return agents, nil
+}
+
+func (r *memoryAgentRepository) SaveRevision(_ context.Context, revision domain.AgentRevision) error {
+	r.revisions = append(r.revisions, revision)
+	if agent, ok := r.agents[revision.AgentName]; ok && revision.Status == domain.AgentRevisionStatusFinalized {
+		agent.Revision = revision.RevisionID
+		r.agents[revision.AgentName] = agent
+	}
+
+	return nil
+}
+
+func (r *memoryAgentRepository) ListRevisions(_ context.Context, agentName string) ([]domain.AgentRevision, error) {
+	var revisions []domain.AgentRevision
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName {
+			revisions = append(revisions, revision)
+		}
+	}
+
+	return revisions, nil
+}
+
+func (r *memoryAgentRepository) FindRevisionByID(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+) (domain.AgentRevision, error) {
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.RevisionID == revisionID {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *memoryAgentRepository) FindRevisionByDigest(
+	_ context.Context,
+	agentName string,
+	contentDigest string,
+) (domain.AgentRevision, error) {
+	for _, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.ContentDigest == contentDigest {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *memoryAgentRepository) FindLatestFinalizedRevision(
+	_ context.Context,
+	agentName string,
+) (domain.AgentRevision, error) {
+	for i := len(r.revisions) - 1; i >= 0; i-- {
+		revision := r.revisions[i]
+		if revision.AgentName == agentName && revision.Status == domain.AgentRevisionStatusFinalized {
+			return revision, nil
+		}
+	}
+
+	return domain.AgentRevision{}, domain.ErrNotFound
+}
+
+func (r *memoryAgentRepository) MarkRevisionCorrupt(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+	errorMessage string,
+) error {
+	for index, revision := range r.revisions {
+		if revision.AgentName == agentName && revision.RevisionID == revisionID {
+			r.revisions[index].Status = domain.AgentRevisionStatusCorrupt
+			r.revisions[index].ErrorMessage = errorMessage
+
+			return nil
+		}
+	}
+
+	return domain.ErrNotFound
 }
 
 type memoryRuntimeDBManager struct {
@@ -300,4 +541,64 @@ access:
     allow: ["api.openai.com"]
 ---
 ` + prompt
+}
+
+func toolDefinition(prompt, command string) string {
+	return `---
+name: revisioned
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+tools:
+  - name: fetch
+    kind: custom_tool
+    command: ` + command + `
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: ["api.github.com"]
+---
+` + prompt
+}
+
+func environmentDefinition(prompt string) string {
+	return `---
+name: env-agent
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+environment:
+  variables:
+    SHARED: from-literal
+    REPORT_LIMIT: "10"
+  files:
+    - .env
+tools: []
+mcp_servers: []
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+` + prompt
+}
+
+func revisionEnvironmentToMap(environment []domain.RevisionEnvironment) map[string]string {
+	values := make(map[string]string, len(environment))
+	for _, entry := range environment {
+		values[entry.Key] = entry.Value
+	}
+
+	return values
 }

@@ -106,7 +106,7 @@ Review open pull requests and identify issues that need attention.`)
 		t.Fatalf("tools: got %d want 1", len(definition.Tools))
 	}
 	tool := definition.Tools[0]
-	if tool.Name != "git" || tool.Kind != domain.ToolKindLocalTool || tool.Command != "git" {
+	if tool.Name != "git" || tool.Kind != domain.ToolKindCustomTool || tool.Command != "git" {
 		t.Fatalf("tool: %#v", tool)
 	}
 	if len(tool.Args) != 2 || tool.Args[0] != "status" || tool.Args[1] != "--short" {
@@ -121,6 +121,153 @@ Review open pull requests and identify issues that need attention.`)
 	}
 	if len(server.Env) != 1 || server.Env[0] != "GITHUB_TOKEN" {
 		t.Fatalf("mcp env: %#v", server.Env)
+	}
+}
+
+func TestParseMarkdownDefinitionWithInputsAndNestedToolNetwork(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("examples/website-snapshot-analyst/website-snapshot-analyst.md", `---
+name: website-snapshot-analyst
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5.4-mini
+inputs:
+  - name: url
+    required: true
+    description: Website URL to capture
+tools:
+  - name: capture_website
+    kind: local_tool
+    command: tools/capture_website.js
+    timeout: 60s
+    network:
+      allow:
+        - https://example.com
+access:
+  filesystem:
+    read: ["fixtures/"]
+    write: [".agentd-work/"]
+  network:
+    allow: ["https://example.com"]
+---
+Capture a screenshot and summarize the supplied website.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if len(definition.Inputs) != 1 {
+		t.Fatalf("inputs: got %d want 1", len(definition.Inputs))
+	}
+	if input := definition.Inputs[0]; input.Name != "url" || !input.Required {
+		t.Fatalf("input: %#v", input)
+	}
+	if len(definition.Tools) != 1 {
+		t.Fatalf("tools: got %d want 1", len(definition.Tools))
+	}
+	tool := definition.Tools[0]
+	if tool.Timeout != "60s" {
+		t.Fatalf("tool timeout: got %q", tool.Timeout)
+	}
+	if len(tool.NetworkAllow) != 1 || tool.NetworkAllow[0] != "https://example.com" {
+		t.Fatalf("tool network allow: %#v", tool.NetworkAllow)
+	}
+}
+
+func TestParseMarkdownDefinitionWithCustomHostToolsAndEnvironment(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("examples/github-radar/github-radar.md", `---
+name: github-radar
+enabled: true
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+environment:
+  variables:
+    GITHUB_TOKEN: literal-token
+    REPORT_LIMIT: "10"
+  files:
+    - .env
+    - secrets/github.env
+tools:
+  - name: fetch_trending
+    kind: custom_tool
+    command: tools/fetch_github_trending.py
+    args: ["--languages", "sources/languages.txt"]
+    read_paths: ["sources/languages.txt"]
+  - name: github_api
+    kind: host_tool
+    command: gh
+    args: ["api", "search/repositories"]
+access:
+  filesystem:
+    read: ["sources/languages.txt"]
+    write: []
+  network:
+    allow: ["api.github.com"]
+---
+Find engineering trends on GitHub.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if len(definition.Tools) != 2 {
+		t.Fatalf("tools: got %d want 2", len(definition.Tools))
+	}
+	if definition.Tools[0].Kind != domain.ToolKindCustomTool {
+		t.Fatalf("custom tool kind: got %q", definition.Tools[0].Kind)
+	}
+	if definition.Tools[1].Kind != domain.ToolKindHostTool {
+		t.Fatalf("host tool kind: got %q", definition.Tools[1].Kind)
+	}
+	if got := definition.Environment.Variables["GITHUB_TOKEN"]; got != "literal-token" {
+		t.Fatalf("GITHUB_TOKEN: got %q", got)
+	}
+	if got := definition.Environment.Variables["REPORT_LIMIT"]; got != "10" {
+		t.Fatalf("REPORT_LIMIT: got %q", got)
+	}
+	if len(definition.Environment.Files) != 2 || definition.Environment.Files[0] != ".env" || definition.Environment.Files[1] != "secrets/github.env" {
+		t.Fatalf("environment files: %#v", definition.Environment.Files)
+	}
+}
+
+func TestParseMarkdownMapsLegacyLocalToolToCustomTool(t *testing.T) {
+	t.Parallel()
+
+	definition, err := ParseMarkdown("legacy.md", `---
+name: legacy-agent
+schedule:
+  type: manual
+vendor:
+  name: openai
+  model: gpt-5
+tools:
+  - name: legacy_fetch
+    kind: local_tool
+    command: tools/fetch.py
+access:
+  filesystem:
+    read: []
+    write: []
+  network:
+    allow: []
+---
+Run a legacy local tool.`)
+	if err != nil {
+		t.Fatalf("ParseMarkdown: %v", err)
+	}
+
+	if len(definition.Tools) != 1 {
+		t.Fatalf("tools: got %d want 1", len(definition.Tools))
+	}
+	if definition.Tools[0].Kind != domain.ToolKindCustomTool {
+		t.Fatalf("legacy tool kind: got %q want %q", definition.Tools[0].Kind, domain.ToolKindCustomTool)
 	}
 }
 
@@ -153,28 +300,31 @@ func TestParseMarkdownRejectsMissingFrontMatter(t *testing.T) {
 	}
 }
 
-func TestParseAIProductResearchExample(t *testing.T) {
+func TestParseCybersecurityRedditWatchExample(t *testing.T) {
 	t.Parallel()
 
-	body, err := os.ReadFile("../../../../examples/ai-product-research.md")
+	body, err := os.ReadFile("../../../../examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md")
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
 
-	definition, err := ParseMarkdown("examples/ai-product-research.md", string(body))
+	definition, err := ParseMarkdown(
+		"examples/cybersecurity-reddit-watch/cybersecurity-reddit-watch.md",
+		string(body),
+	)
 	if err != nil {
 		t.Fatalf("ParseMarkdown: %v", err)
 	}
-	if definition.Name != "ai-product-research" {
+	if definition.Name != "cybersecurity-reddit-watch" {
 		t.Fatalf("name: got %q", definition.Name)
 	}
-	if len(definition.Tools) != 2 {
-		t.Fatalf("tools length: got %d want 2", len(definition.Tools))
+	if len(definition.Tools) != 1 {
+		t.Fatalf("tools length: got %d want 1", len(definition.Tools))
 	}
-	if definition.Tools[0].Command != "uv" {
+	if definition.Tools[0].Command != "tools/fetch_reddit_cybersecurity.py" {
 		t.Fatalf("tool command: got %q", definition.Tools[0].Command)
 	}
-	if len(definition.Tools[0].Env) != 5 {
-		t.Fatalf("tool env allow-list: %#v", definition.Tools[0].Env)
+	if definition.Tools[0].Timeout != "60s" {
+		t.Fatalf("tool timeout: got %q", definition.Tools[0].Timeout)
 	}
 }

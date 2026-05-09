@@ -12,7 +12,7 @@ import (
 func (s *Server) handleLogs(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	tail, err := parseTail(r.URL.Query().Get("tail"))
 	if err != nil {
-		writeError(w, stdhttp.StatusBadRequest, "invalid_query", err.Error(), nil)
+		writeError(w, stdhttp.StatusBadRequest, errorCodeInvalidQuery, err.Error(), nil)
 
 		return
 	}
@@ -63,6 +63,8 @@ func toLogEntry(entry app.LogEntry) model.LogEntry {
 	return model.LogEntry{
 		Timestamp: entry.Timestamp,
 		RunID:     entry.RunID,
+		Action:    entry.Action,
+		Message:   entry.Message,
 		Line:      entry.Line,
 	}
 }

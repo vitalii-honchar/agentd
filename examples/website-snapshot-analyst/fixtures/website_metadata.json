@@ -1,0 +1,5 @@
+{
+  "url": "https://example.com",
+  "title": "Example Domain",
+  "description": "A fixture used when Puppeteer is unavailable in smoke tests."
+}

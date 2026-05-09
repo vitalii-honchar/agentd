@@ -32,6 +32,42 @@ func TestExecuteCommandCallsClient(t *testing.T) {
 	}
 }
 
+func TestExecuteCommandPassesInputs(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeRuntimeClient{run: RunResponse{
+		RunID: "run-1", AgentName: "website-snapshot-analyst", Status: "running",
+	}}
+	var out bytes.Buffer
+	cmd := NewExecuteCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"website-snapshot-analyst", "--input", "url=https://example.com"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.executeInputs["url"] != "https://example.com" {
+		t.Fatalf("execute inputs: %#v", client.executeInputs)
+	}
+}
+
+func TestRunCommandCallsClientWithExplicitRevision(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeRuntimeClient{run: RunResponse{
+		RunID: "run-1", AgentName: "release-notes-helper", Status: "running",
+	}}
+	var out bytes.Buffer
+	cmd := NewRunCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper:11111111-1111-4111-8111-111111111111"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.executeAgent != "release-notes-helper:11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("execute agent: got %q", client.executeAgent)
+	}
+}
+
 func TestStopCommandCallsClientWithRunID(t *testing.T) {
 	t.Parallel()
 
@@ -67,18 +103,21 @@ func TestRootCommandWiresRuntimeCommands(t *testing.T) {
 	})
 
 	requireCommand(t, cmd, "execute")
+	requireCommand(t, cmd, "run")
 	requireCommand(t, cmd, "stop")
 }
 
 type fakeRuntimeClient struct {
-	executeAgent string
-	stopRequest  StopRequest
-	run          RunResponse
-	err          error
+	executeAgent  string
+	executeInputs map[string]string
+	stopRequest   StopRequest
+	run           RunResponse
+	err           error
 }
 
-func (f *fakeRuntimeClient) Execute(_ context.Context, agentName string) (RunResponse, error) {
+func (f *fakeRuntimeClient) Execute(_ context.Context, agentName string, inputs map[string]string) (RunResponse, error) {
 	f.executeAgent = agentName
+	f.executeInputs = inputs
 	if f.err != nil {
 		return RunResponse{}, f.err
 	}

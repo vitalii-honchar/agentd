@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	stdhttp "net/http"
+	"strings"
 	"time"
 
 	appagent "github.com/vitalii-honchar/agentd/internal/agentdserver/app/agent"
 	applogs "github.com/vitalii-honchar/agentd/internal/agentdserver/app/logs"
+	appresult "github.com/vitalii-honchar/agentd/internal/agentdserver/app/result"
 	"github.com/vitalii-honchar/agentd/internal/agentdserver/domain"
 )
 
@@ -20,14 +23,17 @@ type Config struct {
 }
 
 type Server struct {
-	server         *stdhttp.Server
-	mux            *stdhttp.ServeMux
-	applyUseCase   ApplyUseCase
-	executeUseCase ExecuteUseCase
-	stopUseCase    StopUseCase
-	listUseCase    ListUseCase
-	inspectUseCase InspectUseCase
-	logsUseCase    LogsUseCase
+	server          *stdhttp.Server
+	mux             *stdhttp.ServeMux
+	applyUseCase    ApplyUseCase
+	executeUseCase  ExecuteUseCase
+	stopUseCase     StopUseCase
+	runListUseCase  RunListUseCase
+	resultUseCase   ResultUseCase
+	listUseCase     ListUseCase
+	inspectUseCase  InspectUseCase
+	revisionUseCase RevisionUseCase
+	logsUseCase     LogsUseCase
 }
 
 type ApplyUseCase interface {
@@ -35,11 +41,20 @@ type ApplyUseCase interface {
 }
 
 type ExecuteUseCase interface {
-	Execute(context.Context, string) (domain.AgentRun, error)
+	Execute(context.Context, string, map[string]string) (domain.AgentRun, error)
 }
 
 type StopUseCase interface {
 	Stop(context.Context, string, string) (domain.AgentRun, error)
+}
+
+type RunListUseCase interface {
+	ListRuns(context.Context, bool) ([]domain.AgentRun, error)
+}
+
+type ResultUseCase interface {
+	ResultsByAgent(context.Context, string) ([]appresult.RunResult, error)
+	ResultByRunID(context.Context, string) (appresult.RunResult, error)
 }
 
 type ListUseCase interface {
@@ -48,6 +63,11 @@ type ListUseCase interface {
 
 type InspectUseCase interface {
 	Inspect(context.Context, string) (domain.Agent, error)
+}
+
+type RevisionUseCase interface {
+	ListRevisions(context.Context, string) ([]domain.AgentRevision, error)
+	InspectRevision(context.Context, string, string) (domain.AgentRevision, error)
 }
 
 type LogsUseCase interface {
@@ -74,6 +94,18 @@ func WithStopUseCase(useCase StopUseCase) Option {
 	}
 }
 
+func WithRunListUseCase(useCase RunListUseCase) Option {
+	return func(s *Server) {
+		s.runListUseCase = useCase
+	}
+}
+
+func WithResultUseCase(useCase ResultUseCase) Option {
+	return func(s *Server) {
+		s.resultUseCase = useCase
+	}
+}
+
 func WithListUseCase(useCase ListUseCase) Option {
 	return func(s *Server) {
 		s.listUseCase = useCase
@@ -83,6 +115,12 @@ func WithListUseCase(useCase ListUseCase) Option {
 func WithInspectUseCase(useCase InspectUseCase) Option {
 	return func(s *Server) {
 		s.inspectUseCase = useCase
+	}
+}
+
+func WithRevisionUseCase(useCase RevisionUseCase) Option {
+	return func(s *Server) {
+		s.revisionUseCase = useCase
 	}
 }
 
@@ -98,7 +136,7 @@ func NewServer(cfg Config, opts ...Option) *Server {
 		mux: mux,
 		server: &stdhttp.Server{
 			Addr:         cfg.Address,
-			Handler:      mux,
+			Handler:      sameHostMiddleware(mux),
 			ReadTimeout:  cfg.ReadTimeout,
 			WriteTimeout: cfg.WriteTimeout,
 		},
@@ -112,7 +150,7 @@ func NewServer(cfg Config, opts ...Option) *Server {
 }
 
 func (s *Server) Handler() stdhttp.Handler {
-	return s.mux
+	return s.server.Handler
 }
 
 func (s *Server) Start() error {
@@ -142,12 +180,23 @@ func (s *Server) registerRoutes() {
 	if s.inspectUseCase != nil {
 		s.mux.HandleFunc("GET /v1/agents/{name}", s.handleInspect)
 	}
+	if s.revisionUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents/{name}/revisions", s.handleListRevisions)
+		s.mux.HandleFunc("GET /v1/agents/{name}/revisions/{revision_id}", s.handleInspectRevision)
+	}
 	if s.executeUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs", s.handleExecute)
 	}
 	if s.stopUseCase != nil {
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/stop", s.handleStopActive)
 		s.mux.HandleFunc("POST /v1/agents/{name}/runs/{run_id}/stop", s.handleStop)
+	}
+	if s.runListUseCase != nil {
+		s.mux.HandleFunc("GET /v1/runs", s.handleListRuns)
+	}
+	if s.resultUseCase != nil {
+		s.mux.HandleFunc("GET /v1/agents/{name}/results", s.handleAgentResults)
+		s.mux.HandleFunc("GET /v1/runs/{run_id}/result", s.handleRunResult)
 	}
 	if s.logsUseCase != nil {
 		s.mux.HandleFunc("GET /v1/agents/{name}/logs", s.handleLogs)
@@ -156,6 +205,43 @@ func (s *Server) registerRoutes() {
 
 func healthHandler(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
 	writeJSON(w, stdhttp.StatusOK, map[string]string{"status": "ok"})
+}
+
+func sameHostMiddleware(next stdhttp.Handler) stdhttp.Handler {
+	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if !isSameHostRemoteAddr(r.RemoteAddr) {
+			writeError(
+				w,
+				stdhttp.StatusForbidden,
+				errorCodeRemoteClientForbidden,
+				"requests must originate from the same host",
+				nil,
+			)
+
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isSameHostRemoteAddr(remoteAddr string) bool {
+	host := strings.TrimSpace(remoteAddr)
+	if host == "" {
+		return false
+	}
+	if splitHost, _, err := net.SplitHostPort(host); err == nil {
+		host = splitHost
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+
+	return ip.IsLoopback()
 }
 
 func writeJSON(w stdhttp.ResponseWriter, status int, body any) {

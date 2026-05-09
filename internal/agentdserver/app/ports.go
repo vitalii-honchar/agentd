@@ -14,6 +14,15 @@ type AgentRepository interface {
 	List(ctx context.Context) ([]domain.Agent, error)
 }
 
+type AgentRevisionRepository interface {
+	SaveRevision(ctx context.Context, revision domain.AgentRevision) error
+	ListRevisions(ctx context.Context, agentName string) ([]domain.AgentRevision, error)
+	FindRevisionByID(ctx context.Context, agentName, revisionID string) (domain.AgentRevision, error)
+	FindRevisionByDigest(ctx context.Context, agentName, contentDigest string) (domain.AgentRevision, error)
+	FindLatestFinalizedRevision(ctx context.Context, agentName string) (domain.AgentRevision, error)
+	MarkRevisionCorrupt(ctx context.Context, agentName, revisionID, errorMessage string) error
+}
+
 type RuntimeDBManager interface {
 	EnsureAgent(ctx context.Context, agentName string) error
 	Runs(agentName string) AgentRunRepository
@@ -27,7 +36,10 @@ type AgentRunRepository interface {
 	FindByID(ctx context.Context, runID string) (domain.AgentRun, error)
 	FindLatest(ctx context.Context) (domain.AgentRun, error)
 	FindActive(ctx context.Context) (domain.AgentRun, error)
+	List(ctx context.Context) ([]domain.AgentRun, error)
 	ListActive(ctx context.Context) ([]domain.AgentRun, error)
+	ListTerminal(ctx context.Context) ([]domain.AgentRun, error)
+	CreateToolExecution(ctx context.Context, execution domain.ToolExecution) error
 }
 
 type RuntimeEventRepository interface {
@@ -59,5 +71,7 @@ type LogQuery struct {
 type LogEntry struct {
 	Timestamp time.Time
 	RunID     string
+	Action    string
+	Message   string
 	Line      string
 }

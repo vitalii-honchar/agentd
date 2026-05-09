@@ -5,9 +5,12 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vitalii-honchar/agentd/internal/agentd/config"
 )
+
+var testLogTime = time.Date(2026, 5, 8, 10, 0, 0, 0, time.UTC)
 
 func TestListCommandCallsClient(t *testing.T) {
 	t.Parallel()
@@ -58,6 +61,80 @@ func TestInspectCommandCallsClient(t *testing.T) {
 	}
 }
 
+func TestRevisionsCommandCallsClient(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{revisionListResponse: RevisionListResponse{Revisions: []RevisionSummary{{
+		RevisionID:   "revision-1",
+		Status:       "finalized",
+		CreatedAt:    testLogTime,
+		Latest:       true,
+		SourcePath:   "examples/release-notes-helper/agent.md",
+		ArtifactPath: "data/work/release-notes-helper/revision-1",
+	}}}}
+	var out bytes.Buffer
+	cmd := NewRevisionsCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.revisionsAgent != "release-notes-helper" {
+		t.Fatalf("revisions agent: got %q", client.revisionsAgent)
+	}
+	if !strings.Contains(out.String(), "revision-1\tfinalized\t2026-05-08T10:00:00Z\ttrue") {
+		t.Fatalf("output: %q", out.String())
+	}
+}
+
+func TestInspectCommandCallsRevisionClientForRevisionSelector(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{revisionInspectResponse: RevisionInspectResponse{Revision: RevisionDetail{
+		RevisionSummary: RevisionSummary{
+			RevisionID:   "revision-1",
+			Status:       "finalized",
+			ArtifactPath: "data/work/release-notes-helper/revision-1",
+			Latest:       true,
+		},
+		Prompt: "Write release notes.",
+		Tools: []RevisionTool{{
+			Name:             "fetch",
+			Kind:             "custom_tool",
+			RewrittenCommand: "data/work/release-notes-helper/revision-1/tools/fetch.py",
+			CopiedFiles:      []string{"tools/fetch.py"},
+		}},
+		Environment: []RevisionEnvironment{{
+			Key:    "GITHUB_TOKEN",
+			Value:  "********",
+			Source: "variable",
+			Masked: true,
+		}},
+	}}}
+	var out bytes.Buffer
+	cmd := NewInspectCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper:revision-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if client.inspectRevisionAgent != "release-notes-helper" || client.inspectRevisionID != "revision-1" {
+		t.Fatalf("inspect revision: agent=%q revision=%q", client.inspectRevisionAgent, client.inspectRevisionID)
+	}
+	output := out.String()
+	for _, want := range []string{
+		"revision: revision-1",
+		"artifact: data/work/release-notes-helper/revision-1",
+		"- fetch custom_tool",
+		"rewritten: data/work/release-notes-helper/revision-1/tools/fetch.py",
+		"GITHUB_TOKEN=******** source=variable masked=true",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q: %q", want, output)
+		}
+	}
+}
+
 func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
 	t.Parallel()
 
@@ -83,6 +160,31 @@ func TestLogsCommandCallsClientWithRunAndTail(t *testing.T) {
 	}
 }
 
+func TestLogsCommandFormatsActionLogs(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeQueryClient{logsResponse: LogsResponse{
+		AgentName: "release-notes-helper",
+		RunID:     "run-1",
+		Entries: []LogEntry{{
+			Timestamp: testLogTime,
+			RunID:     "run-1",
+			Action:    "llm.prompt.send",
+			Message:   "sent prompt",
+		}},
+	}}
+	var out bytes.Buffer
+	cmd := NewLogsCommand(client, NewOutput(config.OutputText, &out))
+	cmd.SetArgs([]string{"release-notes-helper", "--run", "run-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out.String(), "2026-05-08T10:00:00Z run-1 llm.prompt.send sent prompt") {
+		t.Fatalf("output: %q", out.String())
+	}
+}
+
 func TestRootCommandWiresQueryCommands(t *testing.T) {
 	t.Parallel()
 
@@ -99,19 +201,33 @@ func TestRootCommandWiresQueryCommands(t *testing.T) {
 	})
 
 	requireCommand(t, cmd, "list")
+	requireCommand(t, cmd, "revisions")
 	requireCommand(t, cmd, "inspect")
+	requireCommand(t, cmd, "ps")
+	requireCommand(t, cmd, "result")
 	requireCommand(t, cmd, "logs")
 }
 
 type fakeQueryClient struct {
-	listCalled   bool
-	inspectAgent string
-	logsRequest  LogsRequest
+	listCalled           bool
+	inspectAgent         string
+	revisionsAgent       string
+	inspectRevisionAgent string
+	inspectRevisionID    string
+	logsRequest          LogsRequest
+	listRunsIncludeAll   bool
+	resultAgentName      string
+	resultRunID          string
 
-	listResponse ListResponse
-	agent        AgentDetail
-	logsResponse LogsResponse
-	err          error
+	listResponse            ListResponse
+	revisionListResponse    RevisionListResponse
+	revisionInspectResponse RevisionInspectResponse
+	runsResponse            RunListResponse
+	agentResultsResponse    AgentResultsResponse
+	runResult               RunResult
+	agent                   AgentDetail
+	logsResponse            LogsResponse
+	err                     error
 }
 
 func (f *fakeQueryClient) List(ctx context.Context) (ListResponse, error) {
@@ -130,6 +246,56 @@ func (f *fakeQueryClient) Inspect(_ context.Context, agentName string) (AgentDet
 	}
 
 	return f.agent, nil
+}
+
+func (f *fakeQueryClient) ListRevisions(_ context.Context, agentName string) (RevisionListResponse, error) {
+	f.revisionsAgent = agentName
+	if f.err != nil {
+		return RevisionListResponse{}, f.err
+	}
+
+	return f.revisionListResponse, nil
+}
+
+func (f *fakeQueryClient) InspectRevision(
+	_ context.Context,
+	agentName string,
+	revisionID string,
+) (RevisionInspectResponse, error) {
+	f.inspectRevisionAgent = agentName
+	f.inspectRevisionID = revisionID
+	if f.err != nil {
+		return RevisionInspectResponse{}, f.err
+	}
+
+	return f.revisionInspectResponse, nil
+}
+
+func (f *fakeQueryClient) ListRuns(_ context.Context, includeAll bool) (RunListResponse, error) {
+	f.listRunsIncludeAll = includeAll
+	if f.err != nil {
+		return RunListResponse{}, f.err
+	}
+
+	return f.runsResponse, nil
+}
+
+func (f *fakeQueryClient) ResultsByAgent(_ context.Context, agentName string) (AgentResultsResponse, error) {
+	f.resultAgentName = agentName
+	if f.err != nil {
+		return AgentResultsResponse{}, f.err
+	}
+
+	return f.agentResultsResponse, nil
+}
+
+func (f *fakeQueryClient) ResultByRunID(_ context.Context, runID string) (RunResult, error) {
+	f.resultRunID = runID
+	if f.err != nil {
+		return RunResult{}, f.err
+	}
+
+	return f.runResult, nil
 }
 
 func (f *fakeQueryClient) Logs(_ context.Context, request LogsRequest) (LogsResponse, error) {
