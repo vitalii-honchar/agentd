@@ -9,12 +9,10 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/spf13/cobra v1.10.2
-	github.com/vitalii-honchar/go-agent v0.0.0
+	github.com/vitalii-honchar/go-agent v0.0.0-20260509165601-0e48fb2b3f8f
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.50.0
 )
-
-replace github.com/vitalii-honchar/go-agent => ../go-agent
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
