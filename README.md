@@ -13,16 +13,37 @@ agentd is early-stage software. The daemon, CLI, definition parser, SQLite-backe
 
 ## Install
 
+agentd requires Go 1.26.2 or newer.
+
+Install the latest published CLI and daemon binaries directly with Go:
+
 ```bash
 go install github.com/vitalii-honchar/agentd/cmd/agentd@latest
 go install github.com/vitalii-honchar/agentd/cmd/agentdserver@latest
 ```
 
-For development from a checkout:
+Make sure Go's binary directory is on your `PATH`:
 
 ```bash
-go run ./cmd/agentdserver
-go run ./cmd/agentd --help
+export PATH="$(go env GOPATH)/bin:$PATH"
+agentd --help
+agentdserver --help
+```
+
+To install from a local checkout instead of the latest published version:
+
+```bash
+git clone git@github.com:vitalii-honchar/agentd.git
+cd agentd
+go mod download
+go install ./cmd/agentd ./cmd/agentdserver
+```
+
+You can also use the project `Makefile`:
+
+```bash
+make install
+make runserver
 ```
 
 ## Quickstart
@@ -38,7 +59,7 @@ cp .env.example .env
 Start the daemon:
 
 ```bash
-go run ./cmd/agentdserver
+make runserver
 ```
 
 Apply, list, inspect, execute, and read logs:
