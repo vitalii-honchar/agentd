@@ -215,6 +215,33 @@ func TestManagerExecutesCustomToolFromRevisionArtifact(t *testing.T) {
 	}
 }
 
+func TestResolveToolCommandForRunAbsolutizesArtifactQualifiedRelativeCommand(t *testing.T) {
+	t.Parallel()
+
+	agent := testAgent("artifact-agent")
+	artifactPath := filepath.Join("data", "work", agent.Name, "revision-1")
+	command := filepath.Join(artifactPath, "tools", "fetch.sh")
+	want, err := filepath.Abs(command)
+	if err != nil {
+		t.Fatalf("Abs command: %v", err)
+	}
+
+	resolved := resolveToolCommandForRun(agent, domain.AgentRevision{
+		AgentName:    agent.Name,
+		RevisionID:   "revision-1",
+		ArtifactPath: artifactPath,
+		Status:       domain.AgentRevisionStatusFinalized,
+	}, domain.ToolPermission{
+		Name:    "fetch",
+		Kind:    domain.ToolKindCustomTool,
+		Command: command,
+	})
+
+	if resolved != want {
+		t.Fatalf("resolved command: got %q want %q", resolved, want)
+	}
+}
+
 func TestManagerExecutesHostToolCommand(t *testing.T) {
 	t.Parallel()
 

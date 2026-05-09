@@ -540,11 +540,37 @@ func resolveToolCommand(sourcePath, command string) string {
 }
 
 func resolveToolCommandForRun(agent domain.Agent, revision domain.AgentRevision, tool domain.ToolPermission) string {
-	if tool.Kind == domain.ToolKindCustomTool && revision.ArtifactPath != "" && !filepath.IsAbs(tool.Command) {
-		return filepath.Join(revision.ArtifactPath, tool.Command)
+	if tool.Kind == domain.ToolKindCustomTool && revision.ArtifactPath != "" {
+		command := tool.Command
+		if !filepath.IsAbs(command) && !commandWithinArtifact(revision.ArtifactPath, command) {
+			command = filepath.Join(revision.ArtifactPath, command)
+		}
+
+		return absolutePath(command)
 	}
 
 	return resolveToolCommand(agent.DefinitionSource, tool.Command)
+}
+
+func absolutePath(path string) string {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+
+	return absolute
+}
+
+func commandWithinArtifact(artifactPath, command string) bool {
+	if artifactPath == "" || command == "" {
+		return false
+	}
+	relative, err := filepath.Rel(filepath.Clean(artifactPath), filepath.Clean(command))
+	if err != nil {
+		return false
+	}
+
+	return relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)))
 }
 
 func validateCustomToolArtifact(revision domain.AgentRevision, tool domain.ToolPermission) error {
